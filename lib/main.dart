@@ -221,6 +221,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               ExpansionTile(
                 leading: const Icon(Icons.map),
                 title: const Text('GeoJSON'),
+                initiallyExpanded: true,
                 children: [
                   ListTile(
                     leading: const Icon(Icons.file_open),
@@ -243,6 +244,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               ExpansionTile(
                 leading: const Icon(Icons.route),
                 title: const Text('GPX'),
+                initiallyExpanded: true,
                 children: [
                   ListTile(
                     leading: const Icon(Icons.file_open),
