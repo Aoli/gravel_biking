@@ -284,24 +284,36 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             ],
           ),
           if (isLoading) const Center(child: CircularProgressIndicator()),
-          Positioned(
-            right: 12,
-            bottom: 12,
-            child: _DistancePanel(
-              segmentMeters: _segmentMeters,
-              onUndo: _undoLastPoint,
-              onClear: _clearRoute,
-              theme: Theme.of(context),
-              measureEnabled: _measureEnabled,
-              loopClosed: _loopClosed,
-              canToggleLoop: _routePoints.length >= 3,
-              onToggleLoop: _toggleLoop,
-              editingIndex: _editingIndex,
-              onCancelEdit: () => setState(() => _editingIndex = null),
-              onExportGeoJson: _exportGeoJsonRoute,
-              onImportGeoJson: _importGeoJsonRoute,
-              onExportGpx: _exportGpxRoute,
-              onImportGpx: _importGpxRoute,
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12, bottom: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _ImportExportCard(
+                    theme: Theme.of(context),
+                    onImportGeoJson: _importGeoJsonRoute,
+                    onExportGeoJson: _exportGeoJsonRoute,
+                    onImportGpx: _importGpxRoute,
+                    onExportGpx: _exportGpxRoute,
+                  ),
+                  const SizedBox(height: 8),
+                  _DistancePanel(
+                    segmentMeters: _segmentMeters,
+                    onUndo: _undoLastPoint,
+                    onClear: _clearRoute,
+                    theme: Theme.of(context),
+                    measureEnabled: _measureEnabled,
+                    loopClosed: _loopClosed,
+                    canToggleLoop: _routePoints.length >= 3,
+                    onToggleLoop: _toggleLoop,
+                    editingIndex: _editingIndex,
+                    onCancelEdit: () => setState(() => _editingIndex = null),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -742,10 +754,6 @@ class _DistancePanel extends StatelessWidget {
   final VoidCallback onToggleLoop;
   final int? editingIndex;
   final VoidCallback onCancelEdit;
-  final VoidCallback onExportGeoJson;
-  final VoidCallback onImportGeoJson;
-  final VoidCallback onExportGpx;
-  final VoidCallback onImportGpx;
 
   const _DistancePanel({
     required this.segmentMeters,
@@ -758,10 +766,6 @@ class _DistancePanel extends StatelessWidget {
     required this.onToggleLoop,
     required this.editingIndex,
     required this.onCancelEdit,
-    required this.onExportGeoJson,
-    required this.onImportGeoJson,
-    required this.onExportGpx,
-    required this.onImportGpx,
   });
 
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
@@ -823,87 +827,6 @@ class _DistancePanel extends StatelessWidget {
                     color: onCard,
                     onPressed: onClear,
                     visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: onCard,
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            side: BorderSide(
-                              color: onCard.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          onPressed: onImportGeoJson,
-                          icon: Icon(Icons.file_open, size: 16, color: onCard),
-                          label: const Text('Import'),
-                        ),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: onCard,
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            side: BorderSide(
-                              color: onCard.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          onPressed: onExportGeoJson,
-                          icon: Icon(Icons.save_alt, size: 16, color: onCard),
-                          label: const Text('Export'),
-                        ),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: onCard,
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            side: BorderSide(
-                              color: onCard.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          onPressed: onImportGpx,
-                          icon: Icon(Icons.route, size: 16, color: onCard),
-                          label: const Text('Import GPX'),
-                        ),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: onCard,
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            side: BorderSide(
-                              color: onCard.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          onPressed: onExportGpx,
-                          icon: Icon(
-                            Icons.file_download,
-                            size: 16,
-                            color: onCard,
-                          ),
-                          label: const Text('Export GPX'),
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -1009,6 +932,151 @@ class _DistancePanel extends StatelessWidget {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ImportExportCard extends StatefulWidget {
+  final ThemeData theme;
+  final VoidCallback onImportGeoJson;
+  final VoidCallback onExportGeoJson;
+  final VoidCallback onImportGpx;
+  final VoidCallback onExportGpx;
+  const _ImportExportCard({
+    required this.theme,
+    required this.onImportGeoJson,
+    required this.onExportGeoJson,
+    required this.onImportGpx,
+    required this.onExportGpx,
+  });
+
+  @override
+  State<_ImportExportCard> createState() => _ImportExportCardState();
+}
+
+class _ImportExportCardState extends State<_ImportExportCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardColor = widget.theme.colorScheme.surface;
+    final onCard = widget.theme.colorScheme.onSurface;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      constraints: const BoxConstraints(maxWidth: 320),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: cardColor.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 10,
+            color: Colors.black26,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: DefaultTextStyle(
+        style: TextStyle(color: onCard),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Import / Export',
+                    style: widget.theme.textTheme.titleMedium?.copyWith(
+                      color: onCard,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: _expanded ? 'Collapse' : 'Expand',
+                  icon: Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    color: onCard,
+                  ),
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            if (_expanded) ...[
+              const SizedBox(height: 6),
+              Text(
+                'GeoJSON',
+                style: widget.theme.textTheme.labelLarge?.copyWith(
+                  color: onCard,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: onCard,
+                      side: BorderSide(color: onCard.withValues(alpha: 0.6)),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: widget.onImportGeoJson,
+                    icon: Icon(Icons.file_open, size: 16, color: onCard),
+                    label: const Text('Import GeoJSON'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: onCard,
+                      side: BorderSide(color: onCard.withValues(alpha: 0.6)),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: widget.onExportGeoJson,
+                    icon: Icon(Icons.save_alt, size: 16, color: onCard),
+                    label: const Text('Export GeoJSON'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'GPX',
+                style: widget.theme.textTheme.labelLarge?.copyWith(
+                  color: onCard,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: onCard,
+                      side: BorderSide(color: onCard.withValues(alpha: 0.6)),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: widget.onImportGpx,
+                    icon: Icon(Icons.route, size: 16, color: onCard),
+                    label: const Text('Import GPX'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: onCard,
+                      side: BorderSide(color: onCard.withValues(alpha: 0.6)),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: widget.onExportGpx,
+                    icon: Icon(Icons.file_download, size: 16, color: onCard),
+                    label: const Text('Export GPX'),
+                  ),
+                ],
+              ),
+            ],
+          ],
         ),
       ),
     );
