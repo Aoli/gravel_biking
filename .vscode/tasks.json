@@ -155,6 +155,39 @@
 				"$flutter-test"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Analyze & Test after viewport fetch",
+			"type": "shell",
+			"command": "flutter analyze && flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general",
+				"$flutter-test"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Re-analyze after escaping fix",
+			"type": "shell",
+			"command": "flutter analyze && flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general",
+				"$flutter-test"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Final analyze & tests after viewport fetch fix",
+			"type": "shell",
+			"command": "flutter analyze && flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general",
+				"$flutter-test"
+			],
+			"group": "build"
 		}
 	]
 }

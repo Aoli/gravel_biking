@@ -44,6 +44,7 @@ Logical components and responsibilities:
 - Data Fetcher (Overpass)
   - Issues Overpass queries (http) to retrieve gravel ways.
   - Parses JSON off the UI thread (compute) into Polyline models.
+  - Debounced viewport-based fetching on map movement (500ms).
 - Measurement Manager
   - Manages route points, editing selection, open/closed loop state.
   - Computes per‑segment distances and totals with latlong2.Distance.
@@ -54,6 +55,7 @@ Logical components and responsibilities:
 ## Key Features
 
 - Gravel roads overlay fetched from Overpass API (OpenStreetMap data) for a fixed bounding box.
+  - Viewport-based refresh: updates gravel overlay when you pan/zoom (debounced).
 - Tap‑to‑measure routes:
   - Drop markers on tap; a polyline connects them in order.
   - Segment distances (between consecutive points) and total distance.

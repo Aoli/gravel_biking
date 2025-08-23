@@ -23,8 +23,9 @@ This document tracks feature work one by one with clear status and brief notes.
   - Follow-up: Add GPX support if needed.
 
 - [ ] Fetch gravel data based on the visible map bounds and refresh on move.
-  - Criteria: When the camera stops moving, fetch gravel ways for current bounds; throttle/debounce requests; avoid flicker.
-  - Approach: Listen to map move end; compute bbox; Overpass fetch on background isolate; merge/replace polylines.
+  - Status: Done (2025‑08‑24)
+  - What: When the map moves, a 500ms debounce triggers a fetch for the current visible bounds. Parsing happens off the UI thread; polylines are replaced.
+  - Notes: Avoids redundant calls by comparing last fetched bounds with a small tolerance.
 
 - [ ] Caching and offline support for both tiles and fetched geometries.
   - Criteria: Tiles cached with sensible max-age; offline viewing of previously seen areas; cached gravel data persistence.

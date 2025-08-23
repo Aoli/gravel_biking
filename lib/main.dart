@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -60,6 +61,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   // Data
   List<Polyline> gravelPolylines = [];
   bool isLoading = true;
+  Timer? _moveDebounce;
+  LatLngBounds? _lastFetchedBounds;
+  LatLngBounds? _lastEventBounds;
 
   // Measurement
   final Distance _distance = const Distance();
@@ -72,16 +76,48 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   @override
   void initState() {
     super.initState();
-    _fetchGravelStreets();
+    // Initial fetch for a sensible area (Stockholm bbox)
+    _fetchGravelForBounds(
+      LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1)),
+    );
   }
 
-  Future<void> _fetchGravelStreets() async {
+  void _onMapEvent(MapEvent event) {
+    // Debounce on any map movement/zoom/rotate event
+    _lastEventBounds = event.camera.visibleBounds;
+    _moveDebounce?.cancel();
+    _moveDebounce = Timer(const Duration(milliseconds: 500), _queueViewportFetch);
+  }
+
+  void _queueViewportFetch() {
+    final bounds = _lastEventBounds;
+    if (bounds == null) return;
+    if (_lastFetchedBounds != null && _boundsAlmostEqual(_lastFetchedBounds!, bounds)) return;
+    _fetchGravelForBounds(bounds);
+  }
+
+  bool _boundsAlmostEqual(LatLngBounds a, LatLngBounds b, {double tol = 0.0005}) {
+    double d(double x, double y) => (x - y).abs();
+    return d(a.southWest.latitude, b.southWest.latitude) < tol &&
+        d(a.southWest.longitude, b.southWest.longitude) < tol &&
+        d(a.northEast.latitude, b.northEast.latitude) < tol &&
+        d(a.northEast.longitude, b.northEast.longitude) < tol;
+  }
+
+  Future<void> _fetchGravelForBounds(LatLngBounds bounds) async {
+    _lastFetchedBounds = bounds;
     const url = 'https://overpass-api.de/api/interpreter';
-    const query = r'''
-      [out:json];
-      way["highway"~"^(residential|service|track|unclassified|road)$"]["surface"="gravel"](59.3, 18.0, 59.4, 18.1);
-      out geom;
-    ''';
+    final sw = bounds.southWest;
+    final ne = bounds.northEast;
+    final south = sw.latitude.toStringAsFixed(6);
+    final west = sw.longitude.toStringAsFixed(6);
+    final north = ne.latitude.toStringAsFixed(6);
+    final east = ne.longitude.toStringAsFixed(6);
+    final sb = StringBuffer()
+      ..writeln('[out:json];')
+      ..writeln('way["highway"~"(residential|service|track|unclassified|road)"]["surface"="gravel"]($south, $west, $north, $east);')
+      ..writeln('out geom;');
+    final query = sb.toString();
     try {
       final res = await http.post(Uri.parse(url), body: {'data': query});
       if (res.statusCode == 200) {
@@ -142,6 +178,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             options: MapOptions(
               initialCenter: const LatLng(59.3293, 18.0686),
               initialZoom: 12,
+              onMapEvent: _onMapEvent,
               onTap: (tap, latLng) {
                 if (!_measureEnabled) return;
                 setState(() {
@@ -219,6 +256,12 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _moveDebounce?.cancel();
+    super.dispose();
   }
 
   void _undoLastPoint() {
