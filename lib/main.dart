@@ -1,32 +1,45 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
-// --- Main App Setup ---
-void main() {
-  runApp(const MyApp());
+void main() => runApp(const MyApp());
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Gravel Streets',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+      ),
+      home: const GravelStreetsMap(),
+    );
+  }
 }
 
-// Top-level function to parse Overpass JSON and extract polyline coordinates.
-// Returns a List of polylines, where each polyline is a List<[lat, lon]> pairs.
+// Parse Overpass JSON off the UI thread
 List<List<List<double>>> _extractPolylineCoords(String body) {
-  final Map<String, dynamic> data = json.decode(body) as Map<String, dynamic>;
+  final data = json.decode(body) as Map<String, dynamic>;
   final elements = (data['elements'] as List?) ?? const [];
   final result = <List<List<double>>>[];
-  for (final element in elements) {
-    if (element is Map &&
-        element['type'] == 'way' &&
-        element.containsKey('geometry')) {
-      final geom = element['geometry'] as List;
+  for (final e in elements) {
+    if (e is Map && e['type'] == 'way' && e['geometry'] is List) {
       final pts = <List<double>>[];
-      for (final node in geom) {
-        if (node is Map && node.containsKey('lat') && node.containsKey('lon')) {
-          final lat = (node['lat'] as num).toDouble();
-          final lon = (node['lon'] as num).toDouble();
-          pts.add([lat, lon]);
+      for (final n in (e['geometry'] as List)) {
+        if (n is Map && n['lat'] is num && n['lon'] is num) {
+          pts.add([(n['lat'] as num).toDouble(), (n['lon'] as num).toDouble()]);
         }
       }
       if (pts.length >= 2) result.add(pts);
@@ -35,109 +48,70 @@ List<List<List<double>>> _extractPolylineCoords(String body) {
   return result;
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Gravel Streets',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
-      home: const GravelStreetsMap(),
-    );
-  }
-}
-
-// --- Map Widget with Data Fetching ---
 class GravelStreetsMap extends StatefulWidget {
   const GravelStreetsMap({super.key});
-
   @override
   State<GravelStreetsMap> createState() => _GravelStreetsMapState();
 }
 
 class _GravelStreetsMapState extends State<GravelStreetsMap> {
+  // Data
   List<Polyline> gravelPolylines = [];
   bool isLoading = true;
 
-  // --- Measurement state ---
+  // Measurement
   final Distance _distance = const Distance();
   final List<LatLng> _routePoints = [];
   final List<double> _segmentMeters = [];
   bool _measureEnabled = false;
+  bool _loopClosed = false;
 
   @override
   void initState() {
     super.initState();
-    fetchGravelStreets();
+    _fetchGravelStreets();
   }
 
-  Future<void> fetchGravelStreets() async {
-    const String overpassApiUrl = 'https://overpass-api.de/api/interpreter';
-    // Overpass QL query to find gravel streets in a specific bounding box
-    final String query = r'''
+  Future<void> _fetchGravelStreets() async {
+    const url = 'https://overpass-api.de/api/interpreter';
+    const query = r'''
       [out:json];
-      way
-        ["highway"~"^(residential|service|track|unclassified|road)$"]
-        ["surface"="gravel"]
-        (59.3, 18.0, 59.4, 18.1);
+      way["highway"~"^(residential|service|track|unclassified|road)$"]["surface"="gravel"](59.3, 18.0, 59.4, 18.1);
       out geom;
     ''';
-
     try {
-      final response = await http.post(
-        Uri.parse(overpassApiUrl),
-        body: {'data': query},
-      );
-
-      if (response.statusCode == 200) {
-        // Parse and extract coordinates off the main thread
-        final coords = await compute(_extractPolylineCoords, response.body);
-        final polylines = <Polyline>[
-          for (final pts in coords)
+      final res = await http.post(Uri.parse(url), body: {'data': query});
+      if (res.statusCode == 200) {
+        final lines = await compute(_extractPolylineCoords, res.body);
+        final polys = <Polyline>[
+          for (final pts in lines)
             Polyline(
               points: [for (final p in pts) LatLng(p[0], p[1])],
               color: Colors.brown,
-              strokeWidth: 4.0,
+              strokeWidth: 4,
             ),
         ];
-
         if (!mounted) return;
         setState(() {
-          gravelPolylines = polylines;
+          gravelPolylines = polys;
           isLoading = false;
         });
       } else {
-        debugPrint('Failed to load gravel streets: ${response.statusCode}');
+        debugPrint('Failed to load gravel streets: ${res.statusCode}');
         if (!mounted) return;
-        setState(() {
-          isLoading = false;
-        });
+        setState(() => isLoading = false);
       }
     } catch (e) {
       debugPrint('Error fetching data: $e');
       if (!mounted) return;
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Determine the correct map tiles for the current theme
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final String tileUrl = isDark
+    final tileUrl = isDark
         ? 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png'
         : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -164,17 +138,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
           FlutterMap(
             options: MapOptions(
               initialCenter: const LatLng(59.3293, 18.0686),
-              initialZoom: 12.0,
-              onTap: (tapPosition, latLng) {
-                // Add a point and compute segment distance from previous point (if any)
+              initialZoom: 12,
+              onTap: (tap, latLng) {
                 if (!_measureEnabled) return;
                 setState(() {
-                  if (_routePoints.isNotEmpty) {
-                    final prev = _routePoints.last;
-                    final meters = _distance.as(LengthUnit.Meter, prev, latLng);
-                    _segmentMeters.add(meters);
-                  }
+                  if (_loopClosed) _loopClosed = false; // re-open when adding
                   _routePoints.add(latLng);
+                  _recomputeSegments();
                 });
               },
             ),
@@ -184,18 +154,18 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 userAgentPackageName: 'com.example.gravel_biking',
               ),
               PolylineLayer(polylines: gravelPolylines),
-              // Measured route polyline
               PolylineLayer(
                 polylines: [
                   if (_routePoints.length >= 2)
                     Polyline(
-                      points: _routePoints,
+                      points: _loopClosed && _routePoints.length >= 3
+                          ? [..._routePoints, _routePoints.first]
+                          : _routePoints,
                       color: Theme.of(context).colorScheme.primary,
-                      strokeWidth: 3.0,
+                      strokeWidth: 3,
                     ),
                 ],
               ),
-              // Markers for each selected point
               MarkerLayer(
                 markers: [
                   for (int i = 0; i < _routePoints.length; i++)
@@ -211,7 +181,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             ],
           ),
           if (isLoading) const Center(child: CircularProgressIndicator()),
-          // Distance overlay
           Positioned(
             right: 12,
             bottom: 12,
@@ -221,6 +190,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               onClear: _clearRoute,
               theme: Theme.of(context),
               measureEnabled: _measureEnabled,
+              loopClosed: _loopClosed,
+              canToggleLoop: _routePoints.length >= 3,
+              onToggleLoop: _toggleLoop,
             ),
           ),
         ],
@@ -228,14 +200,12 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     );
   }
 
-  // --- Helpers for measurement ---
   void _undoLastPoint() {
     if (_routePoints.isEmpty) return;
     setState(() {
       _routePoints.removeLast();
-      if (_segmentMeters.isNotEmpty) {
-        _segmentMeters.removeLast();
-      }
+      if (_routePoints.length < 3) _loopClosed = false;
+      _recomputeSegments();
     });
   }
 
@@ -244,15 +214,40 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     setState(() {
       _routePoints.clear();
       _segmentMeters.clear();
+      _loopClosed = false;
     });
+  }
+
+  void _toggleLoop() {
+    if (_routePoints.length < 3) return;
+    setState(() {
+      _loopClosed = !_loopClosed;
+      _recomputeSegments();
+    });
+  }
+
+  void _recomputeSegments() {
+    _segmentMeters
+      ..clear()
+      ..addAll(_computeSegments(_routePoints, _loopClosed));
+  }
+
+  List<double> _computeSegments(List<LatLng> pts, bool closed) {
+    if (pts.length < 2) return const [];
+    final segs = <double>[];
+    for (int i = 1; i < pts.length; i++) {
+      segs.add(_distance.as(LengthUnit.Meter, pts[i - 1], pts[i]));
+    }
+    if (closed && pts.length >= 3) {
+      segs.add(_distance.as(LengthUnit.Meter, pts.last, pts.first));
+    }
+    return segs;
   }
 }
 
-// --- UI Widgets for measurement ---
 class _PointMarker extends StatelessWidget {
   final int index;
   const _PointMarker({required this.index});
-
   @override
   Widget build(BuildContext context) {
     final bg = Theme.of(context).colorScheme.secondaryContainer;
@@ -269,7 +264,6 @@ class _PointMarker extends StatelessWidget {
             border: Border.all(color: fg, width: 2),
           ),
         ),
-        // Tiny index label for readability on zoom-in
         Positioned(
           bottom: -10,
           child: Text(
@@ -293,6 +287,9 @@ class _DistancePanel extends StatelessWidget {
   final VoidCallback onClear;
   final ThemeData theme;
   final bool measureEnabled;
+  final bool loopClosed;
+  final bool canToggleLoop;
+  final VoidCallback onToggleLoop;
 
   const _DistancePanel({
     required this.segmentMeters,
@@ -300,6 +297,9 @@ class _DistancePanel extends StatelessWidget {
     required this.onClear,
     required this.theme,
     required this.measureEnabled,
+    required this.loopClosed,
+    required this.canToggleLoop,
+    required this.onToggleLoop,
   });
 
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
@@ -314,7 +314,6 @@ class _DistancePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardColor = theme.colorScheme.surface;
     final onCard = theme.colorScheme.onSurface;
-
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -365,6 +364,29 @@ class _DistancePanel extends StatelessWidget {
                   ),
                 ],
               ),
+              if (canToggleLoop) ...[
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: onCard,
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                    ),
+                    onPressed: onToggleLoop,
+                    icon: Icon(
+                      loopClosed ? Icons.link_off : Icons.link,
+                      size: 16,
+                      color: onCard,
+                    ),
+                    label: Text(loopClosed ? 'Open loop' : 'Close loop'),
+                  ),
+                ),
+              ],
               const SizedBox(height: 4),
               Text(
                 'Total: ${_fmt(_totalMeters)}',
@@ -383,11 +405,22 @@ class _DistancePanel extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (int i = 0; i < segmentMeters.length; i++)
+                        for (
+                          int i = 0;
+                          i < segmentMeters.length - (loopClosed ? 1 : 0);
+                          i++
+                        )
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Text(
                               'Segment ${i + 1}: ${_fmt(segmentMeters[i])}',
+                            ),
+                          ),
+                        if (loopClosed && segmentMeters.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text(
+                              'Loop segment: ${_fmt(segmentMeters.last)}',
                             ),
                           ),
                       ],

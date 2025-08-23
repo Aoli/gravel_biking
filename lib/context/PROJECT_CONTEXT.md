@@ -1,5 +1,19 @@
 # Gravel Biking – Project Context
 
+## Table of Contents
+
+- Overview
+- Tech Stack
+- Key Features
+- Code Layout
+- Data & Tiles
+- Measurement Details
+- How to Run
+- Testing
+- Development Notes
+- Roadmap
+- Change Log
+
 This document provides a concise overview of the Gravel Biking Flutter project: what it does, how it’s organized, the main dependencies, and how to run and test it.
 
 ## Overview
@@ -65,6 +79,13 @@ Tile usage note: If you plan production use, review provider terms. OSM’s publ
   - Otherwise: show kilometers with 1–2 decimals (e.g., `2.4 km`, `7.85 km`).
 - Segment list shows distances between sequential points; total is a running sum.
 
+## Loop measurement
+
+- When 3 or more points are placed, a “Close loop / Open loop” button appears in the distance panel.
+- Closing the loop connects the last point back to the first, adds a final “Loop segment” to the list, and updates the total.
+- Adding a new point automatically re‑opens the loop (so you don’t accidentally keep closing it while extending the route).
+- Undo removes the last point and recalculates; if fewer than 3 points remain, loop mode is disabled.
+
 ## How to Run
 
 Prerequisites: Flutter SDK installed.
@@ -92,14 +113,15 @@ A basic widget test is included that ensures the app builds and the distance pan
 - Gravel polyline color is currently a fixed color to avoid theme access during `initState`.
 - For tile usage in production, configure a proper provider, keys, and a descriptive `userAgentPackageName`.
 
-## Potential Enhancements
+## Roadmap
 
-- Toggle measurement mode on/off so map taps don’t always add points.
-- Close loop support and loop distance reporting.
-- Editable points (drag to adjust, long‑press to delete specific point).
-- Export/import routes (e.g., GPX/GeoJSON).
-- Fetch gravel data based on the visible map bounds and refresh on move.
-- Caching and offline support for both tiles and fetched geometries.
+The roadmap has been moved to a standalone file for clarity:
+
+- See: `rodmap.md` at the repository root.
 
 ---
-Last updated: 2025‑08‑23
+Last updated: 2025‑08‑24
+
+## Change Log
+
+- 2025‑08‑24: Implemented loop close/open with extra loop segment reporting. Updated docs with TOC and notes.
