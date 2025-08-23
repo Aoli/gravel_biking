@@ -65,6 +65,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   final List<double> _segmentMeters = [];
   bool _measureEnabled = false;
   bool _loopClosed = false;
+  int? _editingIndex;
 
   @override
   void initState() {
@@ -142,9 +143,16 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               onTap: (tap, latLng) {
                 if (!_measureEnabled) return;
                 setState(() {
-                  if (_loopClosed) _loopClosed = false; // re-open when adding
-                  _routePoints.add(latLng);
-                  _recomputeSegments();
+                  if (_editingIndex != null) {
+                    // Move selected point to this location
+                    _routePoints[_editingIndex!] = latLng;
+                    _editingIndex = null;
+                    _recomputeSegments();
+                  } else {
+                    if (_loopClosed) _loopClosed = false; // re-open when adding
+                    _routePoints.add(latLng);
+                    _recomputeSegments();
+                  }
                 });
               },
             ),
@@ -171,10 +179,17 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                   for (int i = 0; i < _routePoints.length; i++)
                     Marker(
                       point: _routePoints[i],
-                      width: 24,
-                      height: 24,
+                      width: 26,
+                      height: 26,
                       alignment: Alignment.center,
-                      child: _PointMarker(index: i),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _editingIndex = i),
+                        onLongPress: () => _deletePoint(i),
+                        child: _PointMarker(
+                          index: i,
+                          isEditing: _editingIndex == i,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -193,6 +208,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               loopClosed: _loopClosed,
               canToggleLoop: _routePoints.length >= 3,
               onToggleLoop: _toggleLoop,
+              editingIndex: _editingIndex,
+              onCancelEdit: () => setState(() => _editingIndex = null),
             ),
           ),
         ],
@@ -215,6 +232,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       _routePoints.clear();
       _segmentMeters.clear();
       _loopClosed = false;
+      _editingIndex = null;
     });
   }
 
@@ -243,11 +261,30 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     }
     return segs;
   }
+
+  void _deletePoint(int index) {
+    if (index < 0 || index >= _routePoints.length) return;
+    setState(() {
+      _routePoints.removeAt(index);
+      if (_routePoints.length < 3) _loopClosed = false;
+      if (_editingIndex != null) {
+        if (_routePoints.isEmpty) {
+          _editingIndex = null;
+        } else if (index == _editingIndex) {
+          _editingIndex = null;
+        } else if (index < _editingIndex!) {
+          _editingIndex = _editingIndex! - 1;
+        }
+      }
+      _recomputeSegments();
+    });
+  }
 }
 
 class _PointMarker extends StatelessWidget {
   final int index;
-  const _PointMarker({required this.index});
+  final bool isEditing;
+  const _PointMarker({required this.index, this.isEditing = false});
   @override
   Widget build(BuildContext context) {
     final bg = Theme.of(context).colorScheme.secondaryContainer;
@@ -256,10 +293,12 @@ class _PointMarker extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         Container(
-          width: 16,
-          height: 16,
+          width: 18,
+          height: 18,
           decoration: BoxDecoration(
-            color: bg,
+            color: isEditing
+                ? Theme.of(context).colorScheme.tertiaryContainer
+                : bg,
             shape: BoxShape.circle,
             border: Border.all(color: fg, width: 2),
           ),
@@ -290,6 +329,8 @@ class _DistancePanel extends StatelessWidget {
   final bool loopClosed;
   final bool canToggleLoop;
   final VoidCallback onToggleLoop;
+  final int? editingIndex;
+  final VoidCallback onCancelEdit;
 
   const _DistancePanel({
     required this.segmentMeters,
@@ -300,6 +341,8 @@ class _DistancePanel extends StatelessWidget {
     required this.loopClosed,
     required this.canToggleLoop,
     required this.onToggleLoop,
+    required this.editingIndex,
+    required this.onCancelEdit,
   });
 
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
@@ -388,6 +431,42 @@ class _DistancePanel extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 4),
+              if (editingIndex != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondaryContainer.withValues(
+                      alpha: 0.6,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Editing point #${editingIndex! + 1} — tap map to move',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: onCard,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Cancel edit',
+                        icon: const Icon(Icons.close, size: 16),
+                        color: onCard,
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        onPressed: onCancelEdit,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               Text(
                 'Total: ${_fmt(_totalMeters)}',
                 style: theme.textTheme.titleSmall?.copyWith(color: onCard),
