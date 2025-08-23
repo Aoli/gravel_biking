@@ -178,17 +178,20 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             icon: const Icon(Icons.my_location),
             onPressed: _locateMe,
           ),
-          IconButton(
-            tooltip: _measureEnabled
-                ? 'Disable measure mode'
-                : 'Enable measure mode',
-            icon: Icon(
-              Icons.straighten,
-              color: _measureEnabled
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _measureEnabled ? Colors.green : Colors.red,
             ),
-            onPressed: () => setState(() => _measureEnabled = !_measureEnabled),
+            child: IconButton(
+              tooltip: _measureEnabled
+                  ? 'Disable measure mode'
+                  : 'Enable measure mode',
+              icon: const Icon(Icons.straighten, color: Colors.white),
+              onPressed: () =>
+                  setState(() => _measureEnabled = !_measureEnabled),
+            ),
           ),
         ],
       ),
