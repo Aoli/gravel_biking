@@ -18,7 +18,10 @@ void main() {
     // Wait a frame for map to layout
     await tester.pump(const Duration(milliseconds: 100));
 
-    // Distance panel hint text should be present initially
-    expect(find.text('Tap the map to add points'), findsOneWidget);
+    // Distance panel hint text should be present initially (clarified)
+    expect(
+      find.text('Tap the map to add points in edit mode (green edit button)'),
+      findsOneWidget,
+    );
   });
 }

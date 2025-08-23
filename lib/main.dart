@@ -897,7 +897,9 @@ class _DistancePanel extends StatelessWidget {
               if (segmentMeters.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 6),
-                  child: Text('Tap the map to add points'),
+                  child: Text(
+                    'Tap the map to add points in edit mode (green edit button)',
+                  ),
                 )
               else ...[
                 const SizedBox(height: 6),
@@ -962,7 +964,10 @@ class _ImportExportCardState extends State<_ImportExportCard> {
   @override
   Widget build(BuildContext context) {
     final cardColor = widget.theme.colorScheme.surface;
-    final onCard = widget.theme.colorScheme.onSurface;
+    final brightness = ThemeData.estimateBrightnessForColor(cardColor);
+    final onCard = brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black87;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
