@@ -1,9 +1,10 @@
-# Gravel Biking – Project Context
+# Gravel Biking – Architecture & Tech Overview
 
 ## Table of Contents
 
 - Overview
 - Tech Stack
+- System Architecture
 - Key Features
 - Code Layout
 - Data & Tiles
@@ -33,6 +34,23 @@ A cross‑platform Flutter app that displays a map with gravel roads (queried fr
 
 Supported platforms (project folders present): Android, iOS, Web, macOS, Linux, Windows.
 
+## System Architecture
+
+Logical components and responsibilities:
+
+- Map UI (flutter_map)
+  - Renders tiles, overlays gravel polylines and the measurement polyline/markers.
+  - Handles user interactions (map taps, marker taps/long‑press).
+- Data Fetcher (Overpass)
+  - Issues Overpass queries (http) to retrieve gravel ways.
+  - Parses JSON off the UI thread (compute) into Polyline models.
+- Measurement Manager
+  - Manages route points, editing selection, open/closed loop state.
+  - Computes per‑segment distances and totals with latlong2.Distance.
+- Import/Export
+  - Serializes current route to GeoJSON (LineString) and saves via file_saver.
+  - Loads GeoJSON via file_picker and hydrates route state; preserves loop flag when present.
+
 ## Key Features
 
 - Gravel roads overlay fetched from Overpass API (OpenStreetMap data) for a fixed bounding box.
@@ -40,6 +58,9 @@ Supported platforms (project folders present): Android, iOS, Web, macOS, Linux, 
   - Drop markers on tap; a polyline connects them in order.
   - Segment distances (between consecutive points) and total distance.
   - Undo last point and Clear all.
+  - Editable points: tap a marker to select, tap map to move; long‑press to delete.
+  - Close/Open loop: connect last→first, adds a loop segment to the list and total.
+- Import/Export (GeoJSON): export current route as GeoJSON; import a GeoJSON LineString to restore.
 - Light/Dark tile styles (OSM standard tiles for light, Stadia “alidade_smooth_dark” tiles for dark).
 
 ## Code Layout
@@ -115,13 +136,15 @@ A basic widget test is included that ensures the app builds and the distance pan
 
 ## Roadmap
 
-The roadmap has been moved to a standalone file for clarity:
+The roadmap lives alongside this document for clarity:
 
-- See: `rodmap.md` at the repository root.
+- See: `lib/context/roadmap.md`
 
 ---
 Last updated: 2025‑08‑24
 
 ## Change Log
 
+- 2025‑08‑24: Added GeoJSON import/export (file_picker, file_saver). UI buttons in panel.
+- 2025‑08‑24: Editable points (tap‑to‑move, long‑press delete) and editing banner/highlight.
 - 2025‑08‑24: Implemented loop close/open with extra loop segment reporting. Updated docs with TOC and notes.

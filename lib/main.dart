@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 
 void main() => runApp(const MyApp());
 
@@ -210,6 +212,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               onToggleLoop: _toggleLoop,
               editingIndex: _editingIndex,
               onCancelEdit: () => setState(() => _editingIndex = null),
+              onExportGeoJson: _exportGeoJsonRoute,
+              onImportGeoJson: _importGeoJsonRoute,
             ),
           ),
         ],
@@ -279,6 +283,147 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       _recomputeSegments();
     });
   }
+
+  Future<void> _exportGeoJsonRoute() async {
+    if (_routePoints.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No route to export')));
+      return;
+    }
+    final coords = [
+      for (final p in _routePoints) [p.longitude, p.latitude],
+      if (_loopClosed && _routePoints.length >= 3)
+        [_routePoints.first.longitude, _routePoints.first.latitude],
+    ];
+    final feature = {
+      'type': 'Feature',
+      'properties': {
+        'name': 'Gravel route',
+        'loopClosed': _loopClosed,
+        'exportedAt': DateTime.now().toIso8601String(),
+      },
+      'geometry': {'type': 'LineString', 'coordinates': coords},
+    };
+    final fc = {
+      'type': 'FeatureCollection',
+      'features': [feature],
+    };
+    final content = const JsonEncoder.withIndent('  ').convert(fc);
+    final bytes = Uint8List.fromList(utf8.encode(content));
+    try {
+      await FileSaver.instance.saveFile(
+        name: 'gravel_route.geojson',
+        bytes: bytes,
+        ext: 'geojson',
+        mimeType: MimeType.json,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Route exported as GeoJSON')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    }
+  }
+
+  Future<void> _importGeoJsonRoute() async {
+    try {
+      final res = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['geojson', 'json'],
+        withData: true,
+      );
+      if (res == null || res.files.isEmpty) return;
+      final file = res.files.first;
+      final data = file.bytes ?? Uint8List(0);
+      if (data.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Selected file is empty')));
+        return;
+      }
+      final text = utf8.decode(data);
+      final decoded = json.decode(text);
+      final extract = _extractFirstLineString(decoded);
+      if (extract == null || extract.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No LineString found in GeoJSON')),
+        );
+        return;
+      }
+      final imported = [
+        for (final c in extract)
+          if (c is List && c.length >= 2)
+            LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()),
+      ];
+      bool loopClosed = false;
+      // Try to read loopClosed from common places
+      try {
+        if (decoded is Map && decoded['type'] == 'FeatureCollection') {
+          final feats = decoded['features'];
+          if (feats is List && feats.isNotEmpty && feats.first is Map) {
+            final props = (feats.first as Map)['properties'];
+            if (props is Map && props['loopClosed'] is bool) {
+              loopClosed = props['loopClosed'] as bool;
+            }
+          }
+        } else if (decoded is Map && decoded['type'] == 'Feature') {
+          final props = decoded['properties'];
+          if (props is Map && props['loopClosed'] is bool) {
+            loopClosed = props['loopClosed'] as bool;
+          }
+        }
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() {
+        _routePoints
+          ..clear()
+          ..addAll(imported);
+        _editingIndex = null;
+        _loopClosed = loopClosed && _routePoints.length >= 3;
+        _recomputeSegments();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Imported ${_routePoints.length} points')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+    }
+  }
+
+  // Returns coordinates array of a LineString ([ [lon,lat], ... ]) or null
+  List<dynamic>? _extractFirstLineString(dynamic node) {
+    if (node is Map) {
+      final type = node['type'];
+      if (type == 'FeatureCollection' && node['features'] is List) {
+        for (final f in (node['features'] as List)) {
+          final res = _extractFirstLineString(f);
+          if (res != null) return res;
+        }
+      } else if (type == 'Feature' && node['geometry'] is Map) {
+        return _extractFirstLineString(node['geometry']);
+      } else if (type == 'LineString' && node['coordinates'] is List) {
+        return node['coordinates'] as List;
+      } else if (type == 'MultiLineString' && node['coordinates'] is List) {
+        final lines = node['coordinates'] as List;
+        if (lines.isNotEmpty && lines.first is List) {
+          return lines.first as List; // take the first line by default
+        }
+      }
+    }
+    return null;
+  }
 }
 
 class _PointMarker extends StatelessWidget {
@@ -331,6 +476,8 @@ class _DistancePanel extends StatelessWidget {
   final VoidCallback onToggleLoop;
   final int? editingIndex;
   final VoidCallback onCancelEdit;
+  final VoidCallback onExportGeoJson;
+  final VoidCallback onImportGeoJson;
 
   const _DistancePanel({
     required this.segmentMeters,
@@ -343,6 +490,8 @@ class _DistancePanel extends StatelessWidget {
     required this.onToggleLoop,
     required this.editingIndex,
     required this.onCancelEdit,
+    required this.onExportGeoJson,
+    required this.onImportGeoJson,
   });
 
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
@@ -404,6 +553,43 @@ class _DistancePanel extends StatelessWidget {
                     color: onCard,
                     onPressed: onClear,
                     visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                          ),
+                          onPressed: onImportGeoJson,
+                          icon: const Icon(Icons.file_open, size: 16),
+                          label: const Text('Import'),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                          ),
+                          onPressed: onExportGeoJson,
+                          icon: const Icon(Icons.save_alt, size: 16),
+                          label: const Text('Export'),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

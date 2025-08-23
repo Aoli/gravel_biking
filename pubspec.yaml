@@ -37,6 +37,8 @@ dependencies:
   flutter_map: ^8.2.1
   latlong2: ^0.9.1
   http: ^1.2.2
+  file_picker: ^8.0.3
+  file_saver: ^0.2.12
 
 dev_dependencies:
   flutter_test:
