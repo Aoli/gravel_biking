@@ -195,6 +195,77 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
           ),
         ],
       ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    'Menu',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                title: const Text('Import / Export'),
+                leading: const Icon(Icons.folder_open),
+              ),
+              ExpansionTile(
+                leading: const Icon(Icons.map),
+                title: const Text('GeoJSON'),
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.file_open),
+                    title: const Text('Import GeoJSON'),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _importGeoJsonRoute();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.save_alt),
+                    title: const Text('Export GeoJSON'),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _exportGeoJsonRoute();
+                    },
+                  ),
+                ],
+              ),
+              ExpansionTile(
+                leading: const Icon(Icons.route),
+                title: const Text('GPX'),
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.file_open),
+                    title: const Text('Import GPX'),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _importGpxRoute();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.file_download),
+                    title: const Text('Export GPX'),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _exportGpxRoute();
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           FlutterMap(
@@ -292,14 +363,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _ImportExportCard(
-                    theme: Theme.of(context),
-                    onImportGeoJson: _importGeoJsonRoute,
-                    onExportGeoJson: _exportGeoJsonRoute,
-                    onImportGpx: _importGpxRoute,
-                    onExportGpx: _exportGpxRoute,
-                  ),
-                  const SizedBox(height: 8),
                   _DistancePanel(
                     segmentMeters: _segmentMeters,
                     onUndo: _undoLastPoint,
@@ -940,152 +1003,4 @@ class _DistancePanel extends StatelessWidget {
   }
 }
 
-class _ImportExportCard extends StatefulWidget {
-  final ThemeData theme;
-  final VoidCallback onImportGeoJson;
-  final VoidCallback onExportGeoJson;
-  final VoidCallback onImportGpx;
-  final VoidCallback onExportGpx;
-  const _ImportExportCard({
-    required this.theme,
-    required this.onImportGeoJson,
-    required this.onExportGeoJson,
-    required this.onImportGpx,
-    required this.onExportGpx,
-  });
-
-  @override
-  State<_ImportExportCard> createState() => _ImportExportCardState();
-}
-
-class _ImportExportCardState extends State<_ImportExportCard> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cardColor = widget.theme.colorScheme.surface;
-    final brightness = ThemeData.estimateBrightnessForColor(cardColor);
-    final onCard = brightness == Brightness.dark
-        ? Colors.white
-        : Colors.black87;
-    final primary = widget.theme.colorScheme.primary;
-    final onPrimary = widget.theme.colorScheme.onPrimary;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      constraints: const BoxConstraints(maxWidth: 320),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: cardColor.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            blurRadius: 10,
-            color: Colors.black26,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: DefaultTextStyle(
-        style: TextStyle(color: onCard),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Import / Export',
-                    style: widget.theme.textTheme.titleMedium?.copyWith(
-                      color: onCard,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: _expanded ? 'Collapse' : 'Expand',
-                  icon: Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
-                    color: onCard,
-                  ),
-                  onPressed: () => setState(() => _expanded = !_expanded),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
-            if (_expanded) ...[
-              const SizedBox(height: 6),
-              Text(
-                'GeoJSON',
-                style: widget.theme.textTheme.labelLarge?.copyWith(
-                  color: onCard,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: primary,
-                      foregroundColor: onPrimary,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: widget.onImportGeoJson,
-                    icon: const Icon(Icons.file_open, size: 16),
-                    label: const Text('Import GeoJSON'),
-                  ),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: primary,
-                      foregroundColor: onPrimary,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: widget.onExportGeoJson,
-                    icon: const Icon(Icons.save_alt, size: 16),
-                    label: const Text('Export GeoJSON'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'GPX',
-                style: widget.theme.textTheme.labelLarge?.copyWith(
-                  color: onCard,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: primary,
-                      foregroundColor: onPrimary,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: widget.onImportGpx,
-                    icon: const Icon(Icons.route, size: 16),
-                    label: const Text('Import GPX'),
-                  ),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: primary,
-                      foregroundColor: onPrimary,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: widget.onExportGpx,
-                    icon: const Icon(Icons.file_download, size: 16),
-                    label: const Text('Export GPX'),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
+// (Import/Export UI moved into Drawer)
