@@ -836,50 +836,70 @@ class _DistancePanel extends StatelessWidget {
                       children: [
                         OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
+                            foregroundColor: onCard,
                             visualDensity: VisualDensity.compact,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
+                            side: BorderSide(
+                              color: onCard.withValues(alpha: 0.6),
+                            ),
                           ),
                           onPressed: onImportGeoJson,
-                          icon: const Icon(Icons.file_open, size: 16),
+                          icon: Icon(Icons.file_open, size: 16, color: onCard),
                           label: const Text('Import'),
                         ),
                         OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
+                            foregroundColor: onCard,
                             visualDensity: VisualDensity.compact,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
+                            side: BorderSide(
+                              color: onCard.withValues(alpha: 0.6),
+                            ),
                           ),
                           onPressed: onExportGeoJson,
-                          icon: const Icon(Icons.save_alt, size: 16),
+                          icon: Icon(Icons.save_alt, size: 16, color: onCard),
                           label: const Text('Export'),
                         ),
                         OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
+                            foregroundColor: onCard,
                             visualDensity: VisualDensity.compact,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
+                            side: BorderSide(
+                              color: onCard.withValues(alpha: 0.6),
+                            ),
                           ),
                           onPressed: onImportGpx,
-                          icon: const Icon(Icons.route, size: 16),
+                          icon: Icon(Icons.route, size: 16, color: onCard),
                           label: const Text('Import GPX'),
                         ),
                         OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
+                            foregroundColor: onCard,
                             visualDensity: VisualDensity.compact,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
+                            side: BorderSide(
+                              color: onCard.withValues(alpha: 0.6),
+                            ),
                           ),
                           onPressed: onExportGpx,
-                          icon: const Icon(Icons.file_download, size: 16),
+                          icon: Icon(
+                            Icons.file_download,
+                            size: 16,
+                            color: onCard,
+                          ),
                           label: const Text('Export GPX'),
                         ),
                       ],
