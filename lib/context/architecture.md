@@ -9,6 +9,7 @@
 - Code Layout
 - Data & Tiles
 - Measurement Details
+- Permissions
 - How to Run
 - Testing
 - Development Notes
@@ -19,11 +20,13 @@ This document provides a concise overview of the Gravel Biking Flutter project: 
 
 ## Overview
 
-A cross‑platform Flutter app that displays a map with gravel roads (queried from OpenStreetMap via Overpass API) and lets you measure custom routes:
+A cross‑platform Flutter app that displays a map with gravel roads (queried from OpenStreetMap via Overpass API) and lets you measure custom routes. Import/export routes as GeoJSON/GPX and quickly jump to your GPS position:
 
 - Tap the map to place points (dots).
 - Dots are connected with a polyline.
 - Per‑segment and total distances are calculated and shown in a corner panel.
+- Use the AppBar “Locate me” button to add a marker at your current position.
+- Use the Drawer (hamburger menu) to Import/Export GeoJSON and GPX.
 
 ## Tech Stack
 
@@ -40,21 +43,24 @@ Logical components and responsibilities:
 
 - Map UI (flutter_map)
   - Renders tiles, overlays gravel polylines and the measurement polyline/markers.
-  - Handles user interactions (map taps, marker taps/long‑press).
+  - Handles user interactions (map taps, marker taps/long‑press) and forwards map movement events.
 - Data Fetcher (Overpass)
-  - Issues Overpass queries (http) to retrieve gravel ways.
+  - Issues Overpass queries (http) to retrieve gravel ways for the current visible bounds.
   - Parses JSON off the UI thread (compute) into Polyline models.
-  - Debounced viewport-based fetching on map movement (500ms).
+  - Debounced viewport-based fetching on map movement (500ms), with tolerance to avoid redundant requests.
 - Measurement Manager
   - Manages route points, editing selection, open/closed loop state.
   - Computes per‑segment distances and totals with latlong2.Distance.
 - Import/Export
   - GeoJSON: serialize current route to LineString and save via file_saver; import with file_picker; preserves loop flag when present.
   - GPX: export a GPX 1.1 track (trk/trkseg/trkpt) and import GPX (reads trkpt lat/lon). If the GPX track is explicitly closed (first==last), the app infers loop mode.
+- Navigation & Actions
+  - AppBar actions: “Locate me” and a green/red measure-mode toggle.
+  - App Drawer contains Import/Export groups (GeoJSON, GPX) using ExpansionTiles.
 
 ## Key Features
 
-- Gravel roads overlay fetched from Overpass API (OpenStreetMap data) for a fixed bounding box.
+- Gravel roads overlay fetched from Overpass API (OpenStreetMap data) for the current visible map bounds.
   - Viewport-based refresh: updates gravel overlay when you pan/zoom (debounced).
 - Tap‑to‑measure routes:
   - Drop markers on tap; a polyline connects them in order.
@@ -64,6 +70,7 @@ Logical components and responsibilities:
   - Close/Open loop: connect last→first, adds a loop segment to the list and total.
 - Import/Export (GeoJSON): export current route as GeoJSON; import a GeoJSON LineString to restore.
 - Import/Export (GPX): export as GPX 1.1 track and import GPX files.
+- Locate me (GPS): request permissions and place a marker at your current location.
 - Light/Dark tile styles (OSM standard tiles for light, Stadia “alidade_smooth_dark” tiles for dark).
 
 ## Code Layout
@@ -79,16 +86,16 @@ Important files:
 - `lib/main.dart`
   - App scaffold and theming.
   - `GravelStreetsMap` stateful widget.
-  - Overpass fetch to retrieve gravel street polylines.
-  - Measurement logic using `latlong2.Distance`.
-  - Map interaction: `MapOptions(onTap: ...)` to add points.
-  - UI: `MarkerLayer` for points; `PolylineLayer` for gravel and measured route; overlay distance panel with Undo/Clear.
+  - Overpass fetch to retrieve gravel street polylines for the current viewport; JSON parsing in `compute`.
+  - Map interaction: `MapOptions(onTap: ...)` to add/move points; `onMapEvent` debounced to fetch data.
+  - UI: AppBar actions (Locate me, measure-mode toggle); App Drawer with Import/Export (GeoJSON/GPX) using ExpansionTiles.
+  - Layers: `PolylineLayer` for gravel and measured route; `MarkerLayer` for route points and a “my position” marker when available.
 - `pubspec.yaml`
   - Declares dependencies: `flutter_map`, `latlong2`, `http`, etc.
 
 ## Data & Tiles
 
-- Data source: Overpass API (`https://overpass-api.de/api/interpreter`) with a query for ways where `surface=gravel` and `highway` among a selected set within a bounding box (currently hardcoded around Stockholm area).
+- Data source: Overpass API (`https://overpass-api.de/api/interpreter`) with a query for ways where `surface=gravel` and `highway` among a selected set within the current visible bounding box. Initial fetch uses a Stockholm area bbox.
 - Tile servers:
   - Light: OpenStreetMap standard tiles: `https://tile.openstreetmap.org/{z}/{x}/{y}.png`
   - Dark: Stadia Maps “alidade_smooth_dark”: `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png`
@@ -109,6 +116,12 @@ Tile usage note: If you plan production use, review provider terms. OSM’s publ
 - Closing the loop connects the last point back to the first, adds a final “Loop segment” to the list, and updates the total.
 - Adding a new point automatically re‑opens the loop (so you don’t accidentally keep closing it while extending the route).
 - Undo removes the last point and recalculates; if fewer than 3 points remain, loop mode is disabled.
+
+## Permissions
+
+- Location: Uses `geolocator` to request/check permissions at runtime and read current position.
+  - iOS: Add NSLocationWhenInUseUsageDescription to `Info.plist`.
+  - Android: Ensure location permissions in AndroidManifest (coordinated by `geolocator` setup); location services must be enabled.
 
 ## How to Run
 
@@ -133,8 +146,8 @@ A basic widget test is included that ensures the app builds and the distance pan
 
 ## Development Notes
 
-- Overpass query is simple and uses a fixed bounding box. You can expand it or make it dynamic based on viewport in the future.
-- Gravel polyline color is currently a fixed color to avoid theme access during `initState`.
+- Overpass query is viewport-based and debounced; parsing runs on a background isolate via `compute`.
+- Gravel polylines use a fixed brown color.
 - For tile usage in production, configure a proper provider, keys, and a descriptive `userAgentPackageName`.
 
 ## Roadmap
@@ -148,7 +161,11 @@ Last updated: 2025‑08‑24 (later)
 
 ## Change Log
 
-- 2025‑08‑24: Added GeoJSON import/export (file_picker, file_saver). UI buttons in panel.
-- 2025‑08‑24: Added GPX import/export (xml, file_picker/file_saver). UI buttons in panel; loop inferred if first==last.
+- 2025‑08‑24: Added GeoJSON import/export (file_picker, file_saver). Initially in distance panel; later moved to Drawer.
+- 2025‑08‑24: Added GPX import/export (xml, file_picker/file_saver). Loop inferred if first==last; actions live in Drawer.
 - 2025‑08‑24: Editable points (tap‑to‑move, long‑press delete) and editing banner/highlight.
-- 2025‑08‑24: Implemented loop close/open with extra loop segment reporting. Updated docs with TOC and notes.
+- 2025‑08‑24: Implemented loop close/open with extra loop segment reporting.
+- 2025‑08‑24: Viewport-based Overpass fetching with 500ms debounce and off‑UI parsing.
+- 2025‑08‑24: AppBar “Locate me” via geolocator; added my-position marker.
+- 2025‑08‑24: Import/Export moved to a Drawer (hamburger) with ExpansionTiles (GeoJSON, GPX), initially expanded. Improved contrast and discoverability.
+- 2025‑08‑24: Measure-mode toggle styled green (on) / red (off). Clarified distance panel hint text.

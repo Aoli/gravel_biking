@@ -4,7 +4,7 @@ This document tracks feature work one by one with clear status and brief notes.
 
 - [x] Toggle measurement mode on/off so map taps don’t always add points.
   - Status: Done (2025‑08‑24)
-  - Notes: Added AppBar toggle (straighten icon). Map onTap only adds points when enabled. Panel stays compact; Undo/Clear retained.
+  - Notes: Added AppBar toggle (straighten icon) with green (on) / red (off) background. Map onTap only adds points when enabled. Panel stays compact; Undo/Clear retained.
 
 - [x] Close loop support and loop distance reporting.
   - Status: Done (2025‑08‑24)
@@ -19,8 +19,8 @@ This document tracks feature work one by one with clear status and brief notes.
 - [x] Export/import routes (GeoJSON).
   - Status: Done (2025‑08‑24)
   - What: Export current route as GeoJSON (FeatureCollection with a LineString) and import GeoJSON files to restore a route. Preserves loopClosed when present in properties.
-  - Notes: Buttons added in the distance panel. Uses `file_picker` and `file_saver` packages.
-  - Follow-up: Add GPX support if needed.
+  - Notes: Uses `file_picker` and `file_saver` packages. Actions now live in the App Drawer under “GeoJSON”.
+  - Follow-up: Add GPX support if needed. (Completed below.)
 
 - [x] Fetch gravel data based on the visible map bounds and refresh on move.
   - Status: Done (2025‑08‑24)
@@ -29,8 +29,16 @@ This document tracks feature work one by one with clear status and brief notes.
 
 - [x] GPX import/export support.
   - Status: Done (2025‑08‑24)
-  - What: Export current route as GPX 1.1 (trk/trkseg/trkpt). Import GPX and populate route points from trkpt lat/lon. Loop inferred if the track is closed (first==last).
-  - Notes: Buttons added alongside GeoJSON in the distance panel.
+  - What: Export current route as GPX 1.1 (trk/trkseg/trkpt). Import GPX and populate route points from trkpt lat/lon. Loop inferred if the track is closed (first==last); dedupes last point internally.
+  - Notes: Actions live in the App Drawer under “GPX”.
+
+- [x] Improve discoverability of Import/Export by moving actions to an App Drawer with ExpansionTiles.
+  - Status: Done (2025‑08‑24)
+  - Notes: Drawer contains GeoJSON and GPX sections (initiallyExpanded: true). Replaced the earlier on-map card/buttons. Icons and text use high contrast.
+
+- [x] Add “Locate me” (GPS) button.
+  - Status: Done (2025‑08‑24)
+  - What: Requests permission via geolocator and shows a circular marker at current position. Error toasts if services disabled or permission denied.
 
 - [ ] Caching and offline support for both tiles and fetched geometries.
   - Criteria: Tiles cached with sensible max-age; offline viewing of previously seen areas; cached gravel data persistence.
