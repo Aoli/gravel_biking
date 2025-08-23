@@ -49,8 +49,8 @@ Logical components and responsibilities:
   - Manages route points, editing selection, open/closed loop state.
   - Computes per‑segment distances and totals with latlong2.Distance.
 - Import/Export
-  - Serializes current route to GeoJSON (LineString) and saves via file_saver.
-  - Loads GeoJSON via file_picker and hydrates route state; preserves loop flag when present.
+  - GeoJSON: serialize current route to LineString and save via file_saver; import with file_picker; preserves loop flag when present.
+  - GPX: export a GPX 1.1 track (trk/trkseg/trkpt) and import GPX (reads trkpt lat/lon). If the GPX track is explicitly closed (first==last), the app infers loop mode.
 
 ## Key Features
 
@@ -63,6 +63,7 @@ Logical components and responsibilities:
   - Editable points: tap a marker to select, tap map to move; long‑press to delete.
   - Close/Open loop: connect last→first, adds a loop segment to the list and total.
 - Import/Export (GeoJSON): export current route as GeoJSON; import a GeoJSON LineString to restore.
+- Import/Export (GPX): export as GPX 1.1 track and import GPX files.
 - Light/Dark tile styles (OSM standard tiles for light, Stadia “alidade_smooth_dark” tiles for dark).
 
 ## Code Layout
@@ -143,10 +144,11 @@ The roadmap lives alongside this document for clarity:
 - See: `lib/context/roadmap.md`
 
 ---
-Last updated: 2025‑08‑24
+Last updated: 2025‑08‑24 (later)
 
 ## Change Log
 
 - 2025‑08‑24: Added GeoJSON import/export (file_picker, file_saver). UI buttons in panel.
+- 2025‑08‑24: Added GPX import/export (xml, file_picker/file_saver). UI buttons in panel; loop inferred if first==last.
 - 2025‑08‑24: Editable points (tap‑to‑move, long‑press delete) and editing banner/highlight.
 - 2025‑08‑24: Implemented loop close/open with extra loop segment reporting. Updated docs with TOC and notes.

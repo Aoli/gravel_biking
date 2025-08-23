@@ -22,10 +22,15 @@ This document tracks feature work one by one with clear status and brief notes.
   - Notes: Buttons added in the distance panel. Uses `file_picker` and `file_saver` packages.
   - Follow-up: Add GPX support if needed.
 
-- [ ] Fetch gravel data based on the visible map bounds and refresh on move.
+- [x] Fetch gravel data based on the visible map bounds and refresh on move.
   - Status: Done (2025‑08‑24)
   - What: When the map moves, a 500ms debounce triggers a fetch for the current visible bounds. Parsing happens off the UI thread; polylines are replaced.
   - Notes: Avoids redundant calls by comparing last fetched bounds with a small tolerance.
+
+- [x] GPX import/export support.
+  - Status: Done (2025‑08‑24)
+  - What: Export current route as GPX 1.1 (trk/trkseg/trkpt). Import GPX and populate route points from trkpt lat/lon. Loop inferred if the track is closed (first==last).
+  - Notes: Buttons added alongside GeoJSON in the distance panel.
 
 - [ ] Caching and offline support for both tiles and fetched geometries.
   - Criteria: Tiles cached with sensible max-age; offline viewing of previously seen areas; cached gravel data persistence.

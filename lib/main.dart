@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:xml/xml.dart' as xml;
 
 void main() => runApp(const MyApp());
 
@@ -61,6 +63,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   // Data
   List<Polyline> gravelPolylines = [];
   bool isLoading = true;
+  LatLng? _myPosition;
   Timer? _moveDebounce;
   LatLngBounds? _lastFetchedBounds;
   LatLngBounds? _lastEventBounds;
@@ -86,17 +89,27 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     // Debounce on any map movement/zoom/rotate event
     _lastEventBounds = event.camera.visibleBounds;
     _moveDebounce?.cancel();
-    _moveDebounce = Timer(const Duration(milliseconds: 500), _queueViewportFetch);
+    _moveDebounce = Timer(
+      const Duration(milliseconds: 500),
+      _queueViewportFetch,
+    );
   }
 
   void _queueViewportFetch() {
     final bounds = _lastEventBounds;
     if (bounds == null) return;
-    if (_lastFetchedBounds != null && _boundsAlmostEqual(_lastFetchedBounds!, bounds)) return;
+    if (_lastFetchedBounds != null &&
+        _boundsAlmostEqual(_lastFetchedBounds!, bounds)) {
+      return;
+    }
     _fetchGravelForBounds(bounds);
   }
 
-  bool _boundsAlmostEqual(LatLngBounds a, LatLngBounds b, {double tol = 0.0005}) {
+  bool _boundsAlmostEqual(
+    LatLngBounds a,
+    LatLngBounds b, {
+    double tol = 0.0005,
+  }) {
     double d(double x, double y) => (x - y).abs();
     return d(a.southWest.latitude, b.southWest.latitude) < tol &&
         d(a.southWest.longitude, b.southWest.longitude) < tol &&
@@ -115,7 +128,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     final east = ne.longitude.toStringAsFixed(6);
     final sb = StringBuffer()
       ..writeln('[out:json];')
-      ..writeln('way["highway"~"(residential|service|track|unclassified|road)"]["surface"="gravel"]($south, $west, $north, $east);')
+      ..writeln(
+        'way["highway"~"(residential|service|track|unclassified|road)"]["surface"="gravel"]($south, $west, $north, $east);',
+      )
       ..writeln('out geom;');
     final query = sb.toString();
     try {
@@ -158,6 +173,11 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       appBar: AppBar(
         title: const Text('Gravel Streets Map'),
         actions: [
+          IconButton(
+            tooltip: 'Locate me',
+            icon: const Icon(Icons.my_location),
+            onPressed: _locateMe,
+          ),
           IconButton(
             tooltip: _measureEnabled
                 ? 'Disable measure mode'
@@ -213,6 +233,32 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                 ],
               ),
+              if (_myPosition != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _myPosition!,
+                      width: 30,
+                      height: 30,
+                      alignment: Alignment.center,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.25),
+                        ),
+                        child: Container(
+                          margin: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               MarkerLayer(
                 markers: [
                   for (int i = 0; i < _routePoints.length; i++)
@@ -251,6 +297,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               onCancelEdit: () => setState(() => _editingIndex = null),
               onExportGeoJson: _exportGeoJsonRoute,
               onImportGeoJson: _importGeoJsonRoute,
+              onExportGpx: _exportGpxRoute,
+              onImportGpx: _importGpxRoute,
             ),
           ),
         ],
@@ -325,6 +373,46 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       }
       _recomputeSegments();
     });
+  }
+
+  Future<void> _locateMe() async {
+    try {
+      // Check and request permissions
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location services are disabled')),
+        );
+        return;
+      }
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permission denied')),
+        );
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      final latLng = LatLng(pos.latitude, pos.longitude);
+      if (!mounted) return;
+      setState(() {
+        _myPosition = latLng;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not get location: $e')));
+    }
   }
 
   Future<void> _exportGeoJsonRoute() async {
@@ -467,6 +555,138 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     }
     return null;
   }
+
+  Future<void> _exportGpxRoute() async {
+    if (_routePoints.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No route to export')));
+      return;
+    }
+    final builder = xml.XmlBuilder();
+    builder.processing('xml', 'version="1.0" encoding="UTF-8"');
+    builder.element(
+      'gpx',
+      nest: () {
+        builder.attribute('version', '1.1');
+        builder.attribute('creator', 'Gravel Biking');
+        builder.attribute('xmlns', 'http://www.topografix.com/GPX/1/1');
+        builder.element(
+          'trk',
+          nest: () {
+            builder.element('name', nest: 'Gravel route');
+            builder.element(
+              'trkseg',
+              nest: () {
+                for (final p in _routePoints) {
+                  builder.element(
+                    'trkpt',
+                    attributes: {
+                      'lat': p.latitude.toStringAsFixed(7),
+                      'lon': p.longitude.toStringAsFixed(7),
+                    },
+                  );
+                }
+                if (_loopClosed && _routePoints.length >= 3) {
+                  final f = _routePoints.first;
+                  builder.element(
+                    'trkpt',
+                    attributes: {
+                      'lat': f.latitude.toStringAsFixed(7),
+                      'lon': f.longitude.toStringAsFixed(7),
+                    },
+                  );
+                }
+              },
+            );
+          },
+        );
+      },
+    );
+    final gpxString = builder.buildDocument().toXmlString(pretty: true);
+    try {
+      await FileSaver.instance.saveFile(
+        name: 'gravel_route.gpx',
+        bytes: Uint8List.fromList(utf8.encode(gpxString)),
+        ext: 'gpx',
+        mimeType: MimeType.text,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Route exported as GPX')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    }
+  }
+
+  Future<void> _importGpxRoute() async {
+    try {
+      final res = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['gpx', 'xml'],
+        withData: true,
+      );
+      if (res == null || res.files.isEmpty) return;
+      final file = res.files.first;
+      final data = file.bytes ?? Uint8List(0);
+      if (data.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Selected file is empty')));
+        return;
+      }
+      final text = utf8.decode(data);
+      final doc = xml.XmlDocument.parse(text);
+      final trkpts = doc.findAllElements('trkpt');
+      final pts = <LatLng>[];
+      for (final p in trkpts) {
+        final latStr = p.getAttribute('lat');
+        final lonStr = p.getAttribute('lon');
+        if (latStr != null && lonStr != null) {
+          final lat = double.tryParse(latStr);
+          final lon = double.tryParse(lonStr);
+          if (lat != null && lon != null) pts.add(LatLng(lat, lon));
+        }
+      }
+      if (pts.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No track points found in GPX')),
+        );
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _routePoints
+          ..clear()
+          ..addAll(pts);
+        _editingIndex = null;
+        // GPX doesn’t encode loop state; infer if first==last
+        _loopClosed = pts.length >= 3 && pts.first == pts.last;
+        if (_loopClosed && pts.isNotEmpty && pts.first == pts.last) {
+          // remove duplicated closing point for internal representation
+          _routePoints.removeLast();
+        }
+        _recomputeSegments();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Imported ${_routePoints.length} points from GPX'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+    }
+  }
 }
 
 class _PointMarker extends StatelessWidget {
@@ -521,6 +741,8 @@ class _DistancePanel extends StatelessWidget {
   final VoidCallback onCancelEdit;
   final VoidCallback onExportGeoJson;
   final VoidCallback onImportGeoJson;
+  final VoidCallback onExportGpx;
+  final VoidCallback onImportGpx;
 
   const _DistancePanel({
     required this.segmentMeters,
@@ -535,6 +757,8 @@ class _DistancePanel extends StatelessWidget {
     required this.onCancelEdit,
     required this.onExportGeoJson,
     required this.onImportGeoJson,
+    required this.onExportGpx,
+    required this.onImportGpx,
   });
 
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
@@ -630,6 +854,30 @@ class _DistancePanel extends StatelessWidget {
                           onPressed: onExportGeoJson,
                           icon: const Icon(Icons.save_alt, size: 16),
                           label: const Text('Export'),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                          ),
+                          onPressed: onImportGpx,
+                          icon: const Icon(Icons.route, size: 16),
+                          label: const Text('Import GPX'),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                          ),
+                          onPressed: onExportGpx,
+                          icon: const Icon(Icons.file_download, size: 16),
+                          label: const Text('Export GPX'),
                         ),
                       ],
                     ),
