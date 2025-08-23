@@ -3,10 +3,36 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 // --- Main App Setup ---
 void main() {
   runApp(const MyApp());
+}
+
+// Top-level function to parse Overpass JSON and extract polyline coordinates.
+// Returns a List of polylines, where each polyline is a List<[lat, lon]> pairs.
+List<List<List<double>>> _extractPolylineCoords(String body) {
+  final Map<String, dynamic> data = json.decode(body) as Map<String, dynamic>;
+  final elements = (data['elements'] as List?) ?? const [];
+  final result = <List<List<double>>>[];
+  for (final element in elements) {
+    if (element is Map &&
+        element['type'] == 'way' &&
+        element.containsKey('geometry')) {
+      final geom = element['geometry'] as List;
+      final pts = <List<double>>[];
+      for (final node in geom) {
+        if (node is Map && node.containsKey('lat') && node.containsKey('lon')) {
+          final lat = (node['lat'] as num).toDouble();
+          final lon = (node['lon'] as num).toDouble();
+          pts.add([lat, lon]);
+        }
+      }
+      if (pts.length >= 2) result.add(pts);
+    }
+  }
+  return result;
 }
 
 class MyApp extends StatelessWidget {
@@ -48,6 +74,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   final Distance _distance = const Distance();
   final List<LatLng> _routePoints = [];
   final List<double> _segmentMeters = [];
+  bool _measureEnabled = false;
 
   @override
   void initState() {
@@ -74,21 +101,16 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> elements = data['elements'];
-
-        List<Polyline> polylines = [];
-        for (var element in elements) {
-          if (element['type'] == 'way' && element.containsKey('geometry')) {
-            List<LatLng> points = [];
-            for (var node in element['geometry']) {
-              points.add(LatLng(node['lat'], node['lon']));
-            }
-            polylines.add(
-              Polyline(points: points, color: Colors.brown, strokeWidth: 4.0),
-            );
-          }
-        }
+        // Parse and extract coordinates off the main thread
+        final coords = await compute(_extractPolylineCoords, response.body);
+        final polylines = <Polyline>[
+          for (final pts in coords)
+            Polyline(
+              points: [for (final p in pts) LatLng(p[0], p[1])],
+              color: Colors.brown,
+              strokeWidth: 4.0,
+            ),
+        ];
 
         if (!mounted) return;
         setState(() {
@@ -120,7 +142,23 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gravel Streets Map')),
+      appBar: AppBar(
+        title: const Text('Gravel Streets Map'),
+        actions: [
+          IconButton(
+            tooltip: _measureEnabled
+                ? 'Disable measure mode'
+                : 'Enable measure mode',
+            icon: Icon(
+              Icons.straighten,
+              color: _measureEnabled
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            onPressed: () => setState(() => _measureEnabled = !_measureEnabled),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           FlutterMap(
@@ -129,6 +167,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               initialZoom: 12.0,
               onTap: (tapPosition, latLng) {
                 // Add a point and compute segment distance from previous point (if any)
+                if (!_measureEnabled) return;
                 setState(() {
                   if (_routePoints.isNotEmpty) {
                     final prev = _routePoints.last;
@@ -142,7 +181,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             children: [
               TileLayer(
                 urlTemplate: tileUrl,
-                userAgentPackageName: 'com.example.app',
+                userAgentPackageName: 'com.example.gravel_biking',
               ),
               PolylineLayer(polylines: gravelPolylines),
               // Measured route polyline
@@ -181,6 +220,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               onUndo: _undoLastPoint,
               onClear: _clearRoute,
               theme: Theme.of(context),
+              measureEnabled: _measureEnabled,
             ),
           ),
         ],
@@ -252,12 +292,14 @@ class _DistancePanel extends StatelessWidget {
   final VoidCallback onUndo;
   final VoidCallback onClear;
   final ThemeData theme;
+  final bool measureEnabled;
 
   const _DistancePanel({
     required this.segmentMeters,
     required this.onUndo,
     required this.onClear,
     required this.theme,
+    required this.measureEnabled,
   });
 
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
@@ -296,29 +338,30 @@ class _DistancePanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Measure',
-                    style: theme.textTheme.titleMedium?.copyWith(color: onCard),
+                  Expanded(
+                    child: Text(
+                      'Measure',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: onCard,
+                      ),
+                    ),
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                        tooltip: 'Undo last point',
-                        icon: const Icon(Icons.undo, size: 18),
-                        color: onCard,
-                        onPressed: onUndo,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      IconButton(
-                        tooltip: 'Clear route',
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        color: onCard,
-                        onPressed: onClear,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
+                  IconButton(
+                    tooltip: 'Undo last point',
+                    icon: const Icon(Icons.undo, size: 18),
+                    color: onCard,
+                    onPressed: onUndo,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  IconButton(
+                    tooltip: 'Clear route',
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    color: onCard,
+                    onPressed: onClear,
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),

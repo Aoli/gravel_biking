@@ -40,6 +40,66 @@
 				"$flutter-test"
 			],
 			"group": "test"
+		},
+		{
+			"label": "Analyze after jank fix",
+			"type": "shell",
+			"command": "flutter analyze",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run tests after jank fix",
+			"type": "shell",
+			"command": "flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-test"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Analyze measure mode",
+			"type": "shell",
+			"command": "flutter analyze",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Test measure mode",
+			"type": "shell",
+			"command": "flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-test"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Re-analyze after overflow fix",
+			"type": "shell",
+			"command": "flutter analyze",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Re-test after header layout fix",
+			"type": "shell",
+			"command": "flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-test"
+			],
+			"group": "test"
 		}
 	]
 }
