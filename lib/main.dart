@@ -968,6 +968,8 @@ class _ImportExportCardState extends State<_ImportExportCard> {
     final onCard = brightness == Brightness.dark
         ? Colors.white
         : Colors.black87;
+    final primary = widget.theme.colorScheme.primary;
+    final onPrimary = widget.theme.colorScheme.onPrimary;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
@@ -1024,24 +1026,24 @@ class _ImportExportCardState extends State<_ImportExportCard> {
                 spacing: 8,
                 runSpacing: 6,
                 children: [
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: onCard,
-                      side: BorderSide(color: onCard.withValues(alpha: 0.6)),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: onPrimary,
                       visualDensity: VisualDensity.compact,
                     ),
                     onPressed: widget.onImportGeoJson,
-                    icon: Icon(Icons.file_open, size: 16, color: onCard),
+                    icon: const Icon(Icons.file_open, size: 16),
                     label: const Text('Import GeoJSON'),
                   ),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: onCard,
-                      side: BorderSide(color: onCard.withValues(alpha: 0.6)),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: onPrimary,
                       visualDensity: VisualDensity.compact,
                     ),
                     onPressed: widget.onExportGeoJson,
-                    icon: Icon(Icons.save_alt, size: 16, color: onCard),
+                    icon: const Icon(Icons.save_alt, size: 16),
                     label: const Text('Export GeoJSON'),
                   ),
                 ],
@@ -1058,24 +1060,24 @@ class _ImportExportCardState extends State<_ImportExportCard> {
                 spacing: 8,
                 runSpacing: 6,
                 children: [
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: onCard,
-                      side: BorderSide(color: onCard.withValues(alpha: 0.6)),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: onPrimary,
                       visualDensity: VisualDensity.compact,
                     ),
                     onPressed: widget.onImportGpx,
-                    icon: Icon(Icons.route, size: 16, color: onCard),
+                    icon: const Icon(Icons.route, size: 16),
                     label: const Text('Import GPX'),
                   ),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: onCard,
-                      side: BorderSide(color: onCard.withValues(alpha: 0.6)),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: onPrimary,
                       visualDensity: VisualDensity.compact,
                     ),
                     onPressed: widget.onExportGpx,
-                    icon: Icon(Icons.file_download, size: 16, color: onCard),
+                    icon: const Icon(Icons.file_download, size: 16),
                     label: const Text('Export GPX'),
                   ),
                 ],
