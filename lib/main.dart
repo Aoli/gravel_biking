@@ -249,9 +249,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               tooltip: 'Locate me',
               icon: Icon(
                 Icons.my_location,
-                color: (Theme.of(context).brightness == Brightness.dark)
-                    ? Colors.white
-                    : Colors.black,
+                color: Theme.of(context).colorScheme.onSecondaryContainer,
                 size: 22,
               ),
               onPressed: _locateMe,
@@ -447,15 +445,38 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     context,
                   ).colorScheme.surfaceContainer.withValues(alpha: 0.3),
                 ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '© Christian Ericsson 2025',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w500,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '© Gravel First 2025',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
+                    Builder(
+                      builder: (context) {
+                        final parts = <String>[];
+                        if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
+                        if (_buildNumber.isNotEmpty) parts.add('#$_buildNumber');
+                        final label = parts.join(' ');
+                        if (label.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            label,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w300,
+                              fontSize: 11,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ],
