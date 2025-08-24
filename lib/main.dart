@@ -181,12 +181,12 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             ),
             child: IconButton(
               tooltip: 'Locate me',
-                icon: Icon(
-                  Icons.my_location,
-                  color: (Theme.of(context).brightness == Brightness.dark)
-                      ? Colors.white
-                      : Colors.black,
-                ),
+              icon: Icon(
+                Icons.my_location,
+                color: (Theme.of(context).brightness == Brightness.dark)
+                    ? Colors.white
+                    : Colors.black,
+              ),
               onPressed: _locateMe,
             ),
           ),

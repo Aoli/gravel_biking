@@ -276,6 +276,17 @@
 				"$flutter-test"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Re-run analyze & tests after locate icon contrast tweak",
+			"type": "shell",
+			"command": "flutter analyze && flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general",
+				"$flutter-test"
+			],
+			"group": "build"
 		}
 	]
 }
