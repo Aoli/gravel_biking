@@ -31,13 +31,13 @@ It runs on Android, iOS, Web, macOS, Linux, and Windows.
 
 - Gravel overlay from OpenStreetMap via the Overpass API, fetched for the current visible map bounds (debounced while panning/zooming).
 - Measurement mode with a green/red toggle in the AppBar.
-	- Add points by tapping the map (when enabled).
-	- Undo last point, Clear all.
-	- Editable points: tap a point to select then tap on the map to move; long‑press a point to delete.
-	- Close/Open loop: adds a final loop segment to the list and total.
+ 	- Add points by tapping the map (when enabled).
+ 	- Undo last point, Clear all.
+ 	- Editable points: tap a point to select then tap on the map to move; long‑press a point to delete.
+ 	- Close/Open loop: adds a final loop segment to the list and total.
 - Import/Export
-	- GeoJSON LineString export/import.
-	- GPX 1.1 export/import (trk/trkseg/trkpt). If the first and last points are the same, loop is inferred.
+ 	- GeoJSON LineString export/import.
+ 	- GPX 1.1 export/import (trk/trkseg/trkpt). If the first and last points are the same, loop is inferred.
 - Locate me (GPS): requests permission and shows a marker where you are.
 - App Drawer for actions: Import/Export (GeoJSON, GPX) live under ExpansionTiles.
 
@@ -55,17 +55,17 @@ On Web, the app starts in a browser; on mobile/desktop, select a device in your 
 ## Using the app
 
 - AppBar
-	- Measure toggle: green when on, red when off. When on, taps add points; when off, taps don’t add points.
-	- Locate me: centers a marker at your current GPS position (after permission).
+ 	- Measure toggle: green when on, red when off. When on, taps add points; when off, taps don’t add points.
+ 	- Locate me: centers a marker at your current GPS position (after permission).
 - Map
-	- Tap to add points (when measurement mode is on). A polyline connects them.
-	- Tap a point to select it, then tap elsewhere to move it. Long‑press a point to delete it.
+ 	- Tap to add points (when measurement mode is on). A polyline connects them.
+ 	- Tap a point to select it, then tap elsewhere to move it. Long‑press a point to delete it.
 - Distance panel
-	- Shows per‑segment distances and the total. Buttons for Undo and Clear.
-	- Close loop/Open loop appears when you have 3+ points.
+ 	- Shows per‑segment distances and the total. Buttons for Undo and Clear.
+ 	- Close loop/Open loop appears when you have 3+ points.
 - Drawer (hamburger)
-	- GeoJSON: Import a LineString from file; Export your current route.
-	- GPX: Import a track; Export your current route as GPX 1.1.
+ 	- GeoJSON: Import a LineString from file; Export your current route.
+ 	- GPX: Import a track; Export your current route as GPX 1.1.
 
 ## How it works (at a glance)
 
@@ -80,8 +80,8 @@ See `lib/context/architecture.md` for a deeper dive and `lib/main.dart` for the 
 
 - Overpass API (OpenStreetMap): queries gravel roads for the visible bounds.
 - Tiles:
-	- Light: OpenStreetMap standard tiles
-	- Dark: Stadia Maps “alidade_smooth_dark”
+ 	- Light: OpenStreetMap standard tiles
+ 	- Dark: Stadia Maps “alidade_smooth_dark”
 
 Important: OSM’s public tile servers are not intended for production/high‑traffic use. Review their policies and consider a dedicated tile provider with proper attribution and a user agent.
 
@@ -111,4 +111,3 @@ The active roadmap and change history are tracked in `lib/context/roadmap.md`.
 
 ---
 Last updated: 2025‑08‑24
-
