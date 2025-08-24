@@ -265,6 +265,17 @@
 				"$flutter-test"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Analyze & Test after locate icon color change",
+			"type": "shell",
+			"command": "flutter analyze && flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general",
+				"$flutter-test"
+			],
+			"group": "build"
 		}
 	]
 }
