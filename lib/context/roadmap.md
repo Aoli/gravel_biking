@@ -40,6 +40,11 @@ This document tracks feature work one by one with clear status and brief notes.
   - Status: Done (2025‑08‑24)
   - What: Requests permission via geolocator and shows a circular marker at current position. Error toasts if services disabled or permission denied.
 
+- [x] Center map on my location when using “Locate me”.
+  - Status: Done (2025‑08‑24)
+  - What: After location is acquired, the map recenters to your position using the last known zoom level (fallback to 14).
+  - Notes: Uses a `MapController.move(latLng, zoom)` call; currently instant (no animation). We can add a smooth camera animation later if desired.
+
 - [ ] Caching and offline support for both tiles and fetched geometries.
   - Criteria: Tiles cached with sensible max-age; offline viewing of previously seen areas; cached gravel data persistence.
   - Approach: Consider flutter_map_tile_caching for tiles (note GPLv3/commercial licensing considerations), or a simple custom cache. Persist Overpass results locally (e.g., sqflite/hive) keyed by bbox/zoom.

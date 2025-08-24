@@ -57,6 +57,7 @@ Logical components and responsibilities:
 - Navigation & Actions
   - AppBar actions: “Locate me” and a green/red measure-mode toggle.
   - App Drawer contains Import/Export groups (GeoJSON, GPX) using ExpansionTiles.
+  - Map centering: After a successful “Locate me”, the map recenters to your position using a MapController and the most recent zoom.
 
 ## Key Features
 
@@ -71,6 +72,7 @@ Logical components and responsibilities:
 - Import/Export (GeoJSON): export current route as GeoJSON; import a GeoJSON LineString to restore.
 - Import/Export (GPX): export as GPX 1.1 track and import GPX files.
 - Locate me (GPS): request permissions and place a marker at your current location.
+  - After locating, the map recenters to your position (instant move; animation can be added later).
 - Light/Dark tile styles (OSM standard tiles for light, Stadia “alidade_smooth_dark” tiles for dark).
 
 ## Code Layout
@@ -87,7 +89,7 @@ Important files:
   - App scaffold and theming.
   - `GravelStreetsMap` stateful widget.
   - Overpass fetch to retrieve gravel street polylines for the current viewport; JSON parsing in `compute`.
-  - Map interaction: `MapOptions(onTap: ...)` to add/move points; `onMapEvent` debounced to fetch data.
+  - Map interaction: `MapOptions(onTap: ...)` to add/move points; `onMapEvent` debounced to fetch data; `MapController` to track last zoom and recenter on locate.
   - UI: AppBar actions (Locate me, measure-mode toggle); App Drawer with Import/Export (GeoJSON/GPX) using ExpansionTiles.
   - Layers: `PolylineLayer` for gravel and measured route; `MarkerLayer` for route points and a “my position” marker when available.
 - `pubspec.yaml`
@@ -169,3 +171,4 @@ Last updated: 2025‑08‑24 (later)
 - 2025‑08‑24: AppBar “Locate me” via geolocator; added my-position marker.
 - 2025‑08‑24: Import/Export moved to a Drawer (hamburger) with ExpansionTiles (GeoJSON, GPX), initially expanded. Improved contrast and discoverability.
 - 2025‑08‑24: Measure-mode toggle styled green (on) / red (off). Clarified distance panel hint text.
+- 2025‑08‑24: On “Locate me”, recenter the map to current location using MapController (instant move, uses last zoom).

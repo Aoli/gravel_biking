@@ -3,6 +3,7 @@
         "geolocator",
         "latlong",
         "pubspec",
+        "recenters",
         "trkpt",
         "trkseg"
     ]

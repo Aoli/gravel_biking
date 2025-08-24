@@ -67,6 +67,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   Timer? _moveDebounce;
   LatLngBounds? _lastFetchedBounds;
   LatLngBounds? _lastEventBounds;
+  // Map control
+  final MapController _mapController = MapController();
+  double? _lastZoom;
 
   // Measurement
   final Distance _distance = const Distance();
@@ -88,6 +91,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   void _onMapEvent(MapEvent event) {
     // Debounce on any map movement/zoom/rotate event
     _lastEventBounds = event.camera.visibleBounds;
+    _lastZoom = event.camera.zoom;
     _moveDebounce?.cancel();
     _moveDebounce = Timer(
       const Duration(milliseconds: 500),
@@ -312,6 +316,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       body: Stack(
         children: [
           FlutterMap(
+            mapController: _mapController,
             options: MapOptions(
               initialCenter: const LatLng(59.3293, 18.0686),
               initialZoom: 12,
@@ -528,6 +533,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       setState(() {
         _myPosition = latLng;
       });
+      // Center the map on the located position using the last known zoom (fallback to 14)
+      final z = _lastZoom ?? 14.0;
+      _mapController.move(latLng, z);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
