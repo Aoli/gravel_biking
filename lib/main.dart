@@ -173,10 +173,20 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       appBar: AppBar(
         title: const Text('Gravel Streets Map'),
         actions: [
-          IconButton(
-            tooltip: 'Locate me',
-            icon: const Icon(Icons.my_location),
-            onPressed: _locateMe,
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).colorScheme.secondaryContainer,
+            ),
+            child: IconButton(
+              tooltip: 'Locate me',
+              icon: Icon(
+                Icons.my_location,
+                color: Theme.of(context).colorScheme.onSecondaryContainer,
+              ),
+              onPressed: _locateMe,
+            ),
           ),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
