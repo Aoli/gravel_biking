@@ -2,8 +2,9 @@
 
 ## Table- Navigation & Actions
   - AppBar actions: "Locate me" (with proper contrast) and a green/red measure-mode toggle.
-  - App Drawer contains Import/Export groups (GeoJSON, GPX) using ExpansionTiles (closed by default), plus switches for gravel overlays (Overpass and TRV NVDB).
-  - Map centering: After a successful "Locate me", the map recenters to your position using a MapController and the most recent zoom.
+  - App Drawer contains Import/Export groups (GeoJSON, GPX) using ExpansionTiles (closed by default), plus switches for gravel overlays (Overpass and TRV NVDB), and Saved Routes section.
+  - Saved Routes: Up to 5 named routes with quick-save button in distance panel and full management in drawer.
+  - Map centering: After a successful "Locate me" or when loading saved routes, the map recenters using MapController and optimal bounds fitting.
   - Version display: Automatic version from pubspec.yaml via package_info_plus; shown in drawer footer and map watermark.Contents
 
 - Overview
@@ -38,6 +39,7 @@ A cross‑platform Flutter app that displays a map with gravel roads (queried fr
 - flutter_map (map rendering; Leaflet-style in Flutter)
 - latlong2 (geodesic distance calculations)
 - http (fetching gravel road geometry via Overpass API)
+- shared_preferences (local storage for saved routes)
 
 Supported platforms (project folders present): Android, iOS, Web, macOS, Linux, Windows.
 
@@ -55,6 +57,10 @@ Logical components and responsibilities:
 - Measurement Manager
   - Manages route points, editing selection, open/closed loop state.
   - Computes per‑segment distances and totals with latlong2.Distance.
+- Saved Routes Manager
+  - Stores up to 5 named routes locally using SharedPreferences with JSON serialization.
+  - Automatic FIFO removal when limit exceeded; auto-centering when routes are loaded.
+  - Route data includes name, points array, and save timestamp.
 - Import/Export
   - GeoJSON: serialize current route to LineString and save via file_saver; import with file_picker; preserves loop flag when present.
   - GPX: export a GPX 1.1 track (trk/trkseg/trkpt) and import GPX (reads trkpt lat/lon). If the GPX track is explicitly closed (first==last), the app infers loop mode.
@@ -73,6 +79,11 @@ Logical components and responsibilities:
   - Undo last point and Clear all.
   - Editable points: tap a marker to select, tap map to move; long‑press to delete.
   - Close/Open loop: connect last→first, adds a loop segment to the list and total.
+- Saved Routes: Save up to 5 named routes locally on device.
+  - Routes stored with SharedPreferences using JSON serialization.
+  - Quick-save button in distance panel (bookmark icon).
+  - Full management in drawer: view all saved routes, load with auto-centering, delete individual routes.
+  - FIFO removal: oldest routes automatically removed when limit exceeded.
 - Import/Export (GeoJSON): export current route as GeoJSON; import a GeoJSON LineString to restore.
 - Import/Export (GPX): export as GPX 1.1 track and import GPX files.
 - Locate me (GPS): request permissions and place a marker at your current location.
@@ -170,6 +181,7 @@ Last updated: 2025‑08‑25
 
 ## Change Log
 
+- 2025‑08‑25: Added Saved Routes feature: save up to 5 named routes locally using SharedPreferences with JSON serialization. Quick-save button in distance panel, full management in drawer with auto-centering when loading routes.
 - 2025‑08‑24: Added GeoJSON import/export (file_picker, file_saver). Initially in distance panel; later moved to Drawer.
 - 2025‑08‑24: Added GPX import/export (xml, file_picker/file_saver). Loop inferred if first==last; actions live in Drawer.
 - 2025‑08‑24: Editable points (tap‑to‑move, long‑press delete) and editing banner/highlight.

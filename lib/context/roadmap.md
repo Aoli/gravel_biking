@@ -1,9 +1,33 @@
 # Roadmap
 
-This document tracks feature work one by one wit- [x] Subtle - [x] Subtle build/version watermark overlay.
+This document tracks feature work one by one wit- [x] Subtle # Roadmap
+
+This documen- [x] Subtle build/version watermark overlay.
+
+- Status: Done (2025‑08‑24)
+- What: Bottom‑left label like "v0.1.0 #27". Version automatically read from pubspec.yaml; build number from CI via `--dart-define=BUILD_NUMBER`.
+- Notes: Also displayed in app drawer footer. Uses package_info_plus for automatic version detection.
+
+- [x] Fix icon contrast in app drawer and locate me button.
+  - Status: Done (2025‑08‑25)
+  - What: Improved visibility of drawer icons and locate me button in both light and dark themes.
+  - Notes: Changed drawer icons to use `onSurface` color; locate me uses `onSecondaryContainer` for proper contrast.
+
+- [x] Prepare TRV NVDB gravel overlay switch (disabled).
+  - Status: Done (2025‑08‑25)
+  - What: Added second gravel overlay switch in drawer for future Trafikverket NVDB integration.
+  - Notes: Switch is disabled (`onChanged: null`) and ready for future API implementation.
+
+- [ ] Caching and offline support for both tiles and fetched geometries.ks feature work one by one with clear status and brief notes.
+
+- [x] Saved Routes: Save up to 5 named routes locally on device.
+  - Status: Done (2025‑08‑25)
+  - What: Save current routes with custom names, stored locally using SharedPreferences. Quick-save button in distance panel and full management in drawer.
+  - Notes: Routes auto-center when loaded; FIFO removal when limit exceeded; JSON serialization for persistence.
+
+- [x] Toggle measurement mode on/off so map taps don't always add points.
   - Status: Done (2025‑08‑24)
-  - What: Bottom‑left label like "v0.1.0 #27". Version automatically read from pubspec.yaml; build number from CI via `--dart-define=BUILD_NUMBER`.
-  - Notes: Also displayed in app drawer footer. Uses package_info_plus for automatic version detection.
+  - Notes: Added AppBar toggle (straighten icon) with green (on) / red (off) background. Map onTap only adds points when enabled. Panel stays compact; Undo/Clear retained.
 
 - [x] Fix icon contrast in app drawer and locate me button.
   - Status: Done (2025‑08‑25)

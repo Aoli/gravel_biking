@@ -1,6 +1,21 @@
 # Gravel First
 
-Plan gravel rides on an interactive map. See gravel roads from OpenStreetMap, measure custom routes with per‑segment and total distances, import/export your routes (GeoJSON/GPX), and quickly jump to your current GPS position.
+Plan gravel rides on an interactive map. See ## Using the app
+
+- AppBar
+  - Measure toggle: green when on, red when off. When on, taps add points; when off, taps don't add points.
+  - Locate me: centers a marker at your current GPS position (after permission).
+- Map
+  - Tap to add points (when measurement mode is on). A polyline connects them.
+  - Tap a point to select it, then tap elsewhere to move it. Long‑press a point to delete it.
+- Distance panel
+  - Shows per‑segment distances and the total. Buttons for Undo, Save, and Clear.
+  - Save button (bookmark icon): quickly save current route with a custom name.
+  - Close loop/Open loop appears when you have 3+ points.
+- Drawer (hamburger)
+  - Saved Routes: Save up to 5 named routes locally. Tap any saved route to load it (map auto-centers). Delete routes with trash icon.
+  - GeoJSON: Import a LineString from file; Export your current route.
+  - GPX: Import a track; Export your current route as GPX 1.1.rom OpenStreetMap, measure custom routes with per‑segment and total distances, import/export your routes (GeoJSON/GPX), and quickly jump to your current GPS position.
 
 ## Table of Contents
 
@@ -35,12 +50,17 @@ It runs on Android, iOS, Web, macOS, Linux, and Windows.
   - Undo last point, Clear all.
   - Editable points: tap a point to select then tap on the map to move; long‑press a point to delete.
   - Close/Open loop: adds a final loop segment to the list and total.
+- Saved Routes: Save up to 5 named routes locally on your device.
+  - Routes are automatically centered when loaded.
+  - Accessible from the drawer or quick-save button in the distance panel.
+  - Oldest routes are automatically removed when the limit is reached.
 - Import/Export
   - GeoJSON LineString export/import.
   - GPX 1.1 export/import (trk/trkseg/trkpt). If the first and last points are the same, loop is inferred.
 - Locate me (GPS): requests permission, recenters the map on your location, and shows a marker where you are.
 - App Drawer for actions: Import/Export (GeoJSON, GPX) live under ExpansionTiles.
   - Tiles are closed by default. Two gravel overlay switches: "Gravel overlay" (Overpass/OSM) and "TRV NVDB gravel overlay" (disabled, prepared for Swedish Trafikverket data).
+  - Saved routes section with list of all saved routes and management options.
   - Version and build info displayed in footer (auto-detected from pubspec.yaml).
 
 ## Quick start
@@ -74,6 +94,7 @@ On Web, the app starts in a browser; on mobile/desktop, select a device in your 
 - Map rendering: `flutter_map` provides a Leaflet‑style map with tile layers.
 - Gravel fetch: when the viewport changes, a 500 ms debounce triggers an Overpass API request for ways tagged `surface=gravel` and relevant `highway` types within the current bounding box. JSON is parsed off the UI thread using `compute` and drawn as polylines.
 - Measurement: route points are stored in order; distances are computed with `latlong2.Distance` and rendered in a compact list with a running total. Loop mode adds a last→first segment.
+- Saved Routes: routes are stored locally using `SharedPreferences` with JSON serialization. Each saved route includes name, points, and timestamp. The app maintains a maximum of 5 routes using FIFO removal.
 - Import/Export: GeoJSON LineString and GPX 1.1 (trk/trkseg/trkpt). File selection and saving use `file_picker` and `file_saver` where available.
 
 See `lib/context/architecture.md` for a deeper dive and `lib/main.dart` for the implementation.
