@@ -102,6 +102,7 @@ class GravelStreetsMap extends StatefulWidget {
 class _GravelStreetsMapState extends State<GravelStreetsMap> {
   // Data
   List<Polyline> gravelPolylines = [];
+  bool _showGravelOverlay = true;
   bool isLoading = true;
   LatLng? _myPosition;
   Timer? _moveDebounce;
@@ -218,10 +219,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tileUrl = isDark
-        ? 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png'
-        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
     return Scaffold(
       appBar: AppBar(
@@ -330,7 +328,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      initiallyExpanded: true,
+                      initiallyExpanded: false,
                       children: [
                         ListTile(
                           leading: Icon(
@@ -373,7 +371,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      initiallyExpanded: true,
+                      initiallyExpanded: false,
                       children: [
                         ListTile(
                           leading: Icon(
@@ -406,6 +404,24 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       ],
                     ),
                     const SizedBox(height: 4),
+                    SwitchListTile(
+                      secondary: Icon(
+                        Icons.layers,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      title: Text(
+                        'Gravel overlay',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      subtitle: Text(
+                        'Show OpenStreetMap/Overpass gravel lines',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      value: _showGravelOverlay,
+                      onChanged: (v) => setState(() => _showGravelOverlay = v),
+                    ),
                     ListTile(
                       leading: Icon(
                         Icons.close,
@@ -475,7 +491,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 urlTemplate: tileUrl,
                 userAgentPackageName: 'com.example.gravel_biking',
               ),
-              PolylineLayer(polylines: gravelPolylines),
+              if (_showGravelOverlay) PolylineLayer(polylines: gravelPolylines),
               PolylineLayer(
                 polylines: [
                   if (_routePoints.length >= 2)
