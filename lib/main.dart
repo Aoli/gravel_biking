@@ -398,6 +398,37 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     );
   }
 
+  Future<void> _showSavedRoutesHelpDialog() async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.help_outline,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text('Om sparade rutter'),
+            ],
+          ),
+          content: const Text(
+            'Sparade rutter lagras endast lokalt på din enhet och försvinner om appen avinstalleras eller enhetens data rensas.\n\n'
+            'För mer varaktig lagring eller för att flytta rutter till andra tjänster som Strava, Garmin Connect eller andra appar, använd Import/Export funktionerna för att spara som GeoJSON eller GPX-filer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _onMapEvent(MapEvent event) {
     // Debounce on any map movement/zoom/rotate event
     _lastEventBounds = event.camera.visibleBounds;
@@ -709,11 +740,28 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         Icons.bookmark,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
-                      title: Text(
-                        'Sparade rutter',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Sparade rutter',
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.help_outline,
+                              size: 20,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                            onPressed: _showSavedRoutesHelpDialog,
+                            visualDensity: VisualDensity.compact,
+                            tooltip: 'Information om sparade rutter',
+                          ),
+                        ],
                       ),
                       subtitle: Text(
                         '${_savedRoutes.length}/5 rutter',
