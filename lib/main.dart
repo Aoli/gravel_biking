@@ -110,6 +110,16 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   // Map control
   final MapController _mapController = MapController();
   double? _lastZoom;
+  // CI/CD build number (provided via --dart-define=BUILD_NUMBER=123), empty locally
+  final String _buildNumber = const String.fromEnvironment(
+    'BUILD_NUMBER',
+    defaultValue: '',
+  );
+  // App version from pubspec.yaml (provided via --dart-define=APP_VERSION=1.2.3), empty locally
+  final String _appVersion = const String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: '',
+  );
 
   // Measurement
   final Distance _distance = const Distance();
@@ -526,6 +536,20 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             ],
           ),
           if (isLoading) const Center(child: CircularProgressIndicator()),
+          if (_buildNumber.isNotEmpty)
+            Positioned(
+              bottom: 10,
+              left: 12,
+              child: Text(
+                '#$_buildNumber',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
@@ -548,6 +572,49 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                   ),
                 ],
               ),
+            ),
+          ),
+          // Subtle build/version watermark (e.g., v1.2.3 #27)
+          Builder(
+            builder: (context) {
+              final parts = <String>[];
+              if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
+              if (_buildNumber.isNotEmpty) parts.add('#$_buildNumber');
+              final label = parts.join(' ');
+              if (label.isEmpty) return const SizedBox.shrink();
+              return Positioned(
+                bottom: 12,
+                left: 12,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.4),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            bottom: 8,
+            right: 8,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(left: 4),
+                  child: IconButton(
+                    tooltip: 'Reset map position',
+                    icon: const Icon(Icons.center_focus_strong, size: 20),
+                    onPressed: () {
+                      _mapController.move(const LatLng(59.3293, 18.0686), 12);
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
