@@ -1,4 +1,4 @@
-# Gravel Biking
+# Gravel First
 
 Plan gravel rides on an interactive map. See gravel roads from OpenStreetMap, measure custom routes with per‑segment and total distances, import/export your routes (GeoJSON/GPX), and quickly jump to your current GPS position.
 
@@ -17,7 +17,7 @@ Plan gravel rides on an interactive map. See gravel roads from OpenStreetMap, me
 
 ## What this app does
 
-Gravel Biking is a cross‑platform Flutter app that overlays gravel roads on a map and lets you sketch and analyze routes:
+Gravel First is a cross‑platform Flutter app that overlays gravel roads on a map and lets you sketch and analyze routes:
 
 - Tap to drop points; a polyline connects them in order.
 - See per‑segment distances and a running total.
@@ -40,7 +40,8 @@ It runs on Android, iOS, Web, macOS, Linux, and Windows.
   - GPX 1.1 export/import (trk/trkseg/trkpt). If the first and last points are the same, loop is inferred.
 - Locate me (GPS): requests permission, recenters the map on your location, and shows a marker where you are.
 - App Drawer for actions: Import/Export (GeoJSON, GPX) live under ExpansionTiles.
-  - Tiles are closed by default. A "Gravel overlay" switch lets you show/hide Overpass gravel lines.
+  - Tiles are closed by default. Two gravel overlay switches: "Gravel overlay" (Overpass/OSM) and "TRV NVDB gravel overlay" (disabled, prepared for Swedish Trafikverket data).
+  - Version and build info displayed in footer (auto-detected from pubspec.yaml).
 
 ## Quick start
 
@@ -101,12 +102,11 @@ Note: Under the widget test binding, network calls return 400 by design; the app
 
 ## Build/version watermark
 
-When building in CI, you can show a subtle bottom‑left label like `v1.2.3 #27` by passing dart‑defines:
+The app automatically displays its version from `pubspec.yaml` in both the drawer footer and as a subtle bottom‑left map watermark. When building in CI, you can add a build number by passing:
 
-- `--dart-define=APP_VERSION=<x.y.z>` (from pubspec.yaml)
 - `--dart-define=BUILD_NUMBER=<run number>` (from your CI)
 
-Locally, if these are not provided, the label stays hidden.
+This results in displays like `v0.1.0 #27`. Locally, only the version shows: `v0.1.0`.
 
 ## Troubleshooting
 
@@ -119,4 +119,4 @@ Locally, if these are not provided, the label stays hidden.
 The active roadmap and change history are tracked in `lib/context/roadmap.md`.
 
 ---
-Last updated: 2025‑08‑24 (later)
+Last updated: 2025‑08‑25

@@ -13,14 +13,16 @@ void main() {
     await tester.pumpWidget(const MyApp());
 
     // App bar title exists
-    expect(find.text('Gravel Streets Map'), findsOneWidget);
+    expect(find.text('Gravel First'), findsOneWidget);
 
     // Wait a frame for map to layout
     await tester.pump(const Duration(milliseconds: 100));
 
     // Distance panel hint text should be present initially (clarified)
     expect(
-      find.text('Tap the map to add points in edit mode (green edit button)'),
+      find.text(
+        'Tryck på kartan för att lägga till punkter i redigeringsläge (grön redigeringsknapp)',
+      ),
       findsOneWidget,
     );
   });

@@ -9,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:xml/xml.dart' as xml;
+import 'package:package_info_plus/package_info_plus.dart';
 
 void main() => runApp(const MyApp());
 
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Gravel Streets',
+      title: 'Gravel First',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
@@ -103,6 +104,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   // Data
   List<Polyline> gravelPolylines = [];
   bool _showGravelOverlay = true;
+  final bool _showTrvNvdbOverlay =
+      false; // Disabled by default, prepared for future
   bool isLoading = true;
   LatLng? _myPosition;
   Timer? _moveDebounce;
@@ -116,11 +119,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     'BUILD_NUMBER',
     defaultValue: '',
   );
-  // App version from pubspec.yaml (provided via --dart-define=APP_VERSION=1.2.3), empty locally
-  final String _appVersion = const String.fromEnvironment(
-    'APP_VERSION',
-    defaultValue: '',
-  );
+  // App version from pubspec.yaml
+  String _appVersion = '';
 
   // Measurement
   final Distance _distance = const Distance();
@@ -133,10 +133,18 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   @override
   void initState() {
     super.initState();
+    _loadAppVersion();
     // Initial fetch for a sensible area (Stockholm bbox)
     _fetchGravelForBounds(
       LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1)),
     );
+  }
+
+  Future<void> _loadAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      _appVersion = packageInfo.version;
+    });
   }
 
   void _onMapEvent(MapEvent event) {
@@ -224,7 +232,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Gravel Streets Map',
+          'Gravel First',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w600,
@@ -246,7 +254,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               ),
             ),
             child: IconButton(
-              tooltip: 'Locate me',
+              tooltip: 'Hitta mig',
               icon: Icon(
                 Icons.my_location,
                 color: Theme.of(context).colorScheme.onSecondaryContainer,
@@ -271,8 +279,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             ),
             child: IconButton(
               tooltip: _measureEnabled
-                  ? 'Disable measure mode'
-                  : 'Enable measure mode',
+                  ? 'Stäng av mätläge'
+                  : 'Aktivera mätläge',
               icon: const Icon(Icons.straighten, color: Colors.white, size: 22),
               onPressed: () =>
                   setState(() => _measureEnabled = !_measureEnabled),
@@ -295,7 +303,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       child: Align(
                         alignment: Alignment.bottomLeft,
                         child: Text(
-                          'Menu',
+                          'Meny',
                           style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.onPrimary,
@@ -312,13 +320,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       ),
                       leading: Icon(
                         Icons.folder_open,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     ExpansionTile(
                       leading: Icon(
                         Icons.map,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       title: Text(
                         'GeoJSON',
@@ -331,10 +339,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ListTile(
                           leading: Icon(
                             Icons.file_open,
-                            color: Theme.of(context).colorScheme.secondary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           title: Text(
-                            'Import GeoJSON',
+                            'Importera GeoJSON',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           onTap: () {
@@ -345,10 +353,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ListTile(
                           leading: Icon(
                             Icons.save_alt,
-                            color: Theme.of(context).colorScheme.secondary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           title: Text(
-                            'Export GeoJSON',
+                            'Exportera GeoJSON',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           onTap: () {
@@ -361,7 +369,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ExpansionTile(
                       leading: Icon(
                         Icons.route,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       title: Text(
                         'GPX',
@@ -374,10 +382,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ListTile(
                           leading: Icon(
                             Icons.file_open,
-                            color: Theme.of(context).colorScheme.secondary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           title: Text(
-                            'Import GPX',
+                            'Importera GPX',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           onTap: () {
@@ -388,10 +396,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ListTile(
                           leading: Icon(
                             Icons.file_download,
-                            color: Theme.of(context).colorScheme.secondary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           title: Text(
-                            'Export GPX',
+                            'Exportera GPX',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           onTap: () {
@@ -405,14 +413,14 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     SwitchListTile(
                       secondary: Icon(
                         Icons.layers,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       title: Text(
-                        'Gravel overlay',
+                        'Grus-lager',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       subtitle: Text(
-                        'Show OpenStreetMap/Overpass gravel lines',
+                        'Visa OpenStreetMap/Overpass grusvägar',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -420,13 +428,31 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       value: _showGravelOverlay,
                       onChanged: (v) => setState(() => _showGravelOverlay = v),
                     ),
+                    SwitchListTile(
+                      secondary: Icon(
+                        Icons.alt_route,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      title: Text(
+                        'TRV NVDB grus-lager',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      subtitle: Text(
+                        'Visa Trafikverket NVDB grusvägar',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      value: _showTrvNvdbOverlay,
+                      onChanged: null, // Disabled for now
+                    ),
                     ListTile(
                       leading: Icon(
                         Icons.close,
                         color: Theme.of(context).colorScheme.error,
                       ),
                       title: Text(
-                        'Close',
+                        'Stäng',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       onTap: () => Navigator.of(context).pop(),
@@ -460,18 +486,21 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       builder: (context) {
                         final parts = <String>[];
                         if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
-                        if (_buildNumber.isNotEmpty) parts.add('#$_buildNumber');
+                        if (_buildNumber.isNotEmpty)
+                          parts.add('#$_buildNumber');
                         final label = parts.join(' ');
                         if (label.isEmpty) return const SizedBox.shrink();
                         return Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
                             label,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                              fontWeight: FontWeight.w300,
-                              fontSize: 11,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                  fontWeight: FontWeight.w300,
+                                  fontSize: 11,
+                                ),
                           ),
                         );
                       },
@@ -644,7 +673,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 Container(
                   margin: const EdgeInsets.only(left: 4),
                   child: IconButton(
-                    tooltip: 'Reset map position',
+                    tooltip: 'Återställ kartposition',
                     icon: const Icon(Icons.center_focus_strong, size: 20),
                     onPressed: () {
                       _mapController.move(const LatLng(59.3293, 18.0686), 12);
@@ -737,7 +766,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'Location services are disabled',
+              'Positionstjänster är avaktiverade',
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
             backgroundColor: Theme.of(context).colorScheme.errorContainer,
@@ -757,7 +786,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'Location permission denied',
+              'Positionstillstånd nekat',
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
             backgroundColor: Theme.of(context).colorScheme.errorContainer,
@@ -784,7 +813,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Could not get location: $e',
+            'Kunde inte hämta position: $e',
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           backgroundColor: Theme.of(context).colorScheme.errorContainer,
@@ -799,7 +828,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     if (_routePoints.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('No route to export')));
+      ).showSnackBar(const SnackBar(content: Text('Ingen rutt att exportera')));
       return;
     }
     final coords = [
@@ -833,7 +862,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'Route exported as GeoJSON',
+            'Rutt exporterad som GeoJSON',
             style: TextStyle(fontWeight: FontWeight.w500),
           ),
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -845,7 +874,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      ).showSnackBar(SnackBar(content: Text('Export misslyckades: $e')));
     }
   }
 
@@ -913,7 +942,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Imported ${_routePoints.length} points',
+            'Importerade ${_routePoints.length} punkter',
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -957,7 +986,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('No route to export')));
+      ).showSnackBar(const SnackBar(content: Text('Ingen rutt att exportera')));
       return;
     }
     final builder = xml.XmlBuilder();
@@ -966,7 +995,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       'gpx',
       nest: () {
         builder.attribute('version', '1.1');
-        builder.attribute('creator', 'Gravel Biking');
+        builder.attribute('creator', 'Gravel First');
         builder.attribute('xmlns', 'http://www.topografix.com/GPX/1/1');
         builder.element(
           'trk',
@@ -1011,12 +1040,12 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Route exported as GPX')));
+      ).showSnackBar(const SnackBar(content: Text('Rutt exporterad som GPX')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      ).showSnackBar(SnackBar(content: Text('Export misslyckades: $e')));
     }
   }
 
@@ -1053,7 +1082,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       if (pts.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No track points found in GPX')),
+          const SnackBar(content: Text('Inga spårpunkter hittades i GPX')),
         );
         return;
       }
@@ -1073,7 +1102,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Imported ${_routePoints.length} points from GPX'),
+          content: Text('Importerade ${_routePoints.length} punkter från GPX'),
         ),
       );
     } catch (e) {
@@ -1182,7 +1211,7 @@ class _DistancePanel extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Measure',
+                      'Mätning',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -1202,14 +1231,14 @@ class _DistancePanel extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: 'Undo last point',
+                          tooltip: 'Ångra senaste punkt',
                           icon: const Icon(Icons.undo, size: 18),
                           color: onSurface,
                           onPressed: onUndo,
                           visualDensity: VisualDensity.compact,
                         ),
                         IconButton(
-                          tooltip: 'Clear route',
+                          tooltip: 'Rensa rutt',
                           icon: const Icon(Icons.delete_outline, size: 18),
                           color: theme.colorScheme.error,
                           onPressed: onClear,
@@ -1242,7 +1271,7 @@ class _DistancePanel extends StatelessWidget {
                       color: primaryColor,
                     ),
                     label: Text(
-                      loopClosed ? 'Open loop' : 'Close loop',
+                      loopClosed ? 'Öppna slinga' : 'Stäng slinga',
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
                         color: onSurface,
@@ -1279,7 +1308,7 @@ class _DistancePanel extends StatelessWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Editing point #${editingIndex! + 1} — tap map to move',
+                          'Redigerar punkt #${editingIndex! + 1} — tryck på kartan för att flytta',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onTertiaryContainer,
                             fontWeight: FontWeight.w500,
@@ -1288,7 +1317,7 @@ class _DistancePanel extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Cancel edit',
+                        tooltip: 'Avbryt redigering',
                         icon: const Icon(Icons.close, size: 16),
                         color: theme.colorScheme.error,
                         visualDensity: VisualDensity.compact,
@@ -1317,7 +1346,7 @@ class _DistancePanel extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    'Tap the map to add points in edit mode (green edit button)',
+                    'Tryck på kartan för att lägga till punkter i redigeringsläge (grön redigeringsknapp)',
                     style: TextStyle(
                       color: onSurface.withValues(alpha: 0.7),
                       fontStyle: FontStyle.italic,

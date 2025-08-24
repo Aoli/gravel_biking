@@ -1,6 +1,34 @@
 # Roadmap
 
-This document tracks feature work one by one with clear status and brief notes.
+This document tracks feature work one by one wit- [x] Subtle - [x] Subtle build/version watermark overlay.
+  - Status: Done (2025‑08‑24)
+  - What: Bottom‑left label like "v0.1.0 #27". Version automatically read from pubspec.yaml; build number from CI via `--dart-define=BUILD_NUMBER`.
+  - Notes: Also displayed in app drawer footer. Uses package_info_plus for automatic version detection.
+
+- [x] Fix icon contrast in app drawer and locate me button.
+  - Status: Done (2025‑08‑25)
+  - What: Improved visibility of drawer icons and locate me button in both light and dark themes.
+  - Notes: Changed drawer icons to use `onSurface` color; locate me uses `onSecondaryContainer` for proper contrast.
+
+- [x] Prepare TRV NVDB gravel overlay switch (disabled).
+  - Status: Done (2025‑08‑25)
+  - What: Added second gravel overlay switch in drawer for future Trafikverket NVDB integration.
+  - Notes: Switch is disabled (`onChanged: null`) and ready for future API implementation.
+
+- [ ] Caching and offline support for both tiles and fetched geometries.d/version watermark overlay.
+  - Status: Done (2025‑08‑24)
+  - What: Bottom‑left label like "v0.1.0 #27". Version automatically read from pubspec.yaml; build number from CI via `--dart-define=BUILD_NUMBER`.
+  - Notes: Also displayed in app drawer footer. Uses package_info_plus for automatic version detection.
+
+- [x] Fix icon contrast in app drawer and locate me button.
+  - Status: Done (2025‑08‑25)
+  - What: Improved visibility of drawer icons and locate me button in both light and dark themes.
+  - Notes: Changed drawer icons to use `onSurface` color; locate me uses `onSecondaryContainer` for proper contrast.
+
+- [x] Prepare TRV NVDB gravel overlay switch (disabled).
+  - Status: Done (2025‑08‑25)
+  - What: Added second gravel overlay switch in drawer for future Trafikverket NVDB integration.
+  - Notes: Switch is disabled (`onChanged: null`) and ready for future API implementation.ear status and brief notes.
 
 - [x] Toggle measurement mode on/off so map taps don’t always add points.
   - Status: Done (2025‑08‑24)
@@ -67,4 +95,4 @@ This document tracks feature work one by one with clear status and brief notes.
   - Approach: Consider flutter_map_tile_caching for tiles (note GPLv3/commercial licensing considerations), or a simple custom cache. Persist Overpass results locally (e.g., sqflite/hive) keyed by bbox/zoom.
 
 ---
-Last updated: 2025‑08‑24 (later)
+Last updated: 2025‑08‑25

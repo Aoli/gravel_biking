@@ -1,6 +1,10 @@
-# Gravel Biking – Architecture & Tech Overview
+# Gravel First – ArchiThis document provides a concise overview of the Gravel First Flutter project: what it does, how it's organized, the main dependencies, and how to run and test it.ecture & Tech Overview
 
-## Table of Contents
+## Table- Navigation & Actions
+  - AppBar actions: "Locate me" (with proper contrast) and a green/red measure-mode toggle.
+  - App Drawer contains Import/Export groups (GeoJSON, GPX) using ExpansionTiles (closed by default), plus switches for gravel overlays (Overpass and TRV NVDB).
+  - Map centering: After a successful "Locate me", the map recenters to your position using a MapController and the most recent zoom.
+  - Version display: Automatic version from pubspec.yaml via package_info_plus; shown in drawer footer and map watermark.Contents
 
 - Overview
 - Tech Stack
@@ -151,7 +155,9 @@ A basic widget test is included that ensures the app builds and the distance pan
 - Gravel polylines use a fixed brown color.
 - For tile usage in production, configure a proper provider, keys, and a descriptive `userAgentPackageName`.
 - Route point markers are compact circular dots without numeric labels; the selected point is highlighted.
-- A subtle bottom-left watermark displays version/build when provided via `--dart-define=APP_VERSION` and `--dart-define=BUILD_NUMBER`.
+- Version/build watermark: Version auto-loaded from pubspec.yaml via package_info_plus; build number from CI dart-defines.
+- UI contrast: Drawer icons use onSurface color; locate me button uses onSecondaryContainer for proper visibility.
+- Drawer overlays: Two switches (Overpass enabled, TRV NVDB disabled/prepared) for different gravel data sources.
 
 ## Roadmap
 
@@ -160,7 +166,7 @@ The roadmap lives alongside this document for clarity:
 - See: `lib/context/roadmap.md`
 
 ---
-Last updated: 2025‑08‑24 (later 2)
+Last updated: 2025‑08‑25
 
 ## Change Log
 
@@ -176,3 +182,6 @@ Last updated: 2025‑08‑24 (later 2)
 - 2025‑08‑24: On “Locate me”, recenter the map to current location using MapController (instant move, uses last zoom).
 - 2025‑08‑24: Standardized tiles to OpenStreetMap for both themes; reduced point marker size and removed numeric labels.
 - 2025‑08‑24: Added bottom-left version/build watermark (values from CI via dart-defines).
+- 2025‑08‑25: Automatic version detection from pubspec.yaml using package_info_plus; version/build shown in drawer footer and map watermark.
+- 2025‑08‑25: Fixed icon contrast: drawer icons use onSurface color, locate me button uses onSecondaryContainer.
+- 2025‑08‑25: Added disabled TRV NVDB gravel overlay switch in drawer, prepared for future Trafikverket integration.
