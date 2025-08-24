@@ -210,6 +210,28 @@
 				"$flutter-test"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Analyze & Test after drawer footer",
+			"type": "shell",
+			"command": "flutter analyze && flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general",
+				"$flutter-test"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Analyze & Test after © symbol",
+			"type": "shell",
+			"command": "flutter analyze && flutter test -r expanded",
+			"isBackground": false,
+			"problemMatcher": [
+				"$flutter-general",
+				"$flutter-test"
+			],
+			"group": "build"
 		}
 	]
 }

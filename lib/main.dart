@@ -197,72 +197,95 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ),
       drawer: Drawer(
         child: SafeArea(
-          child: ListView(
-            padding: EdgeInsets.zero,
+          child: Column(
             children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    DrawerHeader(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Text(
+                          'Menu',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      title: const Text('Import / Export'),
+                      leading: const Icon(Icons.folder_open),
+                    ),
+                    ExpansionTile(
+                      leading: const Icon(Icons.map),
+                      title: const Text('GeoJSON'),
+                      initiallyExpanded: true,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.file_open),
+                          title: const Text('Import GeoJSON'),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _importGeoJsonRoute();
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.save_alt),
+                          title: const Text('Export GeoJSON'),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _exportGeoJsonRoute();
+                          },
+                        ),
+                      ],
+                    ),
+                    ExpansionTile(
+                      leading: const Icon(Icons.route),
+                      title: const Text('GPX'),
+                      initiallyExpanded: true,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.file_open),
+                          title: const Text('Import GPX'),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _importGpxRoute();
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.file_download),
+                          title: const Text('Export GPX'),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _exportGpxRoute();
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
                 child: Align(
-                  alignment: Alignment.bottomLeft,
+                  alignment: Alignment.centerLeft,
                   child: Text(
-                    'Menu',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
+                    '© Christian Ericsson 2025',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
-              ),
-              ListTile(
-                title: const Text('Import / Export'),
-                leading: const Icon(Icons.folder_open),
-              ),
-              ExpansionTile(
-                leading: const Icon(Icons.map),
-                title: const Text('GeoJSON'),
-                initiallyExpanded: true,
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.file_open),
-                    title: const Text('Import GeoJSON'),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _importGeoJsonRoute();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.save_alt),
-                    title: const Text('Export GeoJSON'),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _exportGeoJsonRoute();
-                    },
-                  ),
-                ],
-              ),
-              ExpansionTile(
-                leading: const Icon(Icons.route),
-                title: const Text('GPX'),
-                initiallyExpanded: true,
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.file_open),
-                    title: const Text('Import GPX'),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _importGpxRoute();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.file_download),
-                    title: const Text('Export GPX'),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _exportGpxRoute();
-                    },
-                  ),
-                ],
               ),
             ],
           ),
