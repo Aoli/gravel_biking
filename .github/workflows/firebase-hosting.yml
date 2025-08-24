@@ -22,8 +22,8 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build Web
-        run: flutter build web --release
+      - name: Build Web (Wasm)
+        run: flutter build web --release --wasm
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
