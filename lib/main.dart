@@ -509,8 +509,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                   for (int i = 0; i < _routePoints.length; i++)
                     Marker(
                       point: _routePoints[i],
-                      width: 26,
-                      height: 26,
+                      width: 18,
+                      height: 18,
                       alignment: Alignment.center,
                       child: GestureDetector(
                         onTap: () => setState(() => _editingIndex = i),
@@ -990,44 +990,17 @@ class _PointMarker extends StatelessWidget {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final tertiaryColor = Theme.of(context).colorScheme.tertiary;
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: isEditing ? tertiaryColor : primaryColor,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          bottom: -12,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              '${index + 1}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ],
+    return Container(
+      width: 14,
+      height: 14,
+      decoration: BoxDecoration(
+        color: isEditing ? tertiaryColor : primaryColor,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1)),
+        ],
+      ),
     );
   }
 }
