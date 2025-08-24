@@ -91,13 +91,18 @@ On Web, the app starts in a browser; on mobile/desktop, select a device in your 
 
 ## How it works (at a glance)
 
-- Map rendering: `flutter_map` provides a Leaflet‑style map with tile layers.
-- Gravel fetch: when the viewport changes, a 500 ms debounce triggers an Overpass API request for ways tagged `surface=gravel` and relevant `highway` types within the current bounding box. JSON is parsed off the UI thread using `compute` and drawn as polylines.
-- Measurement: route points are stored in order; distances are computed with `latlong2.Distance` and rendered in a compact list with a running total. Loop mode adds a last→first segment.
-- Saved Routes: routes are stored locally using `SharedPreferences` with JSON serialization. Each saved route includes name, points, and timestamp. The app maintains a maximum of 5 routes using FIFO removal.
-- Import/Export: GeoJSON LineString and GPX 1.1 (trk/trkseg/trkpt). File selection and saving use `file_picker` and `file_saver` where available.
+- **Map rendering**: `flutter_map` provides a Leaflet‑style map with tile layers.
+- **Gravel fetch**: When the viewport changes, a 500ms debounce triggers an Overpass API request for gravel roads. JSON is parsed off the UI thread using `compute` and drawn as polylines.
+- **Measurement**: Route points are stored and distances computed with `latlong2.Distance`. Loop mode adds a last→first segment.
+- **Saved Routes**: Up to 5 routes stored locally using `SharedPreferences` with JSON serialization. FIFO removal when limit exceeded.
+- **Import/Export**: GeoJSON LineString and GPX 1.1 support. File operations use `file_picker` and `file_saver`.
+- **Architecture**: Refactored from monolithic structure into organized layers:
+  - `models/` - Data structures (SavedRoute)
+  - `services/` - Business logic (route, location, file operations)
+  - `utils/` - Utility functions (coordinate parsing, formatting)
+  - `widgets/` - Reusable UI components (PointMarker, DistancePanel)
 
-See `lib/context/architecture.md` for a deeper dive and `lib/main.dart` for the implementation.
+See `lib/context/architecture.md` for detailed architecture documentation and `lib/main.dart` for the implementation.
 
 ## Data sources & tiles
 

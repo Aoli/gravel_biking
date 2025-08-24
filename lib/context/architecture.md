@@ -1,11 +1,120 @@
-# Gravel First – ArchiThis document provides a concise overview of the Gravel First Flutter project: what it does, how it's organized, the main dependencies, and how to run and test it.ecture & Tech Overview
+# Gravel First – ArchiThis document provides a concise overview of the Gravel First Flutter ## Code Layout
 
-## Table- Navigation & Actions
-  - AppBar actions: "Locate me" (with proper contrast) and a green/red measure-mode toggle.
-  - App Drawer contains Import/Export groups (GeoJSON, GPX) using ExpansionTiles (closed by default), plus switches for gravel overlays (Overpass and TRV NVDB), and Saved Routes section.
-  - Saved Routes: Up to 5 named routes with quick-save button in distance panel and full management in drawer.
-  - Map centering: After a successful "Locate me" or when loading saved routes, the map recenters using MapController and optimal bounds fitting.
-  - Version display: Automatic version from pubspec.yaml via package_info_plus; shown in drawer footer and map watermark.Contents
+The application has been refactored from a monolithic structure into a clean, organized architecture with separation of concerns:
+
+## Top-level Structure
+
+- `lib/` — application source code
+- `test/` — Flutter widget tests
+- Platform folders: `android/`, `ios/`, `web/`, `macos/`, `linux/`, `windows/`
+
+## Refactored File Structure
+
+```text
+lib/
+├── main.dart                    # App entry point, theme, and main map widget (1,459 lines)
+├── models/
+│   └── saved_route.dart         # Data model for saved routes with JSON serialization
+├── services/
+│   ├── route_service.dart       # Route management and saved routes business logic
+│   ├── location_service.dart    # GPS location handling and permissions
+│   └── file_service.dart        # Import/export functionality for GPX and GeoJSON
+├── utils/
+│   └── coordinate_utils.dart    # Coordinate parsing and formatting utilities
+├── widgets/
+│   ├── point_marker.dart        # Reusable route point marker component
+│   └── distance_panel.dart      # Distance measurement panel with controls
+├── screens/
+│   └── map_screen.dart          # Alternative map screen implementation (unused)
+└── context/
+    ├── architecture.md          # This documentation file
+    └── roadmap.md              # Feature roadmap and change history
+```
+
+## Component Responsibilities
+
+### Core Application (`main.dart`)
+
+- App scaffold, theming, and Material Design configuration
+- `GravelStreetsMap` stateful widget containing primary map functionality
+- Overpass API integration for fetching gravel road data
+- Map interaction handling and state management
+- UI layout including AppBar actions and App Drawer
+- Map layers: `PolylineLayer` for gravel roads and routes, `MarkerLayer` for points
+
+### Models Layer (`models/`)
+
+- **`saved_route.dart`**: `SavedRoute` data class with JSON serialization
+  - Properties: name, points (LatLng[]), loopClosed, savedAt
+  - Methods: `toJson()`, `fromJson()` for SharedPreferences storage
+
+### Services Layer (`services/`)
+
+- **`route_service.dart`**: Route management business logic
+  - Saved routes CRUD operations with 5-route limit and FIFO removal
+  - Distance calculations using latlong2
+  - Map centering and bounds fitting
+  - Route validation and state management
+
+- **`location_service.dart`**: GPS and location functionality
+  - Permission handling and error management
+  - Current position acquisition with geolocator
+  - Map centering integration
+  - User-friendly error messaging
+
+- **`file_service.dart`**: Import/export operations
+  - GeoJSON LineString export/import with loop state preservation
+  - GPX 1.1 track export/import (trk/trkseg/trkpt structure)
+  - File picker and saver integration
+  - Format validation and error handling
+
+### Utilities Layer (`utils/`)
+
+- **`coordinate_utils.dart`**: Data processing utilities
+  - `extractPolylineCoords()`: Overpass API JSON parsing
+  - `formatDistance()`: Human-readable distance formatting (meters/kilometers)
+  - Static utility methods for coordinate manipulation
+
+### Widgets Layer (`widgets/`)
+
+- **`point_marker.dart`**: Route point visualization
+  - Configurable marker appearance (normal vs editing state)
+  - Consistent theming with primary/tertiary color support
+  - Compact circular design with shadows and borders
+
+- **`distance_panel.dart`**: Measurement interface
+  - Segment and total distance display
+  - Action buttons: Undo, Save, Clear
+  - Loop toggle functionality
+  - Editing state indicators
+  - Responsive layout with scrollable segment list
+
+## Architectural Benefits
+
+1. **Separation of Concerns**: Each file has a single, well-defined responsibility
+2. **Maintainability**: Code is easier to locate, understand, and modify
+3. **Testability**: Services and utilities can be easily unit tested
+4. **Reusability**: Components can be reused across different parts of the application
+5. **Scalability**: New features can be added without increasing main.dart complexity
+6. **Collaboration**: Multiple developers can work on different components simultaneously
+
+## Import Dependencies
+
+The refactored structure maintains clean import relationships:
+
+- `main.dart` imports models, utils, and widgets
+- Services are self-contained with minimal cross-dependencies
+- Widgets depend only on utils for shared functionality
+- Models have no internal dependencies except external packages
+
+## Migration Notes
+
+- Original monolithic file: `main_original_backup.dart` (1,816 lines)
+- Refactored main file: `main.dart` (1,459 lines - 20% reduction)
+- All functionality preserved with improved organization
+- Backward compatibility maintained for saved routes and user data
+
+## Table of Contents
 
 - Overview
 - Tech Stack
@@ -181,6 +290,13 @@ Last updated: 2025‑08‑25
 
 ## Change Log
 
+- 2025‑08‑25: **Major Refactoring**: Restructured codebase from monolithic 1,816-line main.dart into organized architecture:
+  - Created `models/saved_route.dart` for data structures
+  - Added `services/` layer: `route_service.dart`, `location_service.dart`, `file_service.dart`
+  - Extracted `utils/coordinate_utils.dart` for utility functions
+  - Created reusable `widgets/`: `point_marker.dart`, `distance_panel.dart`
+  - Reduced main.dart to 1,459 lines (20% reduction) while preserving all functionality
+  - Improved maintainability, testability, and code organization
 - 2025‑08‑25: Added Saved Routes feature: save up to 5 named routes locally using SharedPreferences with JSON serialization. Quick-save button in distance panel, full management in drawer with auto-centering when loading routes.
 - 2025‑08‑24: Added GeoJSON import/export (file_picker, file_saver). Initially in distance panel; later moved to Drawer.
 - 2025‑08‑24: Added GPX import/export (xml, file_picker/file_saver). Loop inferred if first==last; actions live in Drawer.
