@@ -68,7 +68,11 @@ class DistancePanel extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.straighten, color: primaryColor, size: 20),
+                  Icon(
+                    Icons.straighten_outlined,
+                    color: primaryColor,
+                    size: 20,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -93,14 +97,17 @@ class DistancePanel extends StatelessWidget {
                       children: [
                         IconButton(
                           tooltip: 'Ångra senaste punkt',
-                          icon: const Icon(Icons.undo, size: 18),
+                          icon: const Icon(Icons.undo_outlined, size: 18),
                           color: onSurface,
                           onPressed: onUndo,
                           visualDensity: VisualDensity.compact,
                         ),
                         IconButton(
                           tooltip: 'Spara rutt',
-                          icon: const Icon(Icons.bookmark_add, size: 18),
+                          icon: const Icon(
+                            Icons.bookmark_add_outlined,
+                            size: 18,
+                          ),
                           color: primaryColor,
                           onPressed: onSave,
                           visualDensity: VisualDensity.compact,
@@ -134,9 +141,10 @@ class DistancePanel extends StatelessWidget {
                     ),
                     onPressed: onToggleLoop,
                     icon: Icon(
-                      loopClosed ? Icons.link_off : Icons.link,
+                      loopClosed
+                          ? Icons.link_off_outlined
+                          : Icons.link_outlined,
                       size: 16,
-                      color: primaryColor,
                     ),
                     label: Text(
                       loopClosed ? 'Öppna slinga' : 'Stäng slinga',
@@ -169,7 +177,7 @@ class DistancePanel extends StatelessWidget {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.edit,
+                        Icons.edit_outlined,
                         size: 16,
                         color: theme.colorScheme.onTertiaryContainer,
                       ),
@@ -186,7 +194,7 @@ class DistancePanel extends StatelessWidget {
                       ),
                       IconButton(
                         tooltip: 'Avbryt redigering',
-                        icon: const Icon(Icons.close, size: 16),
+                        icon: const Icon(Icons.close_outlined, size: 16),
                         color: theme.colorScheme.error,
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,

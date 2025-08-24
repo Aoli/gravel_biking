@@ -491,7 +491,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             child: IconButton(
               tooltip: 'Hitta mig',
               icon: Icon(
-                Icons.my_location,
+                Icons.my_location_outlined,
                 color: Theme.of(context).colorScheme.onSecondaryContainer,
                 size: 22,
               ),
@@ -516,7 +516,11 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               tooltip: _measureEnabled
                   ? 'Stäng av mätläge'
                   : 'Aktivera mätläge',
-              icon: const Icon(Icons.straighten, color: Colors.white, size: 22),
+              icon: const Icon(
+                Icons.straighten_outlined,
+                color: Colors.white,
+                size: 22,
+              ),
               onPressed: () =>
                   setState(() => _measureEnabled = !_measureEnabled),
             ),
@@ -573,7 +577,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       children: [
                         ListTile(
                           leading: Icon(
-                            Icons.file_open,
+                            Icons.upload_file,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
                           title: Text(
@@ -587,7 +591,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ),
                         ListTile(
                           leading: Icon(
-                            Icons.save_alt,
+                            Icons.download,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
                           title: Text(
@@ -616,7 +620,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       children: [
                         ListTile(
                           leading: Icon(
-                            Icons.file_open,
+                            Icons.upload_file,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
                           title: Text(
@@ -630,7 +634,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ),
                         ListTile(
                           leading: Icon(
-                            Icons.file_download,
+                            Icons.download,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
                           title: Text(
@@ -665,7 +669,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                     SwitchListTile(
                       secondary: Icon(
-                        Icons.alt_route,
+                        Icons.terrain,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                       title: Text(
@@ -690,7 +694,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     // Saved Routes Section
                     ExpansionTile(
                       leading: Icon(
-                        Icons.bookmark,
+                        Icons.bookmark_outline,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                       title: Row(
@@ -727,7 +731,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         // Save current route button
                         ListTile(
                           leading: Icon(
-                            Icons.add,
+                            Icons.add_circle_outline,
                             color: Theme.of(context).colorScheme.primary,
                           ),
                           title: Text(
@@ -790,7 +794,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                     ListTile(
                       leading: Icon(
-                        Icons.close,
+                        Icons.close_outlined,
                         color: Theme.of(context).colorScheme.error,
                       ),
                       title: Text(
@@ -1017,7 +1021,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                   margin: const EdgeInsets.only(left: 4),
                   child: IconButton(
                     tooltip: 'Återställ kartposition',
-                    icon: const Icon(Icons.center_focus_strong, size: 20),
+                    icon: const Icon(
+                      Icons.center_focus_strong_outlined,
+                      size: 20,
+                    ),
                     onPressed: () {
                       _mapController.move(const LatLng(59.3293, 18.0686), 12);
                     },
