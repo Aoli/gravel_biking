@@ -554,7 +554,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             ?.copyWith(fontWeight: FontWeight.w500),
                       ),
                       leading: Icon(
-                        Icons.folder_open,
+                        Icons.folder,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
