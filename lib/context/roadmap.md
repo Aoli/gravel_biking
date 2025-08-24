@@ -34,7 +34,7 @@ This document tracks feature work one by one with clear status and brief notes.
 
 - [x] Improve discoverability of Import/Export by moving actions to an App Drawer with ExpansionTiles.
   - Status: Done (2025‑08‑24)
-  - Notes: Drawer contains GeoJSON and GPX sections (initiallyExpanded: true). Replaced the earlier on-map card/buttons. Icons and text use high contrast.
+  - Notes: Drawer contains GeoJSON and GPX sections (initiallyExpanded: false). Replaced the earlier on-map card/buttons. Icons and text use high contrast.
 
 - [x] Add “Locate me” (GPS) button.
   - Status: Done (2025‑08‑24)
@@ -45,9 +45,26 @@ This document tracks feature work one by one with clear status and brief notes.
   - What: After location is acquired, the map recenters to your position using the last known zoom level (fallback to 14).
   - Notes: Uses a `MapController.move(latLng, zoom)` call; currently instant (no animation). We can add a smooth camera animation later if desired.
 
+- [x] Make route point markers smaller and remove numeric labels.
+  - Status: Done (2025‑08‑24)
+  - Notes: Markers are now compact circular dots with a subtle border/shadow; editing selection is highlighted.
+
+- [x] Add a Drawer switch to toggle the Overpass gravel overlay visibility.
+  - Status: Done (2025‑08‑24)
+  - Notes: New “Gravel overlay” SwitchListTile in the Drawer controls visibility of the gravel PolylineLayer.
+
+- [x] Standardize map tiles to OpenStreetMap for both light and dark themes.
+  - Status: Done (2025‑08‑24)
+  - Notes: Removed Stadia dark tiles; now using the same OSM tile URL for all themes.
+
+- [x] Subtle build/version watermark overlay.
+  - Status: Done (2025‑08‑24)
+  - What: Bottom‑left label like “v1.2.3 #27”. Values come from CI via `--dart-define=APP_VERSION` and `--dart-define=BUILD_NUMBER`.
+  - Notes: Hidden locally unless dart‑defines are provided.
+
 - [ ] Caching and offline support for both tiles and fetched geometries.
   - Criteria: Tiles cached with sensible max-age; offline viewing of previously seen areas; cached gravel data persistence.
   - Approach: Consider flutter_map_tile_caching for tiles (note GPLv3/commercial licensing considerations), or a simple custom cache. Persist Overpass results locally (e.g., sqflite/hive) keyed by bbox/zoom.
 
 ---
-Last updated: 2025‑08‑24
+Last updated: 2025‑08‑24 (later)

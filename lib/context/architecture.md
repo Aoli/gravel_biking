@@ -56,7 +56,7 @@ Logical components and responsibilities:
   - GPX: export a GPX 1.1 track (trk/trkseg/trkpt) and import GPX (reads trkpt lat/lon). If the GPX track is explicitly closed (first==last), the app infers loop mode.
 - Navigation & Actions
   - AppBar actions: “Locate me” and a green/red measure-mode toggle.
-  - App Drawer contains Import/Export groups (GeoJSON, GPX) using ExpansionTiles.
+  - App Drawer contains Import/Export groups (GeoJSON, GPX) using ExpansionTiles (closed by default), plus a switch to show/hide the gravel overlay.
   - Map centering: After a successful “Locate me”, the map recenters to your position using a MapController and the most recent zoom.
 
 ## Key Features
@@ -73,7 +73,7 @@ Logical components and responsibilities:
 - Import/Export (GPX): export as GPX 1.1 track and import GPX files.
 - Locate me (GPS): request permissions and place a marker at your current location.
   - After locating, the map recenters to your position (instant move; animation can be added later).
-- Light/Dark tile styles (OSM standard tiles for light, Stadia “alidade_smooth_dark” tiles for dark).
+- Tiles: Unified OpenStreetMap standard tiles for both light and dark themes.
 
 ## Code Layout
 
@@ -98,9 +98,8 @@ Important files:
 ## Data & Tiles
 
 - Data source: Overpass API (`https://overpass-api.de/api/interpreter`) with a query for ways where `surface=gravel` and `highway` among a selected set within the current visible bounding box. Initial fetch uses a Stockholm area bbox.
-- Tile servers:
-  - Light: OpenStreetMap standard tiles: `https://tile.openstreetmap.org/{z}/{x}/{y}.png`
-  - Dark: Stadia Maps “alidade_smooth_dark”: `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png`
+- Tile server:
+  - OpenStreetMap standard tiles: `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (used for both themes)
 
 Tile usage note: If you plan production use, review provider terms. OSM’s public tile servers have usage policies and are not intended for high‑traffic apps. Consider a dedicated tile provider and set a clear User-Agent.
 
@@ -151,6 +150,8 @@ A basic widget test is included that ensures the app builds and the distance pan
 - Overpass query is viewport-based and debounced; parsing runs on a background isolate via `compute`.
 - Gravel polylines use a fixed brown color.
 - For tile usage in production, configure a proper provider, keys, and a descriptive `userAgentPackageName`.
+- Route point markers are compact circular dots without numeric labels; the selected point is highlighted.
+- A subtle bottom-left watermark displays version/build when provided via `--dart-define=APP_VERSION` and `--dart-define=BUILD_NUMBER`.
 
 ## Roadmap
 
@@ -159,7 +160,7 @@ The roadmap lives alongside this document for clarity:
 - See: `lib/context/roadmap.md`
 
 ---
-Last updated: 2025‑08‑24 (later)
+Last updated: 2025‑08‑24 (later 2)
 
 ## Change Log
 
@@ -170,5 +171,8 @@ Last updated: 2025‑08‑24 (later)
 - 2025‑08‑24: Viewport-based Overpass fetching with 500ms debounce and off‑UI parsing.
 - 2025‑08‑24: AppBar “Locate me” via geolocator; added my-position marker.
 - 2025‑08‑24: Import/Export moved to a Drawer (hamburger) with ExpansionTiles (GeoJSON, GPX), initially expanded. Improved contrast and discoverability.
+- 2025‑08‑24: Import/Export moved to a Drawer (hamburger) with ExpansionTiles (GeoJSON, GPX), default closed. Added Drawer switch to toggle gravel overlay.
 - 2025‑08‑24: Measure-mode toggle styled green (on) / red (off). Clarified distance panel hint text.
 - 2025‑08‑24: On “Locate me”, recenter the map to current location using MapController (instant move, uses last zoom).
+- 2025‑08‑24: Standardized tiles to OpenStreetMap for both themes; reduced point marker size and removed numeric labels.
+- 2025‑08‑24: Added bottom-left version/build watermark (values from CI via dart-defines).

@@ -40,6 +40,7 @@ It runs on Android, iOS, Web, macOS, Linux, and Windows.
   - GPX 1.1 export/import (trk/trkseg/trkpt). If the first and last points are the same, loop is inferred.
 - Locate me (GPS): requests permission, recenters the map on your location, and shows a marker where you are.
 - App Drawer for actions: Import/Export (GeoJSON, GPX) live under ExpansionTiles.
+  - Tiles are closed by default. A "Gravel overlay" switch lets you show/hide Overpass gravel lines.
 
 ## Quick start
 
@@ -80,8 +81,7 @@ See `lib/context/architecture.md` for a deeper dive and `lib/main.dart` for the 
 
 - Overpass API (OpenStreetMap): queries gravel roads for the visible bounds.
 - Tiles:
-  - Light: OpenStreetMap standard tiles
-  - Dark: Stadia Maps “alidade_smooth_dark”
+  - OpenStreetMap standard tiles (same for light and dark)
 
 Important: OSM’s public tile servers are not intended for production/high‑traffic use. Review their policies and consider a dedicated tile provider with proper attribution and a user agent.
 
@@ -99,6 +99,15 @@ flutter test -r expanded
 
 Note: Under the widget test binding, network calls return 400 by design; the app handles this gracefully during tests.
 
+## Build/version watermark
+
+When building in CI, you can show a subtle bottom‑left label like `v1.2.3 #27` by passing dart‑defines:
+
+- `--dart-define=APP_VERSION=<x.y.z>` (from pubspec.yaml)
+- `--dart-define=BUILD_NUMBER=<run number>` (from your CI)
+
+Locally, if these are not provided, the label stays hidden.
+
 ## Troubleshooting
 
 - No gravel lines visible: the Overpass API may be rate‑limited, or the area might not have tagged gravel roads. Try panning/zooming or wait and retry.
@@ -110,4 +119,4 @@ Note: Under the widget test binding, network calls return 400 by design; the app
 The active roadmap and change history are tracked in `lib/context/roadmap.md`.
 
 ---
-Last updated: 2025‑08‑24
+Last updated: 2025‑08‑24 (later)
