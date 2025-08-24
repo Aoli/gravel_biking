@@ -17,9 +17,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SavedRoute {
   final String name;
   final List<LatLng> points;
+  final bool loopClosed;
   final DateTime savedAt;
 
-  SavedRoute({required this.name, required this.points, required this.savedAt});
+  SavedRoute({
+    required this.name,
+    required this.points,
+    required this.loopClosed,
+    required this.savedAt,
+  });
 
   // Convert to JSON for storage
   Map<String, dynamic> toJson() {
@@ -28,6 +34,7 @@ class SavedRoute {
       'points': points
           .map((p) => {'lat': p.latitude, 'lng': p.longitude})
           .toList(),
+      'loopClosed': loopClosed,
       'savedAt': savedAt.toIso8601String(),
     };
   }
@@ -39,6 +46,7 @@ class SavedRoute {
       points: (json['points'] as List)
           .map((p) => LatLng(p['lat'], p['lng']))
           .toList(),
+      loopClosed: json['loopClosed'] ?? false,
       savedAt: DateTime.parse(json['savedAt']),
     );
   }
@@ -227,6 +235,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     final newRoute = SavedRoute(
       name: name,
       points: List.from(_routePoints),
+      loopClosed: _loopClosed,
       savedAt: DateTime.now(),
     );
 
@@ -249,12 +258,19 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       _routePoints.addAll(route.points);
       _segmentMeters.clear();
       _editingIndex = null;
-      _loopClosed = false;
+      _loopClosed = route.loopClosed;
 
       // Recalculate segment distances
       for (int i = 1; i < _routePoints.length; i++) {
         _segmentMeters.add(
           _distance.as(LengthUnit.Meter, _routePoints[i - 1], _routePoints[i]),
+        );
+      }
+
+      // Add loop segment if the route was closed
+      if (_loopClosed && _routePoints.length >= 3) {
+        _segmentMeters.add(
+          _distance.as(LengthUnit.Meter, _routePoints.last, _routePoints.first),
         );
       }
     });
@@ -750,7 +766,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                               subtitle: Text(
-                                '${route.points.length} punkter • ${route.savedAt.day}/${route.savedAt.month}',
+                                '${route.points.length} punkter${route.loopClosed ? ' • Stängd slinga' : ''} • ${route.savedAt.day}/${route.savedAt.month}',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: Theme.of(
