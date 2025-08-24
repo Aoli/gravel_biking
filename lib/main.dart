@@ -21,12 +21,52 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        textTheme: const TextTheme(
+          headlineSmall: TextStyle(fontWeight: FontWeight.w600),
+          titleMedium: TextStyle(fontWeight: FontWeight.w600),
+          titleSmall: TextStyle(fontWeight: FontWeight.w500),
+          bodyLarge: TextStyle(fontWeight: FontWeight.w400),
+          bodyMedium: TextStyle(fontWeight: FontWeight.w400),
+          bodySmall: TextStyle(fontWeight: FontWeight.w400),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 2,
+            shadowColor: Colors.black26,
+          ),
+        ),
+        iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            elevation: 1,
+            shadowColor: Colors.black26,
+          ),
+        ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
           brightness: Brightness.dark,
+        ),
+        textTheme: const TextTheme(
+          headlineSmall: TextStyle(fontWeight: FontWeight.w600),
+          titleMedium: TextStyle(fontWeight: FontWeight.w600),
+          titleSmall: TextStyle(fontWeight: FontWeight.w500),
+          bodyLarge: TextStyle(fontWeight: FontWeight.w400),
+          bodyMedium: TextStyle(fontWeight: FontWeight.w400),
+          bodySmall: TextStyle(fontWeight: FontWeight.w400),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 2,
+            shadowColor: Colors.black54,
+          ),
+        ),
+        iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            elevation: 1,
+            shadowColor: Colors.black54,
+          ),
         ),
       ),
       home: const GravelStreetsMap(),
@@ -175,13 +215,27 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gravel Streets Map'),
+        title: Text(
+          'Gravel Streets Map',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        elevation: 1,
+        shadowColor: Colors.black26,
         actions: [
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Theme.of(context).colorScheme.secondaryContainer,
+              border: Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.5),
+                width: 1,
+              ),
             ),
             child: IconButton(
               tooltip: 'Locate me',
@@ -190,6 +244,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 color: (Theme.of(context).brightness == Brightness.dark)
                     ? Colors.white
                     : Colors.black,
+                size: 22,
               ),
               onPressed: _locateMe,
             ),
@@ -198,13 +253,21 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _measureEnabled ? Colors.green : Colors.red,
+              color: _measureEnabled
+                  ? Colors.green.shade600
+                  : Colors.red.shade600,
+              border: Border.all(
+                color: _measureEnabled
+                    ? Colors.green.shade800
+                    : Colors.red.shade800,
+                width: 2,
+              ),
             ),
             child: IconButton(
               tooltip: _measureEnabled
                   ? 'Disable measure mode'
                   : 'Enable measure mode',
-              icon: const Icon(Icons.straighten, color: Colors.white),
+              icon: const Icon(Icons.straighten, color: Colors.white, size: 22),
               onPressed: () =>
                   setState(() => _measureEnabled = !_measureEnabled),
             ),
@@ -230,30 +293,58 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.w600,
                               ),
                         ),
                       ),
                     ),
                     ListTile(
-                      title: const Text('Import / Export'),
-                      leading: const Icon(Icons.folder_open),
+                      title: Text(
+                        'Import / Export',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w500),
+                      ),
+                      leading: Icon(
+                        Icons.folder_open,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                     ExpansionTile(
-                      leading: const Icon(Icons.map),
-                      title: const Text('GeoJSON'),
+                      leading: Icon(
+                        Icons.map,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      title: Text(
+                        'GeoJSON',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                       initiallyExpanded: true,
                       children: [
                         ListTile(
-                          leading: const Icon(Icons.file_open),
-                          title: const Text('Import GeoJSON'),
+                          leading: Icon(
+                            Icons.file_open,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                          title: Text(
+                            'Import GeoJSON',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           onTap: () {
                             Navigator.of(context).pop();
                             _importGeoJsonRoute();
                           },
                         ),
                         ListTile(
-                          leading: const Icon(Icons.save_alt),
-                          title: const Text('Export GeoJSON'),
+                          leading: Icon(
+                            Icons.save_alt,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                          title: Text(
+                            'Export GeoJSON',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           onTap: () {
                             Navigator.of(context).pop();
                             _exportGeoJsonRoute();
@@ -262,21 +353,41 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       ],
                     ),
                     ExpansionTile(
-                      leading: const Icon(Icons.route),
-                      title: const Text('GPX'),
+                      leading: Icon(
+                        Icons.route,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      title: Text(
+                        'GPX',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                       initiallyExpanded: true,
                       children: [
                         ListTile(
-                          leading: const Icon(Icons.file_open),
-                          title: const Text('Import GPX'),
+                          leading: Icon(
+                            Icons.file_open,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                          title: Text(
+                            'Import GPX',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           onTap: () {
                             Navigator.of(context).pop();
                             _importGpxRoute();
                           },
                         ),
                         ListTile(
-                          leading: const Icon(Icons.file_download),
-                          title: const Text('Export GPX'),
+                          leading: Icon(
+                            Icons.file_download,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                          title: Text(
+                            'Export GPX',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           onTap: () {
                             Navigator.of(context).pop();
                             _exportGpxRoute();
@@ -286,25 +397,37 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                     const SizedBox(height: 4),
                     ListTile(
-                      leading: const Icon(Icons.close),
-                      title: const Text('Close'),
+                      leading: Icon(
+                        Icons.close,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      title: Text(
+                        'Close',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                       onTap: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
               ),
               const Divider(height: 1),
-              Padding(
+              Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainer.withValues(alpha: 0.3),
                 ),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     '© Christian Ericsson 2025',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -508,7 +631,15 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       if (!serviceEnabled) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location services are disabled')),
+          SnackBar(
+            content: const Text(
+              'Location services are disabled',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
         );
         return;
       }
@@ -520,7 +651,15 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
           permission == LocationPermission.denied) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permission denied')),
+          SnackBar(
+            content: const Text(
+              'Location permission denied',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
         );
         return;
       }
@@ -538,9 +677,17 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       _mapController.move(latLng, z);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not get location: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not get location: $e',
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+        ),
+      );
     }
   }
 
@@ -580,7 +727,15 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Route exported as GeoJSON')),
+        SnackBar(
+          content: const Text(
+            'Route exported as GeoJSON',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -652,7 +807,15 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Imported ${_routePoints.length} points')),
+        SnackBar(
+          content: Text(
+            'Imported ${_routePoints.length} points',
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -824,31 +987,43 @@ class _PointMarker extends StatelessWidget {
   const _PointMarker({required this.index, this.isEditing = false});
   @override
   Widget build(BuildContext context) {
-    final bg = Theme.of(context).colorScheme.secondaryContainer;
-    final fg = Theme.of(context).colorScheme.onSecondaryContainer;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final tertiaryColor = Theme.of(context).colorScheme.tertiary;
+
     return Stack(
       alignment: Alignment.center,
       children: [
         Container(
-          width: 18,
-          height: 18,
+          width: 20,
+          height: 20,
           decoration: BoxDecoration(
-            color: isEditing
-                ? Theme.of(context).colorScheme.tertiaryContainer
-                : bg,
+            color: isEditing ? tertiaryColor : primaryColor,
             shape: BoxShape.circle,
-            border: Border.all(color: fg, width: 2),
+            border: Border.all(color: Colors.white, width: 3),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
         ),
         Positioned(
-          bottom: -10,
-          child: Text(
-            '${index + 1}',
-            style: TextStyle(
-              color: fg,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              shadows: const [Shadow(blurRadius: 2, color: Colors.black54)],
+          bottom: -12,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '${index + 1}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
@@ -892,102 +1067,145 @@ class _DistancePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = theme.colorScheme.surface;
-    final onCard = theme.colorScheme.onSurface;
+    final surfaceColor = theme.colorScheme.surface;
+    final onSurface = theme.colorScheme.onSurface;
+    final primaryColor = theme.colorScheme.primary;
+
     return Material(
       color: Colors.transparent,
+      elevation: 4,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 260),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        constraints: const BoxConstraints(maxWidth: 280),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: cardColor.withValues(alpha: 0.9),
+          color: surfaceColor,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+            width: 1,
+          ),
           boxShadow: const [
             BoxShadow(
-              blurRadius: 10,
+              blurRadius: 8,
               color: Colors.black26,
               offset: Offset(0, 4),
             ),
           ],
         ),
         child: DefaultTextStyle(
-          style: TextStyle(color: onCard),
+          style: TextStyle(color: onSurface, fontWeight: FontWeight.w400),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
+                  Icon(Icons.straighten, color: primaryColor, size: 20),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       'Measure',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: onCard,
+                        color: onSurface,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Undo last point',
-                    icon: const Icon(Icons.undo, size: 18),
-                    color: onCard,
-                    onPressed: onUndo,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  IconButton(
-                    tooltip: 'Clear route',
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    color: onCard,
-                    onPressed: onClear,
-                    visualDensity: VisualDensity.compact,
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      color: theme.colorScheme.secondaryContainer.withValues(
+                        alpha: 0.3,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Undo last point',
+                          icon: const Icon(Icons.undo, size: 18),
+                          color: onSurface,
+                          onPressed: onUndo,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        IconButton(
+                          tooltip: 'Clear route',
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          color: theme.colorScheme.error,
+                          onPressed: onClear,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
               if (canToggleLoop) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    style: TextButton.styleFrom(
-                      foregroundColor: onCard,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: onSurface,
+                      backgroundColor: theme.colorScheme.secondaryContainer,
+                      elevation: 1,
                       visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                     ),
                     onPressed: onToggleLoop,
                     icon: Icon(
                       loopClosed ? Icons.link_off : Icons.link,
                       size: 16,
-                      color: onCard,
+                      color: primaryColor,
                     ),
-                    label: Text(loopClosed ? 'Open loop' : 'Close loop'),
+                    label: Text(
+                      loopClosed ? 'Open loop' : 'Close loop',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: onSurface,
+                      ),
+                    ),
                   ),
                 ),
               ],
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               if (editingIndex != null) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
+                    horizontal: 10,
+                    vertical: 8,
                   ),
-                  margin: const EdgeInsets.only(bottom: 4),
+                  margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer.withValues(
-                      alpha: 0.6,
+                    color: theme.colorScheme.tertiaryContainer.withValues(
+                      alpha: 0.8,
                     ),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: theme.colorScheme.tertiary.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
+                      Icon(
+                        Icons.edit,
+                        size: 16,
+                        color: theme.colorScheme.onTertiaryContainer,
+                      ),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           'Editing point #${editingIndex! + 1} — tap map to move',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: onCard,
+                            color: theme.colorScheme.onTertiaryContainer,
+                            fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -995,7 +1213,7 @@ class _DistancePanel extends StatelessWidget {
                       IconButton(
                         tooltip: 'Cancel edit',
                         icon: const Icon(Icons.close, size: 16),
-                        color: onCard,
+                        color: theme.colorScheme.error,
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
                         onPressed: onCancelEdit,
@@ -1004,44 +1222,79 @@ class _DistancePanel extends StatelessWidget {
                   ),
                 ),
               ],
-              Text(
-                'Total: ${_fmt(_totalMeters)}',
-                style: theme.textTheme.titleSmall?.copyWith(color: onCard),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Total: ${_fmt(_totalMeters)}',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               if (segmentMeters.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 6),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'Tap the map to add points in edit mode (green edit button)',
+                    style: TextStyle(
+                      color: onSurface.withValues(alpha: 0.7),
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 )
               else ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 160),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (
-                          int i = 0;
-                          i < segmentMeters.length - (loopClosed ? 1 : 0);
-                          i++
-                        )
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(
-                              'Segment ${i + 1}: ${_fmt(segmentMeters[i])}',
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainer.withValues(
+                        alpha: 0.3,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (
+                            int i = 0;
+                            i < segmentMeters.length - (loopClosed ? 1 : 0);
+                            i++
+                          )
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                'Segment ${i + 1}: ${_fmt(segmentMeters[i])}',
+                                style: TextStyle(
+                                  color: onSurface,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
                             ),
-                          ),
-                        if (loopClosed && segmentMeters.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(
-                              'Loop segment: ${_fmt(segmentMeters.last)}',
+                          if (loopClosed && segmentMeters.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                'Loop segment: ${_fmt(segmentMeters.last)}',
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
