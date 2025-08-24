@@ -268,6 +268,12 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 4),
+                    ListTile(
+                      leading: const Icon(Icons.close),
+                      title: const Text('Close'),
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
                   ],
                 ),
               ),
