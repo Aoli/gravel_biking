@@ -1704,6 +1704,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         return;
       }
       if (!mounted) return;
+
+      // Clear loading state immediately after background processing
+      setState(() => _isImporting = false);
+
       setState(() {
         _routePoints
           ..clear()
@@ -1715,18 +1719,22 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
           // remove duplicated closing point for internal representation
           _routePoints.removeLast();
         }
-        // For large routes, defer segment computation to prevent UI freeze
+        // For large routes, clear segments and compute later
         if (_routePoints.length > 1000) {
           _segmentMeters.clear();
-          // Will compute segments asynchronously after UI update
-          Future.delayed(
-            const Duration(milliseconds: 100),
-            _recomputeSegmentsAsync,
-          );
         } else {
           _recomputeSegments();
         }
       });
+
+      // Trigger async segment computation for large routes after UI update
+      if (_routePoints.length > 1000) {
+        Future.delayed(
+          const Duration(milliseconds: 100),
+          _recomputeSegmentsAsync,
+        );
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Importerade ${_routePoints.length} punkter från GPX'),
@@ -1734,13 +1742,11 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       );
     } catch (e) {
       if (!mounted) return;
+      // Clear loading state immediately on error
+      setState(() => _isImporting = false);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
-    } finally {
-      if (mounted) {
-        setState(() => _isImporting = false);
-      }
     }
   }
 }
