@@ -142,6 +142,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   bool _isImporting = false;
   bool _isSaving = false;
 
+  // Global loading overlay for file operations
+  bool get _isFileOperationLoading => _isExporting || _isImporting;
+
   // Dynamic point sizing based on route point density
   // This system automatically adjusts marker sizes to prevent visual overlap in dense routes
   double _calculateDynamicPointSize() {
@@ -228,14 +231,12 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       return;
     }
 
-    print('Starting save operation for: $name');
     setState(() => _isSaving = true);
 
     try {
       // Add a small delay to make loading indicator visible
       await Future.delayed(const Duration(milliseconds: 100));
 
-      print('Calling route service save...');
       await _routeService.saveCurrentRoute(
         name: name,
         routePoints: _routePoints,
@@ -243,7 +244,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         description: null, // Can be enhanced later with description input
       );
 
-      print('Save completed, reloading routes...');
       await _loadSavedRoutes(); // Refresh the local list
 
       if (mounted) {
@@ -252,7 +252,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         ).showSnackBar(SnackBar(content: Text('Rutt "$name" sparad')));
       }
     } catch (e) {
-      print('Save failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -260,7 +259,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       }
     } finally {
       if (mounted) {
-        print('Clearing save loading state');
         setState(() => _isSaving = false);
       }
     }
@@ -672,12 +670,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           onTap: () async {
                             // Set loading state first while drawer is still open
                             setState(() => _isImporting = true);
-                            // Small delay to show the loading indicator
-                            await Future.delayed(
-                              const Duration(milliseconds: 500),
-                            );
                             Navigator.of(context).pop();
-                            _importGeoJsonRouteInternal();
+
+                            // Add a small delay to ensure UI is updated
+                            await Future.delayed(
+                              const Duration(milliseconds: 100),
+                            );
+                            await _importGeoJsonRouteInternal();
                           },
                         ),
                         ListTile(
@@ -705,12 +704,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           onTap: () async {
                             // Set loading state first while drawer is still open
                             setState(() => _isExporting = true);
-                            // Small delay to show the loading indicator
-                            await Future.delayed(
-                              const Duration(milliseconds: 500),
-                            );
                             Navigator.of(context).pop();
-                            _exportGeoJsonRoute();
+
+                            // Add a small delay to ensure UI is updated
+                            await Future.delayed(
+                              const Duration(milliseconds: 100),
+                            );
+                            await _exportGeoJsonRoute();
                           },
                         ),
                       ],
@@ -753,12 +753,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           onTap: () async {
                             // Set loading state first while drawer is still open
                             setState(() => _isImporting = true);
-                            // Small delay to show the loading indicator
-                            await Future.delayed(
-                              const Duration(milliseconds: 500),
-                            );
                             Navigator.of(context).pop();
-                            _importGpxRoute();
+
+                            // Add a small delay to ensure UI is updated
+                            await Future.delayed(
+                              const Duration(milliseconds: 100),
+                            );
+                            await _importGpxRoute();
                           },
                         ),
                         ListTile(
@@ -786,12 +787,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           onTap: () async {
                             // Set loading state first while drawer is still open
                             setState(() => _isExporting = true);
-                            // Small delay to show the loading indicator
-                            await Future.delayed(
-                              const Duration(milliseconds: 500),
-                            );
                             Navigator.of(context).pop();
-                            _exportGpxRoute();
+
+                            // Add a small delay to ensure UI is updated
+                            await Future.delayed(
+                              const Duration(milliseconds: 100),
+                            );
+                            await _exportGpxRoute();
                           },
                         ),
                       ],
@@ -888,6 +890,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             builder: (context) => SavedRoutesPage(
                               routeService: _routeService,
                               onLoadRoute: _loadRouteFromList,
+                              onRoutesChanged:
+                                  _loadSavedRoutes, // Add callback for when routes are modified
                             ),
                           ),
                         );
@@ -1078,6 +1082,34 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             ],
           ),
           if (isLoading) const Center(child: CircularProgressIndicator()),
+          // Global file operation loading overlay
+          if (_isFileOperationLoading)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 4,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _isImporting ? 'Importerar...' : 'Exporterar...',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (_buildNumber.isNotEmpty)
             Positioned(
               bottom: 10,
@@ -1366,18 +1398,15 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   Future<void> _importGeoJsonRouteInternal() async {
     try {
-      print('Opening file picker');
       final res = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['geojson', 'json'],
         withData: true,
       );
       if (res == null || res.files.isEmpty) {
-        print('No file selected or picker cancelled');
         return;
       }
 
-      print('File selected, processing...');
       final file = res.files.first;
       final data = file.bytes ?? Uint8List(0);
       if (data.isEmpty) {

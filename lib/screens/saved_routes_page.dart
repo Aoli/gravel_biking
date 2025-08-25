@@ -9,11 +9,13 @@ import '../utils/coordinate_utils.dart';
 class SavedRoutesPage extends StatefulWidget {
   final RouteService routeService;
   final Function(List<LatLng>) onLoadRoute;
+  final VoidCallback? onRoutesChanged; // Callback for when routes are modified
 
   const SavedRoutesPage({
     super.key,
     required this.routeService,
     required this.onLoadRoute,
+    this.onRoutesChanged,
   });
 
   @override
@@ -201,6 +203,9 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         await widget.routeService.updateRoute(updatedRoute);
         await _loadRoutes();
 
+        // Notify parent widget that routes have changed
+        widget.onRoutesChanged?.call();
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Ruttnamn ändrat till "$result"')),
@@ -315,6 +320,10 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
       try {
         await widget.routeService.deleteRouteObject(route);
         await _loadRoutes();
+
+        // Notify parent widget that routes have changed
+        widget.onRoutesChanged?.call();
+
         if (mounted) {
           ScaffoldMessenger.of(
             context,
