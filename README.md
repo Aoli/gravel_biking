@@ -44,6 +44,7 @@ It runs on Android, iOS, Web, macOS, Linux, and Windows.
 
 ## Core features
 
+- **Cross-platform icon compatibility**: All icons use Material Design with Google Fonts integration for consistent visibility across Android, iOS, and web platforms
 - Gravel overlay from OpenStreetMap via the Overpass API, fetched for the current visible map bounds (debounced while panning/zooming).
 - Measurement mode with a green/red toggle in the AppBar.
   - Add points by tapping the map (when enabled).
@@ -102,7 +103,7 @@ On Web, the app starts in a browser; on mobile/desktop, select a device in your 
   - `utils/` - Utility functions (coordinate parsing, formatting)
   - `widgets/` - Reusable UI components (PointMarker, DistancePanel)
 
-See `lib/context/architecture.md` for detailed architecture documentation and `lib/main.dart` for the implementation.
+See `architecture.md` for detailed architecture documentation and `lib/main.dart` for the implementation.
 
 ## Data sources & tiles
 
@@ -136,13 +137,14 @@ This results in displays like `v0.1.0 #27`. Locally, only the version shows: `v0
 
 ## Troubleshooting
 
+- **Icons not visible**: The app uses Material Icons with Google Fonts fallback for web compatibility. If icons appear blank, ensure proper network connectivity for web apps or restart the application.
 - No gravel lines visible: the Overpass API may be rate‑limited, or the area might not have tagged gravel roads. Try panning/zooming or wait and retry.
 - Widget test logs 400 responses: expected in tests; real devices will make network calls.
 - Tile usage: if you see rate‑limit or policy warnings, consider switching to a provider with an API key.
 
 ## Roadmap
 
-The active roadmap and change history are tracked in `lib/context/roadmap.md`.
+The active roadmap and change history are tracked in `roadmap.md`.
 
 ---
 Last updated: 2025‑08‑25

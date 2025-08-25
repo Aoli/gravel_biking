@@ -290,6 +290,16 @@ Last updated: 2025‑08‑25
 
 ## Change Log
 
+- 2025‑08‑25: **Icon Visibility Improvements**: Enhanced cross-platform compatibility and visibility of all app icons:
+  - Added Google Fonts Material Icons CDN link to web/index.html for better web app compatibility
+  - Updated all icons to use outlined variants (e.g., `Icons.my_location_outlined`, `Icons.straighten_outlined`) for improved contrast
+  - Replaced problematic icons with more universally visible alternatives:
+    - `Icons.folder_open` → `Icons.folder` (file management)
+    - `Icons.file_open/file_download` → `Icons.upload_file/download` (import/export actions)
+    - `Icons.alt_route` → `Icons.terrain` (gravel overlay switch)
+    - `Icons.add` → `Icons.add_circle_outline` (better visibility)
+  - Improved icon theming consistency across drawer and UI components
+  - Benefits: Better visibility on Android devices, enhanced web app compatibility, consistent icon styling
 - 2025‑08‑25: **Major Refactoring**: Restructured codebase from monolithic 1,816-line main.dart into organized architecture:
   - Created `models/saved_route.dart` for data structures
   - Added `services/` layer: `route_service.dart`, `location_service.dart`, `file_service.dart`
