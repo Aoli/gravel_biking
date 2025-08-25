@@ -16,6 +16,27 @@ All project documentation is organized in the `/docs` folder:
 
 **Important**: Always check existing documentation in `/docs` before creating new files to avoid duplication.
 
+## Platform Development Priorities
+
+### Current Focus: WebApp for All Devices
+
+- **Primary Target**: Web application accessible on all platforms (Android, iOS, desktop)
+- **Active Development**: Enhanced web compatibility, icon loading, PWA features
+- **Status**: Production-ready with comprehensive cross-platform icon support
+
+### Future Development: Native Mobile Apps
+
+- **Android App**: Planned for future development (currently pending)
+- **iOS App**: Planned for future development (currently pending)
+- **Preparation**: Code structure supports native development with path_provider for iOS file operations
+
+### Platform-Specific Considerations
+
+- **Web Priority**: Focus on WebApp compatibility across all devices and browsers
+- **File Operations**: Implemented with path_provider for future iOS compatibility
+- **Icon System**: Enhanced Material Icons loading for Android WebView reliability
+- **Cross-Platform**: Maintain code structure that supports future native app development
+
 ## Documentation Guidelines
 
 ### Language Requirements
@@ -83,6 +104,7 @@ file_picker: ^8.3.7 # File selection
 file_saver: ^0.2.14 # File saving
 xml: ^6.5.0 # GPX parsing
 package_info_plus: ^8.3.1 # App version info
+path_provider: ^2.1.4 # iOS-compatible file path access
 ```
 
 ### Icons and UI
@@ -113,6 +135,8 @@ package_info_plus: ^8.3.1 # App version info
 - Support GeoJSON (LineString) and GPX 1.1 formats
 - Preserve loop state and metadata in exports
 - Use system file picker/saver for cross-platform compatibility
+- Implement path_provider for iOS file system access
+- Use conditional platform handling (kIsWeb vs mobile)
 - Validate file formats before processing
 
 ### Location Services
@@ -233,10 +257,11 @@ final colorScheme = theme.colorScheme;
 
 ### Web
 
-- Material Icons CDN integration
-- Proper meta tags for SEO
-- Service worker configuration
-- File operations with web-safe APIs
+- Material Icons CDN integration with multiple format support
+- Proper meta tags for SEO and PWA functionality
+- Service worker configuration for offline capability
+- Enhanced Android WebView compatibility with font loading
+- File operations with web-safe APIs and fallback handling
 
 ## Development Workflow
 

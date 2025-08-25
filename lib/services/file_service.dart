@@ -1,15 +1,17 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:xml/xml.dart' as xml;
 
 /// Service for handling file import/export functionality
 class FileService {
-  /// Export route as GeoJSON file
+  /// Export route as GeoJSON file with iOS compatibility
   Future<void> exportGeoJsonRoute({
     required BuildContext context,
     required List<LatLng> routePoints,
@@ -50,12 +52,28 @@ class FileService {
     final bytes = Uint8List.fromList(utf8.encode(content));
 
     try {
-      await FileSaver.instance.saveFile(
-        name: 'gravel_route.geojson',
-        bytes: bytes,
-        ext: 'geojson',
-        mimeType: MimeType.json,
-      );
+      // Use FileSaver for web and path_provider for iOS/mobile
+      if (kIsWeb) {
+        await FileSaver.instance.saveFile(
+          name: 'gravel_route.geojson',
+          bytes: bytes,
+          ext: 'geojson',
+          mimeType: MimeType.json,
+        );
+      } else {
+        // For iOS/mobile platforms, save to Documents directory first
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/gravel_route.geojson');
+        await file.writeAsBytes(bytes);
+
+        // Then use FileSaver to show save dialog
+        await FileSaver.instance.saveFile(
+          name: 'gravel_route.geojson',
+          bytes: bytes,
+          ext: 'geojson',
+          mimeType: MimeType.json,
+        );
+      }
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -163,7 +181,7 @@ class FileService {
     }
   }
 
-  /// Export route as GPX file
+  /// Export route as GPX file with iOS compatibility
   Future<void> exportGpxRoute({
     required BuildContext context,
     required List<LatLng> routePoints,
@@ -224,12 +242,28 @@ class FileService {
     final bytes = Uint8List.fromList(utf8.encode(gpxString));
 
     try {
-      await FileSaver.instance.saveFile(
-        name: 'gravel_route.gpx',
-        bytes: bytes,
-        ext: 'gpx',
-        mimeType: MimeType.other,
-      );
+      // Use FileSaver for web and path_provider for iOS/mobile
+      if (kIsWeb) {
+        await FileSaver.instance.saveFile(
+          name: 'gravel_route.gpx',
+          bytes: bytes,
+          ext: 'gpx',
+          mimeType: MimeType.other,
+        );
+      } else {
+        // For iOS/mobile platforms, save to Documents directory first
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/gravel_route.gpx');
+        await file.writeAsBytes(bytes);
+
+        // Then use FileSaver to show save dialog
+        await FileSaver.instance.saveFile(
+          name: 'gravel_route.gpx',
+          bytes: bytes,
+          ext: 'gpx',
+          mimeType: MimeType.other,
+        );
+      }
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

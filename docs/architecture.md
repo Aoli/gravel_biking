@@ -106,10 +106,15 @@ Build reusable UI components following these specifications:
 
 Implement cross-platform icon compatibility:
 
-- Use Google Material Icons with CDN fallback integration
+- Use Google Material Icons with comprehensive CDN integration
 - Apply filled icon variants for universal platform support
-- Configure Material Icons preloading, fallback fonts, and CSS optimizations
-- Set consistent theming for light/dark modes with web-specific color settings
+- Configure multiple font format preloading (WOFF2, WOFF)
+- Implement enhanced Android WebView compatibility:
+  - Multiple fallback font families
+  - WebKit-specific rendering optimizations
+  - Font loading verification with timeout fallbacks
+- Set consistent theming for light/dark modes with platform-specific color settings
+- Use JavaScript font loading API with error handling and console logging
 
 ### Measurement System
 
@@ -129,13 +134,17 @@ Create local route persistence system:
 - Enable auto-centering when routes are loaded
 - Provide quick-save from distance panel and full management in drawer
 
-### Import/Export
+### File Operations
 
 Support file operations for route data:
 
 - **GeoJSON**: Implement LineString format with loop state preservation
 - **GPX**: Support GPX 1.1 track format (trk/trkseg/trkpt structure)
-- Use system file picker/saver for cross-platform compatibility
+- **Cross-platform file handling**: Use conditional platform logic
+  - Web: Direct FileSaver API for browser downloads
+  - iOS/Android: Use path_provider + FileSaver for native file system access
+- **iOS Compatibility**: Implement path_provider for proper iOS file system integration
+- **Error Handling**: Provide fallback behavior and user feedback
 
 ### Location Services
 

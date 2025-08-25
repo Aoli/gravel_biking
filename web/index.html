@@ -28,15 +28,18 @@
 
   <!-- Material Icons for better web compatibility -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <!-- Preload Material Icons for better performance -->
+  <!-- Multiple format preloading for better cross-platform support -->
   <link rel="preload" href="https://fonts.gstatic.com/s/materialicons/v140/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2" as="font" type="font/woff2" crossorigin>
-  <!-- Fallback for older browsers -->
+  <link rel="preload" href="https://fonts.gstatic.com/s/materialicons/v140/flUhRq6tzZclQEJ-Vdg-IuiaDsNa.woff" as="font" type="font/woff" crossorigin>
+  <!-- Multiple fallback variants for maximum compatibility -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 
-  <!-- Ensure icons render properly across all platforms -->
+  <!-- Enhanced cross-platform icon styling -->
   <style>
+    /* Primary Material Icons implementation */
     .material-icons {
-      font-family: 'Material Icons';
+      font-family: 'Material Icons', 'Material Icons Outlined', 'Material Icons Round', sans-serif;
       font-weight: normal;
       font-style: normal;
       font-size: 24px;
@@ -50,16 +53,37 @@
       -webkit-font-feature-settings: 'liga';
       font-feature-settings: 'liga';
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
     }
     
-    /* Force icon font loading */
+    /* Android WebView specific optimizations */
+    @supports (-webkit-appearance: none) {
+      .material-icons {
+        -webkit-text-stroke: 0.01em transparent;
+        text-shadow: 0 0 0 #000;
+      }
+    }
+    
+    /* Force consistent rendering across browsers */
     body {
       font-display: swap;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
     
     /* Ensure icons are visible during font load */
     [class*="material-icons"] {
       font-display: swap;
+      font-synthesis: none;
+    }
+    
+    /* Android-specific icon visibility fixes */
+    @media screen and (-webkit-min-device-pixel-ratio: 0) {
+      .material-icons {
+        font-variant-ligatures: common-ligatures;
+        font-kerning: normal;
+      }
     }
   </style>
 
@@ -69,21 +93,59 @@
   <title>Gravel First</title>
   <link rel="manifest" href="manifest.json">
   
-  <!-- Web app icon font loading script -->
+  <!-- Enhanced web app icon font loading script -->
   <script>
-    // Ensure Material Icons are fully loaded before app starts
+    // Comprehensive Material Icons loading for all platforms including Android WebView
     document.addEventListener('DOMContentLoaded', function() {
-      const materialIcons = new FontFace(
-        'Material Icons',
-        'url(https://fonts.gstatic.com/s/materialicons/v142/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2)',
-        { display: 'swap' }
-      );
+      // Load multiple font formats for maximum compatibility
+      const fontFormats = [
+        {
+          family: 'Material Icons',
+          url: 'https://fonts.gstatic.com/s/materialicons/v142/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2',
+          format: 'woff2'
+        },
+        {
+          family: 'Material Icons',
+          url: 'https://fonts.gstatic.com/s/materialicons/v142/flUhRq6tzZclQEJ-Vdg-IuiaDsNa.woff',
+          format: 'woff'
+        }
+      ];
       
-      materialIcons.load().then(function(font) {
-        document.fonts.add(font);
-      }).catch(function(error) {
-        console.warn('Material Icons font failed to load:', error);
+      // Load fonts with fallback handling
+      fontFormats.forEach(function(fontConfig, index) {
+        try {
+          const materialIcons = new FontFace(
+            fontConfig.family,
+            `url(${fontConfig.url}) format('${fontConfig.format}')`,
+            { 
+              display: 'swap',
+              weight: 'normal',
+              style: 'normal'
+            }
+          );
+          
+          materialIcons.load().then(function(font) {
+            document.fonts.add(font);
+            console.log(`Material Icons ${fontConfig.format} loaded successfully`);
+          }).catch(function(error) {
+            console.warn(`Material Icons ${fontConfig.format} failed to load:`, error);
+            // Fallback: ensure CSS font is available
+            if (index === fontFormats.length - 1) {
+              document.body.classList.add('fonts-loaded');
+            }
+          });
+        } catch (error) {
+          console.warn('FontFace API not supported, relying on CSS font loading');
+        }
       });
+      
+      // Force font check after timeout (Android WebView fix)
+      setTimeout(function() {
+        if (!document.fonts.check('24px "Material Icons"')) {
+          console.warn('Material Icons not detected, forcing font refresh');
+          document.body.style.fontFamily = 'Material Icons, sans-serif';
+        }
+      }, 2000);
     });
   </script>
 </head>
