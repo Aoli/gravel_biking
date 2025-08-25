@@ -12,13 +12,14 @@ import 'package:file_saver/file_saver.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:xml/xml.dart' as xml;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Import our refactored components
 import 'models/saved_route.dart';
 import 'utils/coordinate_utils.dart';
 import 'widgets/point_marker.dart';
 import 'widgets/distance_panel.dart';
+import 'screens/saved_routes_page.dart';
+import 'services/route_service.dart';
 
 void main() => runApp(const MyApp());
 
@@ -138,11 +139,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   // Saved routes
   final List<SavedRoute> _savedRoutes = [];
-  static const int _maxSavedRoutes = 5;
+  static const int _maxSavedRoutes = 50; // Updated from 5 to 50
+  late final RouteService _routeService;
 
   @override
   void initState() {
     super.initState();
+    _routeService = RouteService();
     _loadAppVersion();
     _loadSavedRoutes();
     // Initial fetch for a sensible area (Stockholm bbox)
@@ -160,28 +163,15 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   // Saved Routes Management
   Future<void> _loadSavedRoutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final routesJson = prefs.getStringList('saved_routes') ?? [];
-
-    setState(() {
-      _savedRoutes.clear();
-      for (final routeJson in routesJson) {
-        try {
-          final route = SavedRoute.fromJson(json.decode(routeJson));
-          _savedRoutes.add(route);
-        } catch (e) {
-          debugPrint('Error loading saved route: $e');
-        }
-      }
-    });
-  }
-
-  Future<void> _saveSavedRoutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final routesJson = _savedRoutes
-        .map((route) => json.encode(route.toJson()))
-        .toList();
-    await prefs.setStringList('saved_routes', routesJson);
+    try {
+      final routes = await _routeService.loadSavedRoutes();
+      setState(() {
+        _savedRoutes.clear();
+        _savedRoutes.addAll(routes);
+      });
+    } catch (e) {
+      debugPrint('Error loading saved routes: $e');
+    }
   }
 
   Future<void> _saveCurrentRoute(String name) async {
@@ -192,38 +182,38 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       return;
     }
 
-    // Remove oldest route if we're at the limit
-    if (_savedRoutes.length >= _maxSavedRoutes) {
-      _savedRoutes.removeAt(0);
-    }
+    try {
+      await _routeService.saveCurrentRoute(
+        name: name,
+        routePoints: _routePoints,
+        loopClosed: _loopClosed,
+        description: null, // Can be enhanced later with description input
+      );
 
-    final newRoute = SavedRoute(
-      name: name,
-      points: List.from(_routePoints),
-      loopClosed: _loopClosed,
-      savedAt: DateTime.now(),
-    );
+      await _loadSavedRoutes(); // Refresh the local list
 
-    setState(() {
-      _savedRoutes.add(newRoute);
-    });
-
-    await _saveSavedRoutes();
-
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Rutt "$name" sparad')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Rutt "$name" sparad')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fel vid sparande: $e')));
+      }
     }
   }
 
-  Future<void> _loadSavedRoute(SavedRoute route) async {
+  /// Load route from SavedRoutesPage - no navigation pops needed
+  void _loadRouteFromList(List<LatLng> routePoints) {
     setState(() {
       _routePoints.clear();
-      _routePoints.addAll(route.points);
+      _routePoints.addAll(routePoints);
       _segmentMeters.clear();
       _editingIndex = null;
-      _loopClosed = route.loopClosed;
+      _loopClosed = false; // Will be updated by the service if needed
 
       // Recalculate segment distances
       for (int i = 1; i < _routePoints.length; i++) {
@@ -231,25 +221,11 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
           _distance.as(LengthUnit.Meter, _routePoints[i - 1], _routePoints[i]),
         );
       }
-
-      // Add loop segment if the route was closed
-      if (_loopClosed && _routePoints.length >= 3) {
-        _segmentMeters.add(
-          _distance.as(LengthUnit.Meter, _routePoints.last, _routePoints.first),
-        );
-      }
     });
 
     // Center map on the loaded route
     if (_routePoints.isNotEmpty) {
       _centerMapOnRoute();
-    }
-
-    if (mounted) {
-      Navigator.of(context).pop(); // Close drawer
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Rutt "${route.name}" laddad')));
     }
   }
 
@@ -282,20 +258,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       );
 
       _mapController.fitCamera(CameraFit.bounds(bounds: bounds));
-    }
-  }
-
-  Future<void> _deleteSavedRoute(int index) async {
-    final routeName = _savedRoutes[index].name;
-    setState(() {
-      _savedRoutes.removeAt(index);
-    });
-    await _saveSavedRoutes();
-
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Rutt "$routeName" borttagen')));
     }
   }
 
@@ -703,105 +665,68 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                     const SizedBox(height: 8),
                     // Saved Routes Section
-                    ExpansionTile(
+                    ListTile(
                       leading: Icon(
                         Icons.bookmark,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
-                      title: Row(
+                      title: Text(
+                        'Sparade rutter',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                      ),
+                      subtitle: Text(
+                        '${_savedRoutes.length}/50 rutter',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: Text(
-                              'Sparade rutter',
-                              style: Theme.of(context).textTheme.bodyLarge
-                                  ?.copyWith(fontWeight: FontWeight.w500),
-                            ),
-                          ),
                           IconButton(
                             icon: Icon(
                               Icons.help,
                               size: 20,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             onPressed: _showSavedRoutesHelpDialog,
                             visualDensity: VisualDensity.compact,
                             tooltip: 'Information om sparade rutter',
                           ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                         ],
                       ),
-                      subtitle: Text(
-                        '${_savedRoutes.length}/5 rutter',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      initiallyExpanded: false,
-                      children: [
-                        // Save current route button
-                        ListTile(
-                          leading: Icon(
-                            Icons.add,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          title: Text(
-                            'Spara aktuell rutt',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          enabled: _routePoints.isNotEmpty,
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            _showSaveRouteDialog();
-                          },
-                        ),
-                        if (_savedRoutes.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              'Inga sparade rutter ännu',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                              textAlign: TextAlign.center,
+                      onTap: () {
+                        Navigator.of(context).pop(); // Close drawer
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SavedRoutesPage(
+                              routeService: _routeService,
+                              onLoadRoute: _loadRouteFromList,
                             ),
-                          )
-                        else
-                          ...List.generate(_savedRoutes.length, (index) {
-                            final route = _savedRoutes[index];
-                            return ListTile(
-                              leading: Icon(
-                                Icons.route,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                              title: Text(
-                                route.name,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              subtitle: Text(
-                                '${route.points.length} punkter${route.loopClosed ? ' • Stängd slinga' : ''} • ${route.savedAt.day}/${route.savedAt.month}',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    ),
-                              ),
-                              trailing: IconButton(
-                                icon: Icon(
-                                  Icons.delete_outline,
-                                  color: Theme.of(context).colorScheme.error,
-                                  size: 20,
-                                ),
-                                onPressed: () => _deleteSavedRoute(index),
-                              ),
-                              onTap: () => _loadSavedRoute(route),
-                            );
-                          }),
-                      ],
+                          ),
+                        );
+                      },
+                    ),
+                    // Save current route button
+                    ListTile(
+                      leading: Icon(
+                        Icons.add,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      title: Text(
+                        'Spara aktuell rutt',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      enabled: _routePoints.isNotEmpty,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _showSaveRouteDialog();
+                      },
                     ),
                     ListTile(
                       leading: Icon(

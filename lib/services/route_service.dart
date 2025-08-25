@@ -2,76 +2,156 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/saved_route.dart';
 
-/// Service for managing saved routes functionality
+/// Enhanced service for managing saved routes with Hive storage
 class RouteService {
-  static const int maxSavedRoutes = 5;
+  static const int maxSavedRoutes = 50;
+  static const String _boxName = 'saved_routes';
   final Distance _distance = const Distance();
+  Box<SavedRoute>? _routeBox;
 
-  /// Load saved routes from local storage
-  Future<List<SavedRoute>> loadSavedRoutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final routesJson = prefs.getStringList('saved_routes') ?? [];
-    final routes = <SavedRoute>[];
-
-    for (final routeJson in routesJson) {
-      try {
-        final route = SavedRoute.fromJson(json.decode(routeJson));
-        routes.add(route);
-      } catch (e) {
-        debugPrint('Error loading saved route: $e');
-      }
+  /// Initialize Hive storage
+  Future<void> initialize() async {
+    await Hive.initFlutter();
+    
+    // Register adapters if not already registered
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(SavedRouteAdapter());
+    }
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(LatLngDataAdapter());
     }
 
-    return routes;
+    _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+    await _migrateFromSharedPreferences();
   }
 
-  /// Save routes list to local storage
-  Future<void> saveSavedRoutes(List<SavedRoute> routes) async {
-    final prefs = await SharedPreferences.getInstance();
-    final routesJson = routes
-        .map((route) => json.encode(route.toJson()))
-        .toList();
-    await prefs.setStringList('saved_routes', routesJson);
+  /// Get the Hive box (lazy initialization if needed)
+  Future<Box<SavedRoute>> get _box async {
+    if (_routeBox == null || !_routeBox!.isOpen) {
+      await initialize();
+    }
+    return _routeBox!;
   }
 
-  /// Save current route with given name
+  /// Load all saved routes
+  Future<List<SavedRoute>> loadSavedRoutes() async {
+    try {
+      final box = await _box;
+      return box.values.toList()..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+    } catch (e) {
+      debugPrint('Error loading saved routes: $e');
+      return [];
+    }
+  }
+
+  /// Search routes by name or description
+  Future<List<SavedRoute>> searchRoutes(String query) async {
+    try {
+      final box = await _box;
+      final allRoutes = box.values.toList();
+      
+      if (query.isEmpty) return allRoutes..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+      
+      final searchLower = query.toLowerCase();
+      final filtered = allRoutes.where((route) {
+        return route.name.toLowerCase().contains(searchLower) ||
+               (route.description?.toLowerCase().contains(searchLower) ?? false);
+      }).toList();
+      
+      return filtered..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+    } catch (e) {
+      debugPrint('Error searching routes: $e');
+      return [];
+    }
+  }
+
+  /// Save current route with enhanced metadata
   Future<SavedRoute> saveCurrentRoute({
     required String name,
     required List<LatLng> routePoints,
     required bool loopClosed,
+    String? description,
   }) async {
     if (routePoints.isEmpty) {
       throw Exception('Ingen rutt att spara');
     }
 
-    final newRoute = SavedRoute(
+    // Calculate total distance
+    final segments = calculateSegmentDistances(
+      routePoints: routePoints,
+      loopClosed: loopClosed,
+    );
+    final totalDistance = segments.fold(0.0, (sum, segment) => sum + segment);
+
+    final newRoute = SavedRoute.fromLatLng(
       name: name,
-      points: List.from(routePoints),
+      latLngPoints: List.from(routePoints),
       loopClosed: loopClosed,
       savedAt: DateTime.now(),
+      description: description,
+      distance: totalDistance,
     );
 
+    final box = await _box;
+    
+    // Remove oldest route if at capacity
+    if (box.length >= maxSavedRoutes) {
+      final oldestKey = box.keys.first;
+      await box.delete(oldestKey);
+    }
+
+    await box.add(newRoute);
     return newRoute;
   }
 
-  /// Add route to saved routes list (manages max limit)
-  List<SavedRoute> addRouteToSaved(
-    List<SavedRoute> savedRoutes,
-    SavedRoute newRoute,
-  ) {
-    final updatedRoutes = List<SavedRoute>.from(savedRoutes);
-
-    // Remove oldest route if we're at the limit
-    if (updatedRoutes.length >= maxSavedRoutes) {
-      updatedRoutes.removeAt(0);
+  /// Delete route by key
+  Future<void> deleteRoute(int key) async {
+    try {
+      final box = await _box;
+      await box.delete(key);
+    } catch (e) {
+      debugPrint('Error deleting route: $e');
     }
+  }
 
-    updatedRoutes.add(newRoute);
-    return updatedRoutes;
+  /// Delete route by SavedRoute object
+  Future<void> deleteRouteObject(SavedRoute route) async {
+    try {
+      final box = await _box;
+      final key = route.key;
+      if (key != null) {
+        await box.delete(key);
+      }
+    } catch (e) {
+      debugPrint('Error deleting route object: $e');
+    }
+  }
+
+  /// Update route (for favorites, descriptions, etc.)
+  Future<void> updateRoute(SavedRoute route) async {
+    try {
+      if (route.key != null) {
+        await route.save();
+      }
+    } catch (e) {
+      debugPrint('Error updating route: $e');
+    }
+  }
+
+  /// Get routes count
+  Future<int> getRouteCount() async {
+    try {
+      final box = await _box;
+      return box.length;
+    } catch (e) {
+      debugPrint('Error getting route count: $e');
+      return 0;
+    }
   }
 
   /// Calculate segment distances for route points
@@ -134,10 +214,39 @@ class RouteService {
     }
   }
 
-  /// Remove route at specified index
-  List<SavedRoute> removeRouteAt(List<SavedRoute> savedRoutes, int index) {
-    final updatedRoutes = List<SavedRoute>.from(savedRoutes);
-    updatedRoutes.removeAt(index);
-    return updatedRoutes;
+  /// Migrate from SharedPreferences to Hive (one-time migration)
+  Future<void> _migrateFromSharedPreferences() async {
+    try {
+      final box = await _box;
+      if (box.isNotEmpty) return; // Already migrated
+
+      final prefs = await SharedPreferences.getInstance();
+      final routesJson = prefs.getStringList('saved_routes') ?? [];
+      
+      if (routesJson.isEmpty) return;
+
+      debugPrint('Migrating ${routesJson.length} routes from SharedPreferences to Hive');
+
+      for (final routeJson in routesJson) {
+        try {
+          final routeData = json.decode(routeJson);
+          final route = SavedRoute.fromJson(routeData);
+          await box.add(route);
+        } catch (e) {
+          debugPrint('Error migrating route: $e');
+        }
+      }
+
+      // Clear old SharedPreferences data after successful migration
+      await prefs.remove('saved_routes');
+      debugPrint('Migration completed, SharedPreferences data cleared');
+    } catch (e) {
+      debugPrint('Error during migration: $e');
+    }
+  }
+
+  /// Close Hive box when done (call in app disposal)
+  Future<void> dispose() async {
+    await _routeBox?.close();
   }
 }
