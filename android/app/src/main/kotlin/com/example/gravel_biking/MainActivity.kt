@@ -1,5 +1,2 @@
-package com.example.gravel_biking
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity : FlutterActivity()
+// Legacy path placeholder. MainActivity moved to package com.aoli.gravelfirst.
+// This file is intentionally empty to avoid duplicate class declarations.

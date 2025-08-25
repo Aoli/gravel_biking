@@ -8,7 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:file_saver/file_saver.dart';
+import 'services/save_util.dart' as saver;
 import 'package:geolocator/geolocator.dart';
 import 'package:xml/xml.dart' as xml;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -323,29 +323,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     }
   }
 
-  /// Legacy method for loading route points only (kept for backward compatibility)
-  void _loadRouteFromList(List<LatLng> routePoints) {
-    setState(() {
-      _routePoints.clear();
-      _routePoints.addAll(routePoints);
-      _segmentMeters.clear();
-      _editingIndex = null;
-      _loopClosed =
-          false; // Default to open since we don't have loop state info
-
-      // Recalculate segment distances
-      for (int i = 1; i < _routePoints.length; i++) {
-        _segmentMeters.add(
-          _distance.as(LengthUnit.Meter, _routePoints[i - 1], _routePoints[i]),
-        );
-      }
-    });
-
-    // Center map on the loaded route
-    if (_routePoints.isNotEmpty) {
-      _centerMapOnRoute();
-    }
-  }
+  // Legacy method removed; use _loadRouteFromSavedRoute for loading routes
 
   void _centerMapOnRoute() {
     if (_routePoints.isEmpty) return;
@@ -1502,18 +1480,20 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       final content = const JsonEncoder.withIndent('  ').convert(fc);
       final bytes = Uint8List.fromList(utf8.encode(content));
 
-      await FileSaver.instance.saveFile(
-        name: 'gravel_route.geojson',
-        bytes: bytes,
+      final savedPath = await saver.saveBytes(
+        'gravel_route.geojson',
+        bytes,
         ext: 'geojson',
-        mimeType: MimeType.json,
+        mimeType: 'application/geo+json',
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-            'Rutt exporterad som GeoJSON',
-            style: TextStyle(fontWeight: FontWeight.w500),
+          content: Text(
+            kIsWeb
+                ? 'Rutt exporterad som GeoJSON'
+                : 'Rutt exporterad: $savedPath',
+            style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           behavior: SnackBarBehavior.floating,
@@ -1695,16 +1675,20 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         },
       );
       final gpxString = builder.buildDocument().toXmlString(pretty: true);
-      await FileSaver.instance.saveFile(
-        name: 'gravel_route.gpx',
-        bytes: Uint8List.fromList(utf8.encode(gpxString)),
+      final savedPath = await saver.saveBytes(
+        'gravel_route.gpx',
+        Uint8List.fromList(utf8.encode(gpxString)),
         ext: 'gpx',
-        mimeType: MimeType.text,
+        mimeType: 'application/gpx+xml',
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Rutt exporterad som GPX')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            kIsWeb ? 'Rutt exporterad som GPX' : 'Rutt exporterad: $savedPath',
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
