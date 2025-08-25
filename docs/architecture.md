@@ -117,8 +117,10 @@ Build dedicated screen interfaces with these specifications:
 
 Build reusable UI components following these specifications:
 
-- **`PointMarker`**: Implement route point visualization
+- **`PointMarker`**: Implement route point visualization with dynamic sizing
   - Configure marker appearance for normal and editing states
+  - Implement adaptive sizing based on route point density (10-20px range)
+  - Use theme colors with proper border and shadow effects
   - Apply consistent theming with primary/tertiary color support
 - **`DistancePanel`**: Create measurement interface
   - Display segment and total distance calculations

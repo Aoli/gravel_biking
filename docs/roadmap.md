@@ -2,6 +2,16 @@
 
 This document tracks feature work one by one with clear status and brief notes.
 
+- [x] **Dynamic Point Sizing System**: Adaptive marker sizing to prevent overlap in dense routes.
+  - Status: Done (2025‑08‑25)
+  - What: Implemented intelligent point marker sizing based on route density:
+    - Dynamic size calculation based on average distance between points
+    - Size range from 20px (sparse routes) to 10px (very dense routes)
+    - Automatic point density analysis with fallback handling
+    - Updated PointMarker widget to accept size parameter
+    - Proportional border and shadow scaling for visual consistency
+  - Benefits: Prevents marker overlap in detailed routes, maintains visual clarity across all route types
+
 - [x] **Enhanced Route Management System**: Complete overhaul of saved routes with Hive database, filtering, and editing.
   - Status: Done (2025‑08‑25)
   - What: Migrated from 5-route SharedPreferences to 50-route Hive database with advanced features:

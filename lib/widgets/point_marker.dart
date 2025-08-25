@@ -4,23 +4,36 @@ import 'package:flutter/material.dart';
 class PointMarker extends StatelessWidget {
   final int index;
   final bool isEditing;
+  final double size;
 
-  const PointMarker({super.key, required this.index, this.isEditing = false});
+  const PointMarker({
+    super.key,
+    required this.index,
+    this.isEditing = false,
+    this.size = 14.0,
+  });
 
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final tertiaryColor = Theme.of(context).colorScheme.tertiary;
 
+    // Calculate border width relative to size to maintain visual balance
+    final borderWidth = (size / 14.0 * 2.0).clamp(1.0, 3.0);
+
     return Container(
-      width: 14,
-      height: 14,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: isEditing ? tertiaryColor : primaryColor,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1)),
+        border: Border.all(color: Colors.white, width: borderWidth),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: size / 5,
+            offset: Offset(0, size / 14),
+          ),
         ],
       ),
     );

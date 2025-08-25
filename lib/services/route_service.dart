@@ -56,8 +56,9 @@ class RouteService {
       final box = await _box;
       final allRoutes = box.values.toList();
 
-      if (query.isEmpty)
+      if (query.isEmpty) {
         return allRoutes..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+      }
 
       final searchLower = query.toLowerCase();
       final filtered = allRoutes.where((route) {

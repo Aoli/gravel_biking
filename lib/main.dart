@@ -137,6 +137,47 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   bool _loopClosed = false;
   int? _editingIndex;
 
+  // Dynamic point sizing based on route point density
+  // This system automatically adjusts marker sizes to prevent visual overlap in dense routes
+  double _calculateDynamicPointSize() {
+    if (_routePoints.length < 2) return 18.0; // Default size for single points
+
+    // Calculate average distance between consecutive points to determine density
+    double totalDistance = 0.0;
+    int validSegments = 0;
+
+    for (int i = 1; i < _routePoints.length; i++) {
+      final segmentDistance = _distance.as(
+        LengthUnit.Meter,
+        _routePoints[i - 1],
+        _routePoints[i],
+      );
+      if (segmentDistance > 0) {
+        // Avoid division by zero for duplicate points
+        totalDistance += segmentDistance;
+        validSegments++;
+      }
+    }
+
+    if (validSegments == 0) return 18.0;
+
+    final averageDistance = totalDistance / validSegments;
+
+    // Adaptive sizing algorithm prevents point overlap:
+    // - Very sparse points (>1000m apart): 20px - Large, clearly visible
+    // - Sparse points (500-1000m apart): 18px - Standard size
+    // - Medium density (200-500m apart): 16px - Slightly smaller
+    // - Dense points (100-200m apart): 14px - Smaller for clarity
+    // - Very dense (50-100m apart): 12px - Much smaller to prevent overlap
+    // - Extremely dense (<50m apart): 10px - Minimal size for very detailed routes
+    if (averageDistance > 1000) return 20.0;
+    if (averageDistance > 500) return 18.0;
+    if (averageDistance > 200) return 16.0;
+    if (averageDistance > 100) return 14.0;
+    if (averageDistance > 50) return 12.0;
+    return 10.0;
+  }
+
   // Saved routes
   final List<SavedRoute> _savedRoutes = [];
   static const int _maxSavedRoutes = 50; // Updated from 5 to 50
@@ -872,20 +913,26 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               MarkerLayer(
                 markers: [
                   for (int i = 0; i < _routePoints.length; i++)
-                    Marker(
-                      point: _routePoints[i],
-                      width: 18,
-                      height: 18,
-                      alignment: Alignment.center,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _editingIndex = i),
-                        onLongPress: () => _deletePoint(i),
-                        child: PointMarker(
-                          index: i,
-                          isEditing: _editingIndex == i,
+                    () {
+                      final dynamicSize = _calculateDynamicPointSize();
+                      return Marker(
+                        point: _routePoints[i],
+                        width: dynamicSize,
+                        height: dynamicSize,
+                        alignment: Alignment.center,
+                        child: GestureDetector(
+                          onTap: () => setState(() => _editingIndex = i),
+                          onLongPress: () => _deletePoint(i),
+                          child: PointMarker(
+                            index: i,
+                            isEditing: _editingIndex == i,
+                            size:
+                                dynamicSize *
+                                0.8, // Make inner point slightly smaller
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    }(),
                 ],
               ),
             ],
@@ -1015,6 +1062,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     _segmentMeters
       ..clear()
       ..addAll(_computeSegments(_routePoints, _loopClosed));
+    // Point size calculation is handled in build method via _calculateDynamicPointSize()
   }
 
   List<double> _computeSegments(List<LatLng> pts, bool closed) {
