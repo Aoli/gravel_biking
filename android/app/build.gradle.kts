@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.gravel_biking"
+    namespace = "com.aoli.gravelfirst"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.gravel_biking"
+    applicationId = "com.aoli.gravelfirst"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -30,7 +30,7 @@ android {
         versionName = flutter.versionName
     }
 
-    buildTypes {k
+    buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
@@ -38,10 +38,11 @@ android {
         }
     }
 
-    // Ensure proper font rendering
-    packagingOptions {
-        pickFirst("**/libc++_shared.so")
-        pickFirst("**/libjsc.so")
+    // Ensure proper font rendering (AGP 8+ syntax)
+    packaging {
+        resources {
+            pickFirsts += listOf("**/libc++_shared.so", "**/libjsc.so")
+        }
     }
 }
 

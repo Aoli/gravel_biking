@@ -1,0 +1,44 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Flutter (auto)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "toolArgs": [
+                "--dart-define-from-file=env.local.json"
+            ]
+        },
+        {
+            "name": "Flutter (Chrome)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "deviceId": "chrome",
+            "toolArgs": [
+                "--dart-define-from-file=env.local.json"
+            ]
+        },
+        {
+            "name": "Flutter (Android emulator)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "deviceId": "emulator-5554",
+            "toolArgs": [
+                "--dart-define-from-file=env.local.json"
+            ]
+        },
+        {
+            "name": "Flutter (iOS Simulator)",
+            "type": "dart",
+            "request": "launch",
+            "program": "lib/main.dart",
+            "deviceId": "ios",
+            "toolArgs": [
+                "--dart-define-from-file=env.local.json"
+            ]
+        }
+    ]
+}

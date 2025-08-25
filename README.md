@@ -142,6 +142,42 @@ This results in displays like `v0.1.0 #27`. Locally, only the version shows: `v0
 - Widget test logs 400 responses: expected in tests; real devices will make network calls.
 - Tile usage: if you see rate‑limit or policy warnings, consider switching to a provider with an API key.
 
+## MapTiler key (safe and simple)
+
+Keep your key out of source control and pass it at runtime.
+
+- Copy the example file and set your key locally (gitignored):
+  - `env.local.example.json` → `env.local.json`, then put your key in the `MAPTILER_KEY` field.
+- Run with the file:
+
+```bash
+# Web
+flutter run -d chrome --dart-define-from-file=env.local.json
+
+# Android
+flutter run -d emulator-5554 --dart-define-from-file=env.local.json
+
+# iOS
+flutter run -d ios --dart-define-from-file=env.local.json
+```
+
+Builds:
+
+```bash
+# Web
+flutter build web --dart-define-from-file=env.local.json
+
+# Android
+flutter build apk --dart-define-from-file=env.local.json
+
+# iOS
+flutter build ios --dart-define-from-file=env.local.json
+```
+
+Notes:
+- `env.local.json` is in .gitignore. Do not commit your key.
+- For web, set domain restrictions in your MapTiler dashboard.
+
 ## Roadmap
 
 The active roadmap and change history are tracked in `roadmap.md`.

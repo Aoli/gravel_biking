@@ -153,6 +153,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   );
   // App version from pubspec.yaml
   String _appVersion = '';
+  // Package name for User-Agent (required by OSM tile policy on native)
+  String _userAgentPackageName = 'com.aoli.gravelfirst';
+  // Optional MapTiler key for production-friendly tiles (web and mobile)
+  final String _mapTilerKey = const String.fromEnvironment(
+    'MAPTILER_KEY',
+    defaultValue: '',
+  );
 
   // Measurement
   final Distance _distance = const Distance();
@@ -232,6 +239,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     final packageInfo = await PackageInfo.fromPlatform();
     setState(() {
       _appVersion = packageInfo.version;
+      // Prefer the real package name when available
+      if (packageInfo.packageName.isNotEmpty) {
+        _userAgentPackageName = packageInfo.packageName;
+      }
     });
   }
 
@@ -552,7 +563,14 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ..writeln('out geom;');
     final query = sb.toString();
     try {
-      final res = await http.post(Uri.parse(url), body: {'data': query});
+      // Provide a clear and contactable User-Agent as per Overpass/OSM policy
+      final ua =
+          'Gravel First${_appVersion.isNotEmpty ? '/$_appVersion' : ''} (+https://github.com/Aoli/gravel_biking)';
+      final res = await http.post(
+        Uri.parse(url),
+        body: {'data': query},
+        headers: {'User-Agent': ua},
+      );
       if (res.statusCode == 200) {
         final lines = await compute(
           CoordinateUtils.extractPolylineCoords,
@@ -585,7 +603,17 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   @override
   Widget build(BuildContext context) {
-    const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    // Prefer a key-based provider for reliability if a key is supplied
+    final useMapTiler = _mapTilerKey.isNotEmpty;
+    final tileUrl = useMapTiler
+        ? 'https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=$_mapTilerKey'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    final subdomains = useMapTiler
+        ? const <String>[]
+        : const <String>['a', 'b', 'c'];
+    final attribution = useMapTiler
+        ? '© MapTiler © OpenStreetMap contributors'
+        : '© OpenStreetMap contributors';
 
     return Scaffold(
       appBar: AppBar(
@@ -1063,7 +1091,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             children: [
               TileLayer(
                 urlTemplate: tileUrl,
-                userAgentPackageName: 'com.example.gravel_biking',
+                subdomains: subdomains,
+                maxZoom: 19,
+                userAgentPackageName: _userAgentPackageName,
               ),
               if (_showGravelOverlay) PolylineLayer(polylines: gravelPolylines),
               PolylineLayer(
@@ -1130,6 +1160,21 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 ],
               ),
             ],
+          ),
+          // Minimal attribution to meet OSM/MapTiler requirements
+          Positioned(
+            bottom: 4,
+            left: 12,
+            right: 12,
+            child: Text(
+              attribution,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
           ),
           if (isLoading) const Center(child: CircularProgressIndicator()),
           // Global file operation loading overlay
