@@ -51,11 +51,13 @@ class MyApp extends StatelessWidget {
             visualDensity: VisualDensity.compact,
           ),
         ),
-        iconTheme: const IconThemeData(
-          // Ensure icons are rendered properly on Android
+        iconTheme: IconThemeData(
+          // Ensure icons are rendered properly across all platforms
           applyTextScaling: false,
           // Force icon font loading
           size: 24,
+          // Web-specific optimizations for Material Icons
+          color: kIsWeb ? Colors.black87 : null,
         ),
       ),
       darkTheme: ThemeData(
@@ -84,11 +86,13 @@ class MyApp extends StatelessWidget {
             shadowColor: Colors.black54,
           ),
         ),
-        iconTheme: const IconThemeData(
-          // Ensure icons are rendered properly on Android
+        iconTheme: IconThemeData(
+          // Ensure icons are rendered properly across all platforms
           applyTextScaling: false,
           // Force icon font loading
           size: 24,
+          // Web-specific optimizations for Material Icons
+          color: kIsWeb ? Colors.white : null,
         ),
       ),
       home: const GravelStreetsMap(),
@@ -549,7 +553,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       child: Align(
                         alignment: Alignment.bottomLeft,
                         child: Text(
-                          'Meny',
+                          'Gravel First',
                           style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.onPrimary,
