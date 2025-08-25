@@ -25,8 +25,13 @@ void main() => runApp(const MyApp());
 
 /// Background isolate function for parsing GPX track points
 /// This prevents UI freezing when processing large GPX files with thousands of points
-List<LatLng> _parseGpxPoints(String xmlText) {
-  final doc = xml.XmlDocument.parse(xmlText);
+/// Handles both UTF-8 decoding and XML parsing in the background
+List<LatLng> _parseGpxPoints(Uint8List data) {
+  // Decode UTF-8 in background isolate
+  final text = utf8.decode(data);
+
+  // Parse XML in background isolate
+  final doc = xml.XmlDocument.parse(text);
   final trkpts = doc.findAllElements('trkpt');
   final pts = <LatLng>[];
 
@@ -1686,10 +1691,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         ).showSnackBar(const SnackBar(content: Text('Selected file is empty')));
         return;
       }
-      final text = utf8.decode(data);
 
       // Parse GPX in background isolate to prevent UI freezing
-      final pts = await compute(_parseGpxPoints, text);
+      // This handles both UTF-8 decoding and XML parsing in the background
+      final pts = await compute(_parseGpxPoints, data);
 
       if (pts.isEmpty) {
         if (!mounted) return;
