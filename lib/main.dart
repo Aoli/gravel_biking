@@ -47,9 +47,15 @@ class MyApp extends StatelessWidget {
         ),
         iconButtonTheme: IconButtonThemeData(
           style: IconButton.styleFrom(
-            elevation: 1,
-            shadowColor: Colors.black26,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
           ),
+        ),
+        iconTheme: const IconThemeData(
+          // Ensure icons are rendered properly on Android
+          applyTextScaling: false,
+          // Force icon font loading
+          size: 24,
         ),
       ),
       darkTheme: ThemeData(
@@ -77,6 +83,12 @@ class MyApp extends StatelessWidget {
             elevation: 1,
             shadowColor: Colors.black54,
           ),
+        ),
+        iconTheme: const IconThemeData(
+          // Ensure icons are rendered properly on Android
+          applyTextScaling: false,
+          // Force icon font loading
+          size: 24,
         ),
       ),
       home: const GravelStreetsMap(),
@@ -355,7 +367,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
           title: Row(
             children: [
               Icon(
-                Icons.help_outline,
+                Icons.help,
                 color: Theme.of(context).colorScheme.primary,
                 size: 24,
               ),
@@ -490,7 +502,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             child: IconButton(
               tooltip: 'Hitta mig',
               icon: Icon(
-                Icons.my_location_outlined,
+                Icons.my_location,
                 color: Theme.of(context).colorScheme.onSecondaryContainer,
                 size: 22,
               ),
@@ -515,11 +527,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               tooltip: _measureEnabled
                   ? 'Stäng av mätläge'
                   : 'Aktivera mätläge',
-              icon: const Icon(
-                Icons.straighten_outlined,
-                color: Colors.white,
-                size: 22,
-              ),
+              icon: const Icon(Icons.straighten, color: Colors.white, size: 22),
               onPressed: () =>
                   setState(() => _measureEnabled = !_measureEnabled),
             ),
@@ -693,7 +701,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     // Saved Routes Section
                     ExpansionTile(
                       leading: Icon(
-                        Icons.bookmark_outline,
+                        Icons.bookmark,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                       title: Row(
@@ -707,7 +715,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           ),
                           IconButton(
                             icon: Icon(
-                              Icons.help_outline,
+                              Icons.help,
                               size: 20,
                               color: Theme.of(
                                 context,
@@ -730,7 +738,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         // Save current route button
                         ListTile(
                           leading: Icon(
-                            Icons.add_circle_outline,
+                            Icons.add,
                             color: Theme.of(context).colorScheme.primary,
                           ),
                           title: Text(
@@ -793,7 +801,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                     ListTile(
                       leading: Icon(
-                        Icons.close_outlined,
+                        Icons.close,
                         color: Theme.of(context).colorScheme.error,
                       ),
                       title: Text(
@@ -1021,10 +1029,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                   margin: const EdgeInsets.only(left: 4),
                   child: IconButton(
                     tooltip: 'Återställ kartposition',
-                    icon: const Icon(
-                      Icons.center_focus_strong_outlined,
-                      size: 20,
-                    ),
+                    icon: const Icon(Icons.center_focus_strong, size: 20),
                     onPressed: () {
                       _mapController.move(const LatLng(59.3293, 18.0686), 12);
                     },

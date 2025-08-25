@@ -37,6 +37,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Ensure proper font rendering
+    packagingOptions {
+        pickFirst("**/libc++_shared.so")
+        pickFirst("**/libjsc.so")
+    }
 }
 
 flutter {

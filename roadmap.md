@@ -2,6 +2,15 @@
 
 This document tracks feature work one by one with clear status and brief notes.
 
+- [x] **Android Icon Compatibility Fix**: Resolved icon visibility issues specifically on Android devices.
+  - Status: Done (2025‑08‑25)
+  - What: Applied targeted Android-specific fixes for icon rendering:
+    - Reverted to filled icon variants instead of outlined (better Android support)
+    - Added explicit IconTheme configuration with `applyTextScaling: false` and size specification
+    - Updated Android build.gradle.kts with proper font packaging options
+    - Used standard Material Icons that are universally supported across Android versions
+  - Benefits: Icons now visible on all Android devices, improved native app compatibility
+
 - [x] **Code Quality Cleanup**: Resolved all Flutter analysis warnings and issues.
   - Status: Done (2025‑08‑25)
   - What: Cleaned up codebase to pass Flutter analysis with zero issues:

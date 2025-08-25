@@ -133,6 +133,7 @@ lib/
 
 ## Change Log
 
+- **2025‑08‑25**: Android Icon Compatibility Fix - Resolved icon visibility issues on Android devices with filled icon variants, explicit IconTheme configuration, and Android build optimizations
 - **2025‑08‑25**: Code Quality Cleanup - Resolved all Flutter analysis issues, removed unnecessary imports, added missing curly braces, cleaned up unused refactoring artifacts
 - **2025‑08‑25**: Icon Visibility Improvements - Enhanced cross-platform compatibility with Google Material Icons, outlined variants for better contrast, and consistent theming
 - **2025‑08‑25**: Major Refactoring - Restructured from monolithic to layered architecture (19% code reduction)
