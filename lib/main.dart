@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -832,8 +831,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       builder: (context) {
                         final parts = <String>[];
                         if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
-                        if (_buildNumber.isNotEmpty)
+                        if (_buildNumber.isNotEmpty) {
                           parts.add('#$_buildNumber');
+                        }
                         final label = parts.join(' ');
                         if (label.isEmpty) return const SizedBox.shrink();
                         return Padding(
