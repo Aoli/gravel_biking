@@ -192,7 +192,7 @@ Logical components and responsibilities:
 - **Measurement Manager**: Route points, editing selection, distance calculations with geodesic accuracy
 - **Enhanced Routes Manager**: Hive database with 50-route capacity, search, filtering, and editing
 - **Advanced Filtering**: Multi-criteria filtering by distance, type, date, and geographic proximity
-- **Import/Export**: Cross-platform GeoJSON/GPX with path_provider iOS compatibility
+- **Import/Export**: Cross-platform GeoJSON/GPX with path_provider iOS compatibility and loading indicators
 - **Navigation & Actions**: Enhanced drawer navigation with dedicated route management page
 
 ## Data Sources
@@ -260,6 +260,8 @@ Implement these development practices:
 
 ## Change Log
 
+- **2025‑08‑25**: Loading Indicators Enhancement - Added comprehensive loading states for all file operations (import/export/save) with progress indicators, disabled concurrent operations, and improved user feedback
+- **2025‑08‑25**: Dynamic Point Sizing System - Implemented adaptive marker sizing based on route density (10-20px range) to prevent visual overlap in dense routes with automatic density analysis
 - **2025‑08‑25**: Enhanced Route Management - Migrated from SharedPreferences to Hive database supporting 50 routes with search, advanced filtering (distance, type, date, proximity), route name editing, and dedicated SavedRoutesPage with Material 3 design
 - **2025‑08‑25**: iOS Compatibility Enhancement - Integrated path_provider for cross-platform file system access, enabling proper import/export functionality on iOS devices with conditional platform handling
 - **2025‑08‑25**: Web App Enhancement - Updated app branding to "Gravel First", comprehensive web icon compatibility with Material Icons preloading, JavaScript font loading, and cross-platform CSS optimizations

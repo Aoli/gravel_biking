@@ -2,6 +2,16 @@
 
 This document tracks feature work one by one with clear status and brief notes.
 
+- [x] **Loading Indicators for File Operations**: Enhanced UX with loading states during file operations.
+  - Status: Done (2025‑08‑25)
+  - What: Added comprehensive loading indicators for all file operations:
+    - Loading states for import/export (GeoJSON, GPX) and route saving operations
+    - Disabled UI elements during operations to prevent multiple concurrent actions
+    - Visual feedback with circular progress indicators and descriptive text
+    - Non-dismissible dialog during save operations for better user experience
+    - Real-time status updates in drawer menu items
+  - Benefits: Clear feedback during file operations, prevents user confusion and multiple concurrent operations
+
 - [x] **Dynamic Point Sizing System**: Adaptive marker sizing to prevent overlap in dense routes.
   - Status: Done (2025‑08‑25)
   - What: Implemented intelligent point marker sizing based on route density:

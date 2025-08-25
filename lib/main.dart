@@ -137,6 +137,11 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   bool _loopClosed = false;
   int? _editingIndex;
 
+  // Loading states for file operations
+  bool _isExporting = false;
+  bool _isImporting = false;
+  bool _isSaving = false;
+
   // Dynamic point sizing based on route point density
   // This system automatically adjusts marker sizes to prevent visual overlap in dense routes
   double _calculateDynamicPointSize() {
@@ -215,7 +220,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     }
   }
 
-  Future<void> _saveCurrentRoute(String name) async {
+  Future<void> _saveCurrentRouteInternal(String name) async {
     if (_routePoints.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -223,7 +228,14 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       return;
     }
 
+    print('Starting save operation for: $name');
+    setState(() => _isSaving = true);
+
     try {
+      // Add a small delay to make loading indicator visible
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      print('Calling route service save...');
       await _routeService.saveCurrentRoute(
         name: name,
         routePoints: _routePoints,
@@ -231,6 +243,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         description: null, // Can be enhanced later with description input
       );
 
+      print('Save completed, reloading routes...');
       await _loadSavedRoutes(); // Refresh the local list
 
       if (mounted) {
@@ -239,10 +252,16 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         ).showSnackBar(SnackBar(content: Text('Rutt "$name" sparad')));
       }
     } catch (e) {
+      print('Save failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Fel vid sparande: $e')));
+      }
+    } finally {
+      if (mounted) {
+        print('Clearing save loading state');
+        setState(() => _isSaving = false);
       }
     }
   }
@@ -311,56 +330,95 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     }
 
     final TextEditingController nameController = TextEditingController();
+    bool isDialogSaving = false;
 
     return showDialog<void>(
       context: context,
+      barrierDismissible: false, // Always prevent dismissing during save
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Spara rutt'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_savedRoutes.length >= _maxSavedRoutes)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    'Maxantal rutter nått (5). Den äldsta rutten kommer att tas bort.',
-                    style: TextStyle(color: Colors.orange, fontSize: 12),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Spara rutt'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_savedRoutes.length >= _maxSavedRoutes)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        'Maxantal rutter nått (50). Den äldsta rutten kommer att tas bort.',
+                        style: TextStyle(color: Colors.orange, fontSize: 12),
+                      ),
+                    ),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Ruttnamn',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLength: 50,
+                    autofocus: true,
+                    enabled: !isDialogSaving,
+                    onSubmitted: (value) async {
+                      if (value.trim().isNotEmpty && !isDialogSaving) {
+                        setDialogState(() => isDialogSaving = true);
+                        await _saveCurrentRouteInternal(value.trim());
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
                   ),
-                ),
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Ruttnamn',
-                  border: OutlineInputBorder(),
-                ),
-                maxLength: 50,
-                autofocus: true,
-                onSubmitted: (value) {
-                  if (value.trim().isNotEmpty) {
-                    Navigator.of(context).pop();
-                    _saveCurrentRoute(value.trim());
-                  }
-                },
+                  if (isDialogSaving)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 12),
+                          Text('Sparar rutt...'),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Avbryt'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                if (name.isNotEmpty) {
-                  Navigator.of(context).pop();
-                  _saveCurrentRoute(name);
-                }
-              },
-              child: const Text('Spara'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: isDialogSaving
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                  child: const Text('Avbryt'),
+                ),
+                ElevatedButton(
+                  onPressed: isDialogSaving
+                      ? null
+                      : () async {
+                          final name = nameController.text.trim();
+                          if (name.isNotEmpty) {
+                            setDialogState(() => isDialogSaving = true);
+                            await _saveCurrentRouteInternal(name);
+                            if (mounted) {
+                              Navigator.of(context).pop();
+                            }
+                          }
+                        },
+                  child: isDialogSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Spara'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -590,29 +648,63 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       initiallyExpanded: false,
                       children: [
                         ListTile(
-                          leading: Icon(
-                            Icons.upload_file,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                          leading: _isImporting
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.upload_file,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
                           title: Text(
-                            'Importera GeoJSON',
+                            _isImporting
+                                ? 'Importerar GeoJSON...'
+                                : 'Importera GeoJSON',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          onTap: () {
+                          enabled: !_isImporting && !_isExporting,
+                          onTap: () async {
+                            // Set loading state first while drawer is still open
+                            setState(() => _isImporting = true);
+                            // Small delay to show the loading indicator
+                            await Future.delayed(const Duration(milliseconds: 500));
                             Navigator.of(context).pop();
-                            _importGeoJsonRoute();
+                            _importGeoJsonRouteInternal();
                           },
                         ),
                         ListTile(
-                          leading: Icon(
-                            Icons.download,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                          leading: _isExporting
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.download,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
                           title: Text(
-                            'Exportera GeoJSON',
+                            _isExporting
+                                ? 'Exporterar GeoJSON...'
+                                : 'Exportera GeoJSON',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          onTap: () {
+                          enabled: !_isImporting && !_isExporting,
+                          onTap: () async {
+                            // Set loading state first while drawer is still open
+                            setState(() => _isExporting = true);
+                            // Small delay to show the loading indicator
+                            await Future.delayed(const Duration(milliseconds: 500));
                             Navigator.of(context).pop();
                             _exportGeoJsonRoute();
                           },
@@ -633,29 +725,63 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       initiallyExpanded: false,
                       children: [
                         ListTile(
-                          leading: Icon(
-                            Icons.upload_file,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                          leading: _isImporting
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.upload_file,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
                           title: Text(
-                            'Importera GPX',
+                            _isImporting
+                                ? 'Importerar GPX...'
+                                : 'Importera GPX',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          onTap: () {
+                          enabled: !_isImporting && !_isExporting,
+                          onTap: () async {
+                            // Set loading state first while drawer is still open
+                            setState(() => _isImporting = true);
+                            // Small delay to show the loading indicator
+                            await Future.delayed(const Duration(milliseconds: 500));
                             Navigator.of(context).pop();
                             _importGpxRoute();
                           },
                         ),
                         ListTile(
-                          leading: Icon(
-                            Icons.download,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                          leading: _isExporting
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.download,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
                           title: Text(
-                            'Exportera GPX',
+                            _isExporting
+                                ? 'Exporterar GPX...'
+                                : 'Exportera GPX',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          onTap: () {
+                          enabled: !_isImporting && !_isExporting,
+                          onTap: () async {
+                            // Set loading state first while drawer is still open
+                            setState(() => _isExporting = true);
+                            // Small delay to show the loading indicator
+                            await Future.delayed(const Duration(milliseconds: 500));
                             Navigator.of(context).pop();
                             _exportGpxRoute();
                           },
@@ -761,15 +887,21 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                     // Save current route button
                     ListTile(
-                      leading: Icon(
-                        Icons.add,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                      leading: _isSaving
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              Icons.add,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                       title: Text(
-                        'Spara aktuell rutt',
+                        _isSaving ? 'Sparar rutt...' : 'Spara aktuell rutt',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      enabled: _routePoints.isNotEmpty,
+                      enabled: _routePoints.isNotEmpty && !_isSaving,
                       onTap: () {
                         Navigator.of(context).pop();
                         _showSaveRouteDialog();
@@ -1169,27 +1301,31 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ).showSnackBar(const SnackBar(content: Text('Ingen rutt att exportera')));
       return;
     }
-    final coords = [
-      for (final p in _routePoints) [p.longitude, p.latitude],
-      if (_loopClosed && _routePoints.length >= 3)
-        [_routePoints.first.longitude, _routePoints.first.latitude],
-    ];
-    final feature = {
-      'type': 'Feature',
-      'properties': {
-        'name': 'Gravel route',
-        'loopClosed': _loopClosed,
-        'exportedAt': DateTime.now().toIso8601String(),
-      },
-      'geometry': {'type': 'LineString', 'coordinates': coords},
-    };
-    final fc = {
-      'type': 'FeatureCollection',
-      'features': [feature],
-    };
-    final content = const JsonEncoder.withIndent('  ').convert(fc);
-    final bytes = Uint8List.fromList(utf8.encode(content));
+
+    setState(() => _isExporting = true);
+
     try {
+      final coords = [
+        for (final p in _routePoints) [p.longitude, p.latitude],
+        if (_loopClosed && _routePoints.length >= 3)
+          [_routePoints.first.longitude, _routePoints.first.latitude],
+      ];
+      final feature = {
+        'type': 'Feature',
+        'properties': {
+          'name': 'Gravel route',
+          'loopClosed': _loopClosed,
+          'exportedAt': DateTime.now().toIso8601String(),
+        },
+        'geometry': {'type': 'LineString', 'coordinates': coords},
+      };
+      final fc = {
+        'type': 'FeatureCollection',
+        'features': [feature],
+      };
+      final content = const JsonEncoder.withIndent('  ').convert(fc);
+      final bytes = Uint8List.fromList(utf8.encode(content));
+
       await FileSaver.instance.saveFile(
         name: 'gravel_route.geojson',
         bytes: bytes,
@@ -1213,17 +1349,27 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Export misslyckades: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
     }
   }
 
-  Future<void> _importGeoJsonRoute() async {
+  Future<void> _importGeoJsonRouteInternal() async {
     try {
+      print('Opening file picker');
       final res = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['geojson', 'json'],
         withData: true,
       );
-      if (res == null || res.files.isEmpty) return;
+      if (res == null || res.files.isEmpty) {
+        print('No file selected or picker cancelled');
+        return;
+      }
+      
+      print('File selected, processing...');
       final file = res.files.first;
       final data = file.bytes ?? Uint8List(0);
       if (data.isEmpty) {
@@ -1293,6 +1439,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isImporting = false);
+      }
     }
   }
 
@@ -1327,48 +1477,51 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ).showSnackBar(const SnackBar(content: Text('Ingen rutt att exportera')));
       return;
     }
-    final builder = xml.XmlBuilder();
-    builder.processing('xml', 'version="1.0" encoding="UTF-8"');
-    builder.element(
-      'gpx',
-      nest: () {
-        builder.attribute('version', '1.1');
-        builder.attribute('creator', 'Gravel First');
-        builder.attribute('xmlns', 'http://www.topografix.com/GPX/1/1');
-        builder.element(
-          'trk',
-          nest: () {
-            builder.element('name', nest: 'Gravel route');
-            builder.element(
-              'trkseg',
-              nest: () {
-                for (final p in _routePoints) {
-                  builder.element(
-                    'trkpt',
-                    attributes: {
-                      'lat': p.latitude.toStringAsFixed(7),
-                      'lon': p.longitude.toStringAsFixed(7),
-                    },
-                  );
-                }
-                if (_loopClosed && _routePoints.length >= 3) {
-                  final f = _routePoints.first;
-                  builder.element(
-                    'trkpt',
-                    attributes: {
-                      'lat': f.latitude.toStringAsFixed(7),
-                      'lon': f.longitude.toStringAsFixed(7),
-                    },
-                  );
-                }
-              },
-            );
-          },
-        );
-      },
-    );
-    final gpxString = builder.buildDocument().toXmlString(pretty: true);
+
+    setState(() => _isExporting = true);
+
     try {
+      final builder = xml.XmlBuilder();
+      builder.processing('xml', 'version="1.0" encoding="UTF-8"');
+      builder.element(
+        'gpx',
+        nest: () {
+          builder.attribute('version', '1.1');
+          builder.attribute('creator', 'Gravel First');
+          builder.attribute('xmlns', 'http://www.topografix.com/GPX/1/1');
+          builder.element(
+            'trk',
+            nest: () {
+              builder.element('name', nest: 'Gravel route');
+              builder.element(
+                'trkseg',
+                nest: () {
+                  for (final p in _routePoints) {
+                    builder.element(
+                      'trkpt',
+                      attributes: {
+                        'lat': p.latitude.toStringAsFixed(7),
+                        'lon': p.longitude.toStringAsFixed(7),
+                      },
+                    );
+                  }
+                  if (_loopClosed && _routePoints.length >= 3) {
+                    final f = _routePoints.first;
+                    builder.element(
+                      'trkpt',
+                      attributes: {
+                        'lat': f.latitude.toStringAsFixed(7),
+                        'lon': f.longitude.toStringAsFixed(7),
+                      },
+                    );
+                  }
+                },
+              );
+            },
+          );
+        },
+      );
+      final gpxString = builder.buildDocument().toXmlString(pretty: true);
       await FileSaver.instance.saveFile(
         name: 'gravel_route.gpx',
         bytes: Uint8List.fromList(utf8.encode(gpxString)),
@@ -1384,10 +1537,16 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Export misslyckades: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
     }
   }
 
   Future<void> _importGpxRoute() async {
+    setState(() => _isImporting = true);
+
     try {
       final res = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -1448,6 +1607,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isImporting = false);
+      }
     }
   }
 }
