@@ -1282,6 +1282,47 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     // Point size calculation is handled in build method via _calculateDynamicPointSize()
   }
 
+  /// Async version for large routes to prevent UI freezing
+  Future<void> _recomputeSegmentsAsync() async {
+    if (!mounted) return;
+
+    final segments = <double>[];
+    final points = _routePoints;
+    final closed = _loopClosed;
+
+    if (points.length < 2) return;
+
+    // Process in chunks to prevent UI freeze
+    const chunkSize = 200;
+    for (int start = 1; start < points.length; start += chunkSize) {
+      final end = (start + chunkSize).clamp(0, points.length);
+
+      for (int i = start; i < end; i++) {
+        segments.add(_distance.as(LengthUnit.Meter, points[i - 1], points[i]));
+      }
+
+      // Yield control back to the UI thread periodically
+      if (start % (chunkSize * 5) == 1) {
+        await Future.delayed(const Duration(milliseconds: 1));
+        if (!mounted) return; // Check if widget is still mounted
+      }
+    }
+
+    // Handle closing segment for loops
+    if (closed && points.length >= 3) {
+      segments.add(_distance.as(LengthUnit.Meter, points.last, points.first));
+    }
+
+    // Update UI with computed segments
+    if (mounted) {
+      setState(() {
+        _segmentMeters
+          ..clear()
+          ..addAll(segments);
+      });
+    }
+  }
+
   List<double> _computeSegments(List<LatLng> pts, bool closed) {
     if (pts.length < 2) return const [];
     final segs = <double>[];
@@ -1669,7 +1710,17 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
           // remove duplicated closing point for internal representation
           _routePoints.removeLast();
         }
-        _recomputeSegments();
+        // For large routes, defer segment computation to prevent UI freeze
+        if (_routePoints.length > 1000) {
+          _segmentMeters.clear();
+          // Will compute segments asynchronously after UI update
+          Future.delayed(
+            const Duration(milliseconds: 100),
+            _recomputeSegmentsAsync,
+          );
+        } else {
+          _recomputeSegments();
+        }
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
