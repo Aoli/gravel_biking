@@ -17,7 +17,7 @@ class RouteService {
   /// Initialize Hive storage
   Future<void> initialize() async {
     await Hive.initFlutter();
-    
+
     // Register adapters if not already registered
     if (!Hive.isAdapterRegistered(0)) {
       Hive.registerAdapter(SavedRouteAdapter());
@@ -42,7 +42,8 @@ class RouteService {
   Future<List<SavedRoute>> loadSavedRoutes() async {
     try {
       final box = await _box;
-      return box.values.toList()..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+      return box.values.toList()
+        ..sort((a, b) => b.savedAt.compareTo(a.savedAt));
     } catch (e) {
       debugPrint('Error loading saved routes: $e');
       return [];
@@ -54,15 +55,16 @@ class RouteService {
     try {
       final box = await _box;
       final allRoutes = box.values.toList();
-      
-      if (query.isEmpty) return allRoutes..sort((a, b) => b.savedAt.compareTo(a.savedAt));
-      
+
+      if (query.isEmpty)
+        return allRoutes..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+
       final searchLower = query.toLowerCase();
       final filtered = allRoutes.where((route) {
         return route.name.toLowerCase().contains(searchLower) ||
-               (route.description?.toLowerCase().contains(searchLower) ?? false);
+            (route.description?.toLowerCase().contains(searchLower) ?? false);
       }).toList();
-      
+
       return filtered..sort((a, b) => b.savedAt.compareTo(a.savedAt));
     } catch (e) {
       debugPrint('Error searching routes: $e');
@@ -98,7 +100,7 @@ class RouteService {
     );
 
     final box = await _box;
-    
+
     // Remove oldest route if at capacity
     if (box.length >= maxSavedRoutes) {
       final oldestKey = box.keys.first;
@@ -222,10 +224,12 @@ class RouteService {
 
       final prefs = await SharedPreferences.getInstance();
       final routesJson = prefs.getStringList('saved_routes') ?? [];
-      
+
       if (routesJson.isEmpty) return;
 
-      debugPrint('Migrating ${routesJson.length} routes from SharedPreferences to Hive');
+      debugPrint(
+        'Migrating ${routesJson.length} routes from SharedPreferences to Hive',
+      );
 
       for (final routeJson in routesJson) {
         try {

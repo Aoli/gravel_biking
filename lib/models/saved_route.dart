@@ -44,7 +44,9 @@ class SavedRoute extends HiveObject {
   }) {
     return SavedRoute(
       name: name,
-      points: latLngPoints.map((p) => LatLngData(p.latitude, p.longitude)).toList(),
+      points: latLngPoints
+          .map((p) => LatLngData(p.latitude, p.longitude))
+          .toList(),
       loopClosed: loopClosed,
       savedAt: savedAt ?? DateTime.now(),
       description: description,
@@ -53,7 +55,8 @@ class SavedRoute extends HiveObject {
   }
 
   /// Get LatLng points for map operations
-  List<LatLng> get latLngPoints => points.map((p) => LatLng(p.latitude, p.longitude)).toList();
+  List<LatLng> get latLngPoints =>
+      points.map((p) => LatLng(p.latitude, p.longitude)).toList();
 
   /// Legacy JSON support for migration
   Map<String, dynamic> toJson() {

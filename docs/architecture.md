@@ -14,10 +14,11 @@ Use these specific technologies and versions:
 - **Map Rendering**: flutter_map (Leaflet-style mapping)
 - **Geospatial**: latlong2 (geodesic distance calculations)
 - **Networking**: http (Overpass API queries)
-- **Storage**: shared_preferences (local route persistence)
-- **File Operations**: file_picker, file_saver (import/export)
+- **Storage**: Hive (local database for 50 routes with search)
+- **File Operations**: file_picker, file_saver, path_provider (cross-platform import/export)
 - **Location**: geolocator (GPS positioning)
 - **Parsing**: xml (GPX file support)
+- **Code Generation**: build_runner, hive_generator (for Hive adapters)
 
 ## Mandatory File Structure
 
@@ -25,21 +26,22 @@ Organize the application using this layered structure:
 
 ```text
 lib/
-├── main.dart                    # App entry point and main map widget (1,459 lines)
+├── main.dart                    # App entry point and main map widget
 ├── models/
-│   └── saved_route.dart         # Data model for saved routes with JSON serialization
+│   └── saved_route.dart         # Hive data model with enhanced metadata
 ├── services/
-│   ├── route_service.dart       # Route management and business logic
+│   ├── route_service.dart       # Hive-based route management with search
 │   ├── location_service.dart    # GPS location handling and permissions
-│   └── file_service.dart        # Import/export functionality (GPX/GeoJSON)
+│   └── file_service.dart        # Cross-platform import/export with path_provider
 ├── utils/
-│   └── coordinate_utils.dart    # Coordinate parsing and formatting utilities
+│   └── coordinate_utils.dart    # Coordinate parsing and distance formatting
 ├── widgets/
 │   ├── point_marker.dart        # Reusable route point marker component
 │   └── distance_panel.dart      # Distance measurement panel with controls
 ├── screens/
-│   └── map_screen.dart          # Alternative map screen implementation (unused)
-└── context/
+│   └── saved_routes_page.dart   # Enhanced route management with filtering/editing
+└── docs/
+    ├── architecture.md          # This architecture guide
     └── roadmap.md              # Feature roadmap and change history
 ```
 
@@ -60,25 +62,35 @@ Implement the main application file with these responsibilities:
 
 Create data models following these patterns:
 
-- **`SavedRoute`**: Implement data class with JSON serialization
-  - Define properties: name, points (LatLng[]), loopClosed, savedAt
-  - Implement methods: `toJson()`, `fromJson()` for SharedPreferences storage
+- **`SavedRoute`**: Implement Hive data class with enhanced metadata
+  - Use `@HiveType(typeId: 0)` annotation for Hive compatibility
+  - Define properties: name, points (LatLngData[]), loopClosed, savedAt, description, distance
+  - Implement factory constructors: `fromLatLng()` for creation, `fromJson()` for migration
+  - Include `latLngPoints` getter for map operations
+  - Support both Hive serialization and legacy JSON for migration
+
+- **`LatLngData`**: Implement Hive-compatible coordinate storage
+  - Use `@HiveType(typeId: 1)` annotation
+  - Store latitude/longitude as doubles with `@HiveField` annotations
+  - Provide seamless conversion to/from LatLng objects
 
 ### Services Layer (`services/`)
 
 Build business logic services with these specifications:
 
-- **`RouteService`**: Implement route management business logic
-  - Handle saved routes CRUD with 5-route limit and FIFO removal
-  - Calculate distances and map centering operations
-  - Validate routes and manage state transitions
-- **`LocationService`**: Implement GPS and location functionality
-  - Handle permission requests and error management
-  - Acquire current position using geolocator
-  - Integrate map centering and provide user-friendly error messaging
-- **`FileService`**: Build import/export operations
-  - Support GeoJSON LineString and GPX 1.1 formats
-  - Integrate file picker and saver functionality
+- **`RouteService`**: Implement enhanced Hive-based route management
+  - Support up to 50 routes with automatic storage management
+  - Implement search functionality for name and description filtering
+  - Calculate distances and provide route metadata (center, distance)
+  - Handle automatic SharedPreferences to Hive migration
+  - Provide CRUD operations: save, load, update, delete routes
+  - Support advanced filtering by distance, type, date, proximity
+
+- **`FileService`**: Build cross-platform import/export operations
+  - Support GeoJSON LineString and GPX 1.1 formats with metadata preservation
+  - Use path_provider for iOS-compatible file system access
+  - Implement conditional platform handling (kIsWeb vs mobile)
+  - Integrate file picker and saver with proper error handling
 
 ### Utilities Layer (`utils/`)
 
@@ -87,6 +99,19 @@ Create utility functions with these capabilities:
 - **`CoordinateUtils`**: Build data processing utilities
   - Parse Overpass API JSON responses
   - Format distances for human readability (meters/kilometers)
+
+### Screens Layer (`screens/`)
+
+Build dedicated screen interfaces with these specifications:
+
+- **`SavedRoutesPage`**: Implement comprehensive route management interface
+  - Support up to 50 routes with search and advanced filtering
+  - Provide real-time text search by name and description
+  - Include advanced filters: distance range, route type, date range, proximity
+  - Enable route name editing with validation and error handling
+  - Implement Material 3 design with Swedish localization
+  - Support pull-to-refresh and proper state management
+  - Display visual filter indicators and one-click filter clearing
 
 ### Widgets Layer (`widgets/`)
 
@@ -127,12 +152,14 @@ Build the measurement interface with these features:
 
 ### Saved Routes
 
-Create local route persistence system:
+Create enhanced local route persistence system:
 
-- Store up to 5 named routes using SharedPreferences
-- Implement FIFO removal when limit is exceeded
-- Enable auto-centering when routes are loaded
-- Provide quick-save from distance panel and full management in drawer
+- Store up to 50 named routes using Hive database with search capabilities
+- Implement automatic SharedPreferences to Hive migration for existing users
+- Support enhanced metadata: route descriptions, calculated distances, creation dates
+- Enable advanced filtering: distance range, route type, date range, proximity
+- Provide route name editing and comprehensive management interface
+- Include dedicated SavedRoutesPage with Material 3 design
 
 ### File Operations
 
@@ -160,10 +187,11 @@ Logical components and responsibilities:
 
 - **Map UI** (flutter_map): Renders tiles, overlays gravel polylines and measurement polyline/markers
 - **Data Fetcher** (Overpass): Viewport-based fetching with 500ms debounce, JSON parsing off UI thread
-- **Measurement Manager**: Route points, editing selection, distance calculations
-- **Saved Routes Manager**: Local storage with SharedPreferences, automatic FIFO management
-- **Import/Export**: GeoJSON/GPX serialization with file system integration
-- **Navigation & Actions**: AppBar actions and App Drawer with organized feature access
+- **Measurement Manager**: Route points, editing selection, distance calculations with geodesic accuracy
+- **Enhanced Routes Manager**: Hive database with 50-route capacity, search, filtering, and editing
+- **Advanced Filtering**: Multi-criteria filtering by distance, type, date, and geographic proximity
+- **Import/Export**: Cross-platform GeoJSON/GPX with path_provider iOS compatibility
+- **Navigation & Actions**: Enhanced drawer navigation with dedicated route management page
 
 ## Data Sources
 
@@ -230,12 +258,14 @@ Implement these development practices:
 
 ## Change Log
 
+- **2025‑08‑25**: Enhanced Route Management - Migrated from SharedPreferences to Hive database supporting 50 routes with search, advanced filtering (distance, type, date, proximity), route name editing, and dedicated SavedRoutesPage with Material 3 design
+- **2025‑08‑25**: iOS Compatibility Enhancement - Integrated path_provider for cross-platform file system access, enabling proper import/export functionality on iOS devices with conditional platform handling
 - **2025‑08‑25**: Web App Enhancement - Updated app branding to "Gravel First", comprehensive web icon compatibility with Material Icons preloading, JavaScript font loading, and cross-platform CSS optimizations
 - **2025‑08‑25**: Android Icon Compatibility Fix - Resolved icon visibility issues on Android devices with filled icon variants, explicit IconTheme configuration, and Android build optimizations
 - **2025‑08‑25**: Code Quality Cleanup - Resolved all Flutter analysis issues, removed unnecessary imports, added missing curly braces, cleaned up unused refactoring artifacts
 - **2025‑08‑25**: Icon Visibility Improvements - Enhanced cross-platform compatibility with Google Material Icons, outlined variants for better contrast, and consistent theming
 - **2025‑08‑25**: Major Refactoring - Restructured from monolithic to layered architecture (20% code reduction)
-- **2025‑08‑25**: Saved Routes - Local storage for up to 5 named routes with SharedPreferences
+- **2025‑08‑25**: Saved Routes Foundation - Initial local storage for up to 5 named routes with SharedPreferences
 - **2025‑08‑24**: Core Features - GPX/GeoJSON import/export, editable points, loop support, GPS integration
 
 ---

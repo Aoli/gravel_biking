@@ -26,7 +26,7 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
   String _searchQuery = '';
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
-  
+
   // Advanced filtering
   double? _minDistance;
   double? _maxDistance;
@@ -83,11 +83,12 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         if (query.isNotEmpty) {
           final searchLower = query.toLowerCase();
           if (!route.name.toLowerCase().contains(searchLower) &&
-              !(route.description?.toLowerCase().contains(searchLower) ?? false)) {
+              !(route.description?.toLowerCase().contains(searchLower) ??
+                  false)) {
             return false;
           }
         }
-        
+
         // Distance range filter
         if (_minDistance != null && (route.distance ?? 0) < _minDistance!) {
           return false;
@@ -95,19 +96,20 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         if (_maxDistance != null && (route.distance ?? 0) > _maxDistance!) {
           return false;
         }
-        
+
         // Loop type filter
         if (_showLoopOnly && !route.loopClosed) return false;
         if (_showLinearOnly && route.loopClosed) return false;
-        
+
         // Date range filter
         if (_dateFrom != null && route.savedAt.isBefore(_dateFrom!)) {
           return false;
         }
-        if (_dateTo != null && route.savedAt.isAfter(_dateTo!.add(const Duration(days: 1)))) {
+        if (_dateTo != null &&
+            route.savedAt.isAfter(_dateTo!.add(const Duration(days: 1)))) {
           return false;
         }
-        
+
         // Distance from current position filter
         if (_maxDistanceFromPosition != null && _currentPosition != null) {
           final routeCenter = _calculateRouteCenter(route);
@@ -116,7 +118,7 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
             return false;
           }
         }
-        
+
         return true;
       }).toList();
     });
@@ -125,7 +127,7 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
   LatLng _calculateRouteCenter(SavedRoute route) {
     final points = route.latLngPoints;
     if (points.isEmpty) return const LatLng(0, 0);
-    
+
     double lat = 0, lng = 0;
     for (final point in points) {
       lat += point.latitude;
@@ -139,18 +141,25 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
     final double lat1Rad = from.latitude * (math.pi / 180);
     final double lat2Rad = to.latitude * (math.pi / 180);
     final double deltaLatRad = (to.latitude - from.latitude) * (math.pi / 180);
-    final double deltaLngRad = (to.longitude - from.longitude) * (math.pi / 180);
+    final double deltaLngRad =
+        (to.longitude - from.longitude) * (math.pi / 180);
 
-    final double a = math.sin(deltaLatRad / 2) * math.sin(deltaLatRad / 2) +
-        math.cos(lat1Rad) * math.cos(lat2Rad) * math.sin(deltaLngRad / 2) * math.sin(deltaLngRad / 2);
+    final double a =
+        math.sin(deltaLatRad / 2) * math.sin(deltaLatRad / 2) +
+        math.cos(lat1Rad) *
+            math.cos(lat2Rad) *
+            math.sin(deltaLngRad / 2) *
+            math.sin(deltaLngRad / 2);
     final double c = 2 * math.asin(math.sqrt(a));
 
     return earthRadius * c; // Distance in meters
   }
 
   Future<void> _editRouteName(SavedRoute route) async {
-    final TextEditingController controller = TextEditingController(text: route.name);
-    
+    final TextEditingController controller = TextEditingController(
+      text: route.name,
+    );
+
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -191,7 +200,7 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
 
         await widget.routeService.updateRoute(updatedRoute);
         await _loadRoutes();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Ruttnamn ändrat till "$result"')),
@@ -199,9 +208,9 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fel vid namnändring: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Fel vid namnändring: $e')));
         }
       }
     }
@@ -252,32 +261,34 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
 
   bool _hasActiveFilters() {
     return _minDistance != null ||
-           _maxDistance != null ||
-           _showLoopOnly ||
-           _showLinearOnly ||
-           _dateFrom != null ||
-           _dateTo != null ||
-           _maxDistanceFromPosition != null;
+        _maxDistance != null ||
+        _showLoopOnly ||
+        _showLinearOnly ||
+        _dateFrom != null ||
+        _dateTo != null ||
+        _maxDistanceFromPosition != null;
   }
 
   String _getFilterSummary() {
     final List<String> filters = [];
-    
+
     if (_minDistance != null || _maxDistance != null) {
       if (_minDistance != null && _maxDistance != null) {
-        filters.add('${CoordinateUtils.formatDistance(_minDistance!)} - ${CoordinateUtils.formatDistance(_maxDistance!)}');
+        filters.add(
+          '${CoordinateUtils.formatDistance(_minDistance!)} - ${CoordinateUtils.formatDistance(_maxDistance!)}',
+        );
       } else if (_minDistance != null) {
         filters.add('Min ${CoordinateUtils.formatDistance(_minDistance!)}');
       } else {
         filters.add('Max ${CoordinateUtils.formatDistance(_maxDistance!)}');
       }
     }
-    
+
     if (_showLoopOnly) filters.add('Endast slingor');
     if (_showLinearOnly) filters.add('Endast linjära');
     if (_dateFrom != null || _dateTo != null) filters.add('Datum');
     if (_maxDistanceFromPosition != null) filters.add('Närhet');
-    
+
     return filters.join(', ');
   }
 
@@ -305,15 +316,15 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         await widget.routeService.deleteRouteObject(route);
         await _loadRoutes();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rutt borttagen')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Rutt borttagen')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fel vid borttagning: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Fel vid borttagning: $e')));
         }
       }
     }
@@ -322,15 +333,15 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
   void _loadRoute(SavedRoute route) {
     widget.onLoadRoute(route.latLngPoints);
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Laddade rutt "${route.name}"')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Laddade rutt "${route.name}"')));
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -369,11 +380,13 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
                     : null,
                 border: const OutlineInputBorder(),
                 filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.3,
+                ),
               ),
             ),
           ),
-          
+
           // Filter buttons
           if (_routes.isNotEmpty)
             Padding(
@@ -411,50 +424,52 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
                 ],
               ),
             ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Routes list
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredRoutes.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _searchQuery.isNotEmpty ? Icons.search_off : Icons.route,
-                              size: 64,
-                              color: theme.colorScheme.outline,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _searchQuery.isNotEmpty 
-                                  ? 'Inga rutter hittades för "$_searchQuery"'
-                                  : 'Inga sparade rutter ännu',
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _searchQuery.isNotEmpty
+                              ? Icons.search_off
+                              : Icons.route,
+                          size: 64,
+                          color: theme.colorScheme.outline,
                         ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadRoutes,
-                        child: ListView.builder(
-                          itemCount: _filteredRoutes.length,
-                          itemBuilder: (context, index) {
-                            final route = _filteredRoutes[index];
-                            return _RouteCard(
-                              route: route,
-                              onLoad: () => _loadRoute(route),
-                              onDelete: () => _deleteRoute(route),
-                              onEdit: () => _editRouteName(route),
-                            );
-                          },
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isNotEmpty
+                              ? 'Inga rutter hittades för "$_searchQuery"'
+                              : 'Inga sparade rutter ännu',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadRoutes,
+                    child: ListView.builder(
+                      itemCount: _filteredRoutes.length,
+                      itemBuilder: (context, index) {
+                        final route = _filteredRoutes[index];
+                        return _RouteCard(
+                          route: route,
+                          onLoad: () => _loadRoute(route),
+                          onDelete: () => _deleteRoute(route),
+                          onEdit: () => _editRouteName(route),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -478,10 +493,10 @@ class _RouteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final distance = route.distance != null 
-        ? CoordinateUtils.formatDistance(route.distance!) 
+    final distance = route.distance != null
+        ? CoordinateUtils.formatDistance(route.distance!)
         : null;
-    
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
@@ -593,7 +608,7 @@ class _RouteCard extends StatelessWidget {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays == 0) {
       return 'Idag ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays == 1) {
@@ -639,12 +654,12 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
   late bool _showLinearOnly = widget.showLinearOnly;
   late DateTime? _dateFrom = widget.dateFrom;
   late DateTime? _dateTo = widget.dateTo;
-  late double? _maxDistanceFromPosition = widget.maxDistanceFromPosition;
+  late final double? _maxDistanceFromPosition = widget.maxDistanceFromPosition;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return AlertDialog(
       title: const Text('Avancerade filter'),
       content: SizedBox(
@@ -668,7 +683,9 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
                       ),
                       keyboardType: TextInputType.number,
                       controller: TextEditingController(
-                        text: _minDistance != null ? (_minDistance! / 1000).toStringAsFixed(1) : '',
+                        text: _minDistance != null
+                            ? (_minDistance! / 1000).toStringAsFixed(1)
+                            : '',
                       ),
                       onChanged: (value) {
                         final km = double.tryParse(value);
@@ -686,7 +703,9 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
                       ),
                       keyboardType: TextInputType.number,
                       controller: TextEditingController(
-                        text: _maxDistance != null ? (_maxDistance! / 1000).toStringAsFixed(1) : '',
+                        text: _maxDistance != null
+                            ? (_maxDistance! / 1000).toStringAsFixed(1)
+                            : '',
                       ),
                       onChanged: (value) {
                         final km = double.tryParse(value);
@@ -696,7 +715,7 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 16),
               Text('Rutttyp', style: theme.textTheme.titleMedium),
               CheckboxListTile(
@@ -715,7 +734,7 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
                   if (_showLinearOnly) _showLoopOnly = false;
                 }),
               ),
-              
+
               const SizedBox(height: 16),
               Text('Datum', style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
@@ -726,7 +745,9 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
                       onPressed: () async {
                         final date = await showDatePicker(
                           context: context,
-                          initialDate: _dateFrom ?? DateTime.now().subtract(const Duration(days: 30)),
+                          initialDate:
+                              _dateFrom ??
+                              DateTime.now().subtract(const Duration(days: 30)),
                           firstDate: DateTime(2020),
                           lastDate: DateTime.now(),
                         );
@@ -734,9 +755,11 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
                           setState(() => _dateFrom = date);
                         }
                       },
-                      child: Text(_dateFrom != null 
-                        ? 'Från: ${_dateFrom!.day}/${_dateFrom!.month}'
-                        : 'Från datum'),
+                      child: Text(
+                        _dateFrom != null
+                            ? 'Från: ${_dateFrom!.day}/${_dateFrom!.month}'
+                            : 'Från datum',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -753,14 +776,16 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
                           setState(() => _dateTo = date);
                         }
                       },
-                      child: Text(_dateTo != null 
-                        ? 'Till: ${_dateTo!.day}/${_dateTo!.month}'
-                        : 'Till datum'),
+                      child: Text(
+                        _dateTo != null
+                            ? 'Till: ${_dateTo!.day}/${_dateTo!.month}'
+                            : 'Till datum',
+                      ),
                     ),
                   ),
                 ],
               ),
-              
+
               if (_dateFrom != null || _dateTo != null) ...[
                 const SizedBox(height: 8),
                 Row(

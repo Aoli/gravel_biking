@@ -2,6 +2,28 @@
 
 This document tracks feature work one by one with clear status and brief notes.
 
+- [x] **Enhanced Route Management System**: Complete overhaul of saved routes with Hive database, filtering, and editing.
+  - Status: Done (2025‑08‑25)
+  - What: Migrated from 5-route SharedPreferences to 50-route Hive database with advanced features:
+    - Hive database storage with automatic SharedPreferences migration
+    - Enhanced SavedRoute model with descriptions, distances, and metadata
+    - Dedicated SavedRoutesPage with Material 3 design and Swedish localization
+    - Advanced filtering: distance range, route type (loop/linear), date range, proximity
+    - Real-time search by route name and description
+    - Route name editing with validation and error handling
+    - Visual filter indicators and one-click filter clearing
+    - Professional route cards with distance, date, and loop indicators
+  - Benefits: Scalable route management, professional UX, advanced organization capabilities
+
+- [x] **Cross-Platform File Operations**: Enhanced import/export with iOS compatibility.
+  - Status: Done (2025‑08‑25)
+  - What: Integrated path_provider for proper cross-platform file system access:
+    - Added path_provider dependency for iOS-compatible file operations
+    - Implemented conditional platform handling (kIsWeb vs mobile)
+    - Enhanced file_service.dart with proper iOS file system access
+    - Maintained backward compatibility with existing web functionality
+  - Benefits: Seamless import/export on all platforms including iOS devices
+
 - [x] **Android Icon Compatibility Fix**: Resolved icon visibility issues specifically on Android devices.
   - Status: Done (2025‑08‑25)
   - What: Applied targeted Android-specific fixes for icon rendering:

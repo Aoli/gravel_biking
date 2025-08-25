@@ -672,7 +672,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       ),
                       title: Text(
                         'Sparade rutter',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       subtitle: Text(
                         '${_savedRoutes.length}/50 rutter',
@@ -687,7 +689,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             icon: Icon(
                               Icons.help,
                               size: 20,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                             onPressed: _showSavedRoutesHelpDialog,
                             visualDensity: VisualDensity.compact,
@@ -695,7 +699,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           ),
                           Icon(
                             Icons.chevron_right,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ],
                       ),

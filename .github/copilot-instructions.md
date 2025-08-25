@@ -1,6 +1,21 @@
 # GitHub Copilot Instructions for Gravel First
 
-This document provides GitHub Copilot with specific context and guidelines for working with the Gravel First Flutter application.
+This document provides GitHub Copilot with specific context and guidelines for working with the Gravel First ### Code Quality Standards
+
+### Documentation
+
+- Use dartdoc comments for public APIs
+- Document complex algorithms and business logic (filtering, geographic calculations)
+- Maintain `docs/architecture.md` for major structural changes
+- Update `docs/roadmap.md` for feature planning and change tracking
+- Always check existing documentation in `/docs` before creating new files
+
+### Data Storage
+
+- Use Hive type adapters for type-safe database operations
+- Generate adapters with `build_runner` for model classes
+- Implement proper error handling for database operations
+- Use FIFO removal patterns for storage limitspplication.
 
 ## Project Overview
 
@@ -98,13 +113,20 @@ All project documentation is organized in the `/docs` folder:
 flutter_map: ^7.0.2 # Map rendering (Leaflet-style)
 latlong2: ^0.9.1 # Geodesic calculations
 http: ^1.2.2 # API requests
-shared_preferences: ^2.5.3 # Local storage
 geolocator: ^12.0.0 # GPS positioning
 file_picker: ^8.3.7 # File selection
 file_saver: ^0.2.14 # File saving
 xml: ^6.5.0 # GPX parsing
 package_info_plus: ^8.3.1 # App version info
 path_provider: ^2.1.4 # iOS-compatible file path access
+
+# Enhanced Storage
+hive: ^2.2.3 # High-performance database
+hive_flutter: ^1.1.0 # Flutter Hive integration
+
+# Development Dependencies
+hive_generator: ^2.0.1 # Code generation for adapters
+build_runner: ^2.4.7 # Build system for code generation
 ```
 
 ### Icons and UI
@@ -125,10 +147,13 @@ path_provider: ^2.1.4 # iOS-compatible file path access
 
 ### Route Management
 
-- Store routes using `SharedPreferences` with JSON serialization
-- Implement FIFO removal for saved routes (5-route limit)
+- Store routes using `Hive` with type adapters for type-safe storage
+- Support up to 50 saved routes with automatic FIFO removal
+- Advanced filtering: distance range, route type, date range, proximity-based
+- Route editing: name editing with validation and update capabilities
 - Use `LatLng` from `latlong2` for coordinate representation
-- Calculate distances with geodesic algorithms
+- Calculate distances with geodesic algorithms (Haversine formula)
+- Search functionality for route names and metadata
 
 ### File Operations
 
