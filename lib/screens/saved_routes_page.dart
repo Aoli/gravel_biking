@@ -8,7 +8,8 @@ import '../utils/coordinate_utils.dart';
 /// Enhanced saved routes management page with search and organization
 class SavedRoutesPage extends StatefulWidget {
   final RouteService routeService;
-  final Function(List<LatLng>) onLoadRoute;
+  final Function(SavedRoute)
+  onLoadRoute; // Changed to pass the full SavedRoute object
   final VoidCallback? onRoutesChanged; // Callback for when routes are modified
 
   const SavedRoutesPage({
@@ -190,7 +191,7 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
 
     if (result != null && result.isNotEmpty && result != route.name) {
       try {
-        // Update the route name directly
+        // Create updated route with new name
         final updatedRoute = SavedRoute.fromLatLng(
           name: result,
           latLngPoints: route.latLngPoints,
@@ -200,7 +201,8 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
           distance: route.distance,
         );
 
-        await widget.routeService.updateRoute(updatedRoute);
+        // Update route (delete old, add new)
+        await widget.routeService.updateRoute(route, updatedRoute);
         await _loadRoutes();
 
         // Notify parent widget that routes have changed
@@ -340,7 +342,9 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
   }
 
   void _loadRoute(SavedRoute route) {
-    widget.onLoadRoute(route.latLngPoints);
+    widget.onLoadRoute(
+      route,
+    ); // Pass the full SavedRoute object instead of just points
     Navigator.of(context).pop();
     ScaffoldMessenger.of(
       context,

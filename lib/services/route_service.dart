@@ -135,14 +135,21 @@ class RouteService {
     }
   }
 
-  /// Update route (for favorites, descriptions, etc.)
-  Future<void> updateRoute(SavedRoute route) async {
+  /// Update route (replace existing route with new data)
+  Future<void> updateRoute(SavedRoute oldRoute, SavedRoute newRoute) async {
     try {
-      if (route.key != null) {
-        await route.save();
+      final box = await _box;
+
+      // Find and delete the old route
+      if (oldRoute.key != null) {
+        await box.delete(oldRoute.key);
       }
+
+      // Add the new route
+      await box.add(newRoute);
     } catch (e) {
       debugPrint('Error updating route: $e');
+      rethrow;
     }
   }
 

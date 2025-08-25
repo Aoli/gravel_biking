@@ -23,6 +23,26 @@ import 'services/route_service.dart';
 
 void main() => runApp(const MyApp());
 
+/// Background isolate function for parsing GPX track points
+/// This prevents UI freezing when processing large GPX files with thousands of points
+List<LatLng> _parseGpxPoints(String xmlText) {
+  final doc = xml.XmlDocument.parse(xmlText);
+  final trkpts = doc.findAllElements('trkpt');
+  final pts = <LatLng>[];
+
+  for (final p in trkpts) {
+    final latStr = p.getAttribute('lat');
+    final lonStr = p.getAttribute('lon');
+    if (latStr != null && lonStr != null) {
+      final lat = double.tryParse(latStr);
+      final lon = double.tryParse(lonStr);
+      if (lat != null && lon != null) pts.add(LatLng(lat, lon));
+    }
+  }
+
+  return pts;
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
@@ -265,13 +285,37 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   }
 
   /// Load route from SavedRoutesPage - no navigation pops needed
+  void _loadRouteFromSavedRoute(SavedRoute savedRoute) {
+    setState(() {
+      _routePoints.clear();
+      _routePoints.addAll(savedRoute.latLngPoints);
+      _segmentMeters.clear();
+      _editingIndex = null;
+      _loopClosed = savedRoute.loopClosed; // Properly restore the loop state
+
+      // Recalculate segment distances
+      for (int i = 1; i < _routePoints.length; i++) {
+        _segmentMeters.add(
+          _distance.as(LengthUnit.Meter, _routePoints[i - 1], _routePoints[i]),
+        );
+      }
+    });
+
+    // Center map on the loaded route
+    if (_routePoints.isNotEmpty) {
+      _centerMapOnRoute();
+    }
+  }
+
+  /// Legacy method for loading route points only (kept for backward compatibility)
   void _loadRouteFromList(List<LatLng> routePoints) {
     setState(() {
       _routePoints.clear();
       _routePoints.addAll(routePoints);
       _segmentMeters.clear();
       _editingIndex = null;
-      _loopClosed = false; // Will be updated by the service if needed
+      _loopClosed =
+          false; // Default to open since we don't have loop state info
 
       // Recalculate segment distances
       for (int i = 1; i < _routePoints.length; i++) {
@@ -889,7 +933,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           MaterialPageRoute(
                             builder: (context) => SavedRoutesPage(
                               routeService: _routeService,
-                              onLoadRoute: _loadRouteFromList,
+                              onLoadRoute:
+                                  _loadRouteFromSavedRoute, // Use new method that preserves loop state
                               onRoutesChanged:
                                   _loadSavedRoutes, // Add callback for when routes are modified
                             ),
@@ -1601,18 +1646,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         return;
       }
       final text = utf8.decode(data);
-      final doc = xml.XmlDocument.parse(text);
-      final trkpts = doc.findAllElements('trkpt');
-      final pts = <LatLng>[];
-      for (final p in trkpts) {
-        final latStr = p.getAttribute('lat');
-        final lonStr = p.getAttribute('lon');
-        if (latStr != null && lonStr != null) {
-          final lat = double.tryParse(latStr);
-          final lon = double.tryParse(lonStr);
-          if (lat != null && lon != null) pts.add(LatLng(lat, lon));
-        }
-      }
+
+      // Parse GPX in background isolate to prevent UI freezing
+      final pts = await compute(_parseGpxPoints, text);
+
       if (pts.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
