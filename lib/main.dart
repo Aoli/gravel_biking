@@ -234,7 +234,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     try {
       // Add a small delay to make loading indicator visible
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       print('Calling route service save...');
       await _routeService.saveCurrentRoute(
         name: name,
@@ -673,7 +673,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             // Set loading state first while drawer is still open
                             setState(() => _isImporting = true);
                             // Small delay to show the loading indicator
-                            await Future.delayed(const Duration(milliseconds: 500));
+                            await Future.delayed(
+                              const Duration(milliseconds: 500),
+                            );
                             Navigator.of(context).pop();
                             _importGeoJsonRouteInternal();
                           },
@@ -704,7 +706,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             // Set loading state first while drawer is still open
                             setState(() => _isExporting = true);
                             // Small delay to show the loading indicator
-                            await Future.delayed(const Duration(milliseconds: 500));
+                            await Future.delayed(
+                              const Duration(milliseconds: 500),
+                            );
                             Navigator.of(context).pop();
                             _exportGeoJsonRoute();
                           },
@@ -750,7 +754,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             // Set loading state first while drawer is still open
                             setState(() => _isImporting = true);
                             // Small delay to show the loading indicator
-                            await Future.delayed(const Duration(milliseconds: 500));
+                            await Future.delayed(
+                              const Duration(milliseconds: 500),
+                            );
                             Navigator.of(context).pop();
                             _importGpxRoute();
                           },
@@ -781,7 +787,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             // Set loading state first while drawer is still open
                             setState(() => _isExporting = true);
                             // Small delay to show the loading indicator
-                            await Future.delayed(const Duration(milliseconds: 500));
+                            await Future.delayed(
+                              const Duration(milliseconds: 500),
+                            );
                             Navigator.of(context).pop();
                             _exportGpxRoute();
                           },
@@ -1368,7 +1376,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         print('No file selected or picker cancelled');
         return;
       }
-      
+
       print('File selected, processing...');
       final file = res.files.first;
       final data = file.bytes ?? Uint8List(0);
