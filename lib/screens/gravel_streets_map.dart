@@ -1207,14 +1207,26 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 markers: [
                   for (int i = 0; i < _routePoints.length; i++)
                     () {
-                      // Route points visibility based on mode:
-                      // - Edit mode: Normal size (16px) with full visibility
-                      // - View mode: Very small (2px) with polyline color (subtle)
+                      // Route points visibility logic:
+                      // - Measurement mode ON: Show all points
+                      // - Measurement mode OFF: Only show start/finish points, hide middle points
+                      final isStartPoint = i == 0 && _routePoints.length > 1;
+                      final isEndPoint =
+                          i == _routePoints.length - 1 &&
+                          _routePoints.length > 1;
+                      final isStartOrEnd = isStartPoint || isEndPoint;
+
+                      // In non-measurement mode, only show start/end points
+                      if (!_measureEnabled &&
+                          !isStartOrEnd &&
+                          _routePoints.length > 2) {
+                        return null; // Hide middle points when measurement mode is off
+                      }
+
                       final baseSize = _editModeEnabled ? 16.0 : 2.0;
                       final markerSize = _measureEnabled
                           ? baseSize
-                          : baseSize *
-                                0.8; // Slight adjustment for measurement mode
+                          : baseSize * 0.8;
 
                       return Marker(
                         point: _routePoints[i],
@@ -1267,7 +1279,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ),
                       );
                     }(),
-                ],
+                ].whereType<Marker>().toList(), // Filter out null values
               ),
               // Midpoint markers for adding points between existing points
               if (_editModeEnabled && _routePoints.length >= 2)
@@ -1367,10 +1379,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       }(),
                   ],
                 ),
-              // Distance marker dots - visible in view mode as subtle fallback when text markers are disabled
-              if (!_measureEnabled &&
-                  !_showDistanceMarkers &&
-                  _distanceMarkers.isNotEmpty)
+              // Distance marker dots - always visible as subtle fallback when text markers are disabled
+              if (!_showDistanceMarkers && _distanceMarkers.isNotEmpty)
                 MarkerLayer(
                   markers: _distanceMarkers.asMap().entries.map((entry) {
                     final index = entry.key;
