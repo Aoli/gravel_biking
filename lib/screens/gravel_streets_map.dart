@@ -137,45 +137,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   // Dynamic point sizing based on route point density
   // This system automatically adjusts marker sizes to prevent visual overlap in dense routes
-  double _calculateDynamicPointSize() {
-    if (_routePoints.length < 2) return 18.0; // Default size for single points
-
-    // Calculate average distance between consecutive points to determine density
-    double totalDistance = 0.0;
-    int validSegments = 0;
-
-    for (int i = 1; i < _routePoints.length; i++) {
-      final segmentDistance = _distance.as(
-        LengthUnit.Meter,
-        _routePoints[i - 1],
-        _routePoints[i],
-      );
-      if (segmentDistance > 0) {
-        // Avoid division by zero for duplicate points
-        totalDistance += segmentDistance;
-        validSegments++;
-      }
-    }
-
-    if (validSegments == 0) return 18.0;
-
-    final averageDistance = totalDistance / validSegments;
-
-    // Adaptive sizing algorithm prevents point overlap:
-    // - Very sparse points (>1000m apart): 20px - Large, clearly visible
-    // - Sparse points (500-1000m apart): 18px - Standard size
-    // - Medium density (200-500m apart): 16px - Slightly smaller
-    // - Dense points (100-200m apart): 14px - Smaller for clarity
-    // - Very dense (50-100m apart): 12px - Much smaller to prevent overlap
-    // - Extremely dense (<50m apart): 10px - Minimal size for very detailed routes
-    if (averageDistance > 1000) return 20.0;
-    if (averageDistance > 500) return 18.0;
-    if (averageDistance > 200) return 16.0;
-    if (averageDistance > 100) return 14.0;
-    if (averageDistance > 50) return 12.0;
-    return 10.0;
-  }
-
   // Saved routes
   final List<SavedRoute> _savedRoutes = [];
   static const int _maxSavedRoutes = 50; // Updated from 5 to 50
@@ -544,7 +505,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     final useMapTiler = _mapTilerKey.isNotEmpty;
     final tileUrl = useMapTiler
         ? 'https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=$_mapTilerKey'
-        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'; // No subdomains to avoid warning
+        : 'https://tile.openstreetMap.org/{z}/{x}/{y}.png'; // No subdomains to avoid warning
     final subdomains = const <String>[]; // Avoid subdomains entirely
     final attribution = useMapTiler
         ? '© MapTiler © OpenStreetMap contributors'
@@ -1121,7 +1082,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     Builder(
                       builder: (context) {
                         final parts = <String>[];
-                        if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
+                        if (_appVersion.isNotEmpty) {
+                          parts.add('v$_appVersion');
+                        }
                         if (_buildNumber.isNotEmpty) {
                           parts.add('#$_buildNumber');
                         }
@@ -1173,7 +1136,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     _saveStateForUndo();
                     // Only allow adding new points when edit mode is disabled
                     // This prevents accidentally adding points while trying to edit existing ones
-                    if (_loopClosed) _loopClosed = false; // re-open when adding
+                    if (_loopClosed) {
+                      _loopClosed = false; // re-open when adding
+                    }
                     _routePoints.add(latLng);
                     _recomputeSegments();
                     _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
@@ -1281,11 +1246,16 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 markers: [
                   for (int i = 0; i < _routePoints.length; i++)
                     () {
-                      final dynamicSize = _calculateDynamicPointSize();
+                      // Calculate base size and adjust for measurement mode
+                      final baseSize = 16.0;
+                      final markerSize = _measureEnabled
+                          ? baseSize
+                          : baseSize * 0.4; // Match PointMarker's sizing logic
+
                       return Marker(
                         point: _routePoints[i],
-                        width: dynamicSize,
-                        height: dynamicSize,
+                        width: markerSize,
+                        height: markerSize,
                         alignment: Alignment.center,
                         child: GestureDetector(
                           onTap: () {
@@ -1305,19 +1275,18 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           },
                           child: PointMarker(
                             key: ValueKey(
-                              'point_${i}_measure_$_measureEnabled',
+                              'point_${i}_measure_${_measureEnabled}_edit_${_editingIndex}_loop_$_loopClosed',
                             ),
                             index: i,
-                            isEditing: _editingIndex == i,
                             size:
-                                dynamicSize *
-                                0.8, // Make inner point slightly smaller
+                                16.0, // Use a consistent base size and let PointMarker handle measurement mode sizing
                             isStartPoint: i == 0 && _routePoints.length > 1,
                             isEndPoint:
                                 i == _routePoints.length - 1 &&
                                 _routePoints.length > 1,
-                            isLoopClosed: _loopClosed,
                             measureEnabled: _measureEnabled,
+                            isEditing: _editingIndex == i,
+                            isLoopClosed: _loopClosed,
                           ),
                         ),
                       );

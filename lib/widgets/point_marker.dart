@@ -3,22 +3,22 @@ import 'package:flutter/material.dart';
 /// Widget for displaying route point markers on the map
 class PointMarker extends StatelessWidget {
   final int index;
-  final bool isEditing;
   final double size;
   final bool isStartPoint;
   final bool isEndPoint;
-  final bool isLoopClosed;
   final bool measureEnabled;
+  final bool isEditing;
+  final bool isLoopClosed;
 
   const PointMarker({
     super.key,
     required this.index,
-    this.isEditing = false,
     this.size = 14.0,
     this.isStartPoint = false,
     this.isEndPoint = false,
+    required this.measureEnabled, // Make this required so it's always passed explicitly
+    this.isEditing = false,
     this.isLoopClosed = false,
-    this.measureEnabled = true,
   });
 
   @override
@@ -29,19 +29,13 @@ class PointMarker extends StatelessWidget {
     // When measure mode is OFF, use subtle visualization
     if (!measureEnabled) {
       // Subtle point markers - much smaller, similar color, no borders
-      final subtleColor = primaryColor.withValues(
-        alpha: 0.8,
-      ); // Slightly different from polyline
-      final subtleSize = 4.0; // Much smaller for minimal visibility
+      final subtleColor = primaryColor.withValues(alpha: 0.8);
+      final subtleSize = size * 0.3; // Make it 30% of the original size
 
       return Container(
         width: subtleSize,
         height: subtleSize,
-        decoration: BoxDecoration(
-          color: subtleColor,
-          shape: BoxShape.circle,
-          // No border, no shadow - minimal appearance
-        ),
+        decoration: BoxDecoration(color: subtleColor, shape: BoxShape.circle),
       );
     }
 
