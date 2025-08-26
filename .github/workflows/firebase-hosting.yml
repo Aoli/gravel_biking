@@ -23,7 +23,10 @@ jobs:
         run: flutter pub get
 
       - name: Build Web (Wasm)
-        run: flutter build web --release --wasm --dart-define=BUILD_NUMBER=${{ github.run_number }}
+        run: |
+          flutter build web --release --wasm \
+            --dart-define=BUILD_NUMBER=${{ github.run_number }} \
+            --dart-define=MAPTILER_KEY=${{ secrets.MAPTILER_KEY }}
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0

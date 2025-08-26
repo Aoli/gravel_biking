@@ -146,6 +146,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   void initState() {
     super.initState();
     _routeService = RouteService();
+    debugPrint(
+      'MapTiler Key: "$_mapTilerKey"',
+    ); // Debug: Check if key is loaded
     _loadAppVersion();
     _loadSavedRoutes();
     // Initial fetch for a sensible area (Stockholm bbox)
