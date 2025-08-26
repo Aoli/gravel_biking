@@ -8,6 +8,7 @@ class PointMarker extends StatelessWidget {
   final bool isStartPoint;
   final bool isEndPoint;
   final bool isLoopClosed;
+  final bool measureEnabled;
 
   const PointMarker({
     super.key,
@@ -17,6 +18,7 @@ class PointMarker extends StatelessWidget {
     this.isStartPoint = false,
     this.isEndPoint = false,
     this.isLoopClosed = false,
+    this.measureEnabled = true,
   });
 
   @override
@@ -24,20 +26,40 @@ class PointMarker extends StatelessWidget {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final tertiaryColor = Theme.of(context).colorScheme.tertiary;
 
+    // When measure mode is OFF, use subtle visualization
+    if (!measureEnabled) {
+      // Subtle point markers - much smaller, similar color, no borders
+      final subtleColor = primaryColor.withValues(
+        alpha: 0.8,
+      ); // Slightly different from polyline
+      final subtleSize = 4.0; // Much smaller for minimal visibility
+
+      return Container(
+        width: subtleSize,
+        height: subtleSize,
+        decoration: BoxDecoration(
+          color: subtleColor,
+          shape: BoxShape.circle,
+          // No border, no shadow - minimal appearance
+        ),
+      );
+    }
+
+    // When measure mode is ON, use full interactive appearance
     // Calculate border width relative to size to maintain visual balance
     final borderWidth = (size / 14.0 * 2.0).clamp(1.0, 3.0);
 
     // Determine marker color and icon based on point type
     Color markerColor;
     IconData? iconData;
-    
+
     if (isEditing) {
       markerColor = tertiaryColor;
       iconData = null;
     } else if (isStartPoint && isLoopClosed) {
       // Special styling for start point in closed loop (both start and end)
-      markerColor = Colors.orange;  // Orange for closed loop start/end
-      iconData = Icons.refresh;     // Refresh icon indicates loop
+      markerColor = Colors.orange; // Orange for closed loop start/end
+      iconData = Icons.refresh; // Refresh icon indicates loop
     } else if (isStartPoint) {
       markerColor = Colors.green;
       iconData = Icons.play_arrow;
@@ -65,11 +87,9 @@ class PointMarker extends StatelessWidget {
         ],
       ),
       // Add icons for special point types
-      child: iconData != null ? Icon(
-        iconData,
-        color: Colors.white,
-        size: size * 0.6,
-      ) : null,
+      child: iconData != null
+          ? Icon(iconData, color: Colors.white, size: size * 0.6)
+          : null,
     );
   }
 }

@@ -1304,6 +1304,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             }
                           },
                           child: PointMarker(
+                            key: ValueKey(
+                              'point_${i}_measure_$_measureEnabled',
+                            ),
                             index: i,
                             isEditing: _editingIndex == i,
                             size:
@@ -1314,6 +1317,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                                 i == _routePoints.length - 1 &&
                                 _routePoints.length > 1,
                             isLoopClosed: _loopClosed,
+                            measureEnabled: _measureEnabled,
                           ),
                         ),
                       );
