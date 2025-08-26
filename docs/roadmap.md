@@ -2,6 +2,19 @@
 
 This document tracks feature work one by one with clear status and brief notes.
 
+- [x] **Main.dart Architecture Refactoring**: Transform monolithic main file into modular service-oriented architecture.
+  - Status: Done (2025‑08‑26)
+  - What: Complete architectural refactoring for improved maintainability and scalability:
+    - **File size reduction**: main.dart reduced from 1816 to 88 lines (95% reduction)
+    - **Service extraction**: Created MeasurementService (331 lines) for route calculations and point management
+    - **UI separation**: Moved complete map UI to screens/gravel_streets_map.dart (2265 lines)
+    - **Clean architecture**: Established clear separation of concerns with service-oriented design
+    - **Import optimization**: Reduced main.dart imports from 15+ complex imports to 3 clean imports
+    - **Zero functionality impact**: 100% preservation of existing UI and features
+    - **Future-ready structure**: Architecture prepared for dependency injection and advanced state management
+    - **Documentation**: Comprehensive refactoring documentation and technical summary created
+  - Benefits: Dramatically improved maintainability, faster development, easier debugging, better code organization, scalable architecture for future features
+
 - [x] **Distance Markers System**: Customizable distance markers along route for better navigation and pacing.
   - Status: Done (2025‑08‑26)
   - What: Interactive distance marker system with full customization and smart positioning:
