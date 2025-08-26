@@ -54,9 +54,10 @@ Implement the main application file with these responsibilities:
 - Configure app scaffold, theming, and Material Design components
 - Create `GravelStreetsMap` stateful widget containing primary map functionality
 - Integrate Overpass API for gravel road data fetching
-- Handle all map interactions and state management
-- Structure UI layout including AppBar actions and drawer
-- Render map layers: PolylineLayer for roads/routes, MarkerLayer for points
+- Handle all map interactions and state management including comprehensive point editing
+- Structure UI layout including AppBar actions (delete) and drawer
+- Render map layers: PolylineLayer for roads/routes, MarkerLayer for points and midpoint insertion markers
+- Implement advanced editing features: position editing, point deletion, midpoint insertion with visual feedback
 
 ### Models Layer (`models/`)
 
@@ -122,9 +123,11 @@ Build reusable UI components following these specifications:
   - Implement adaptive sizing based on route point density (10-20px range)
   - Use theme colors with proper border and shadow effects
   - Apply consistent theming with primary/tertiary color support
-- **`DistancePanel`**: Create measurement interface
+- **`DistancePanel`**: Create measurement interface with comprehensive editing controls
   - Display segment and total distance calculations
-  - Provide action buttons: Undo, Save, Clear, Loop toggle
+  - Provide action buttons: Undo, Edit (enters edit mode), Save (diskette icon), Clear, Loop toggle
+  - Show comprehensive edit instructions and mode indicators during editing
+  - Include cancel functionality for exiting edit mode
   - Implement responsive layout with scrollable segment list
 
 ## Feature Implementation Requirements
@@ -149,8 +152,14 @@ Build the measurement interface with these features:
 
 - Implement tap-to-measure with toggle mode (green/red indicator)
 - Calculate per-segment and total distances using geodesic algorithms
-- Enable editable points: tap to select and move, long-press to delete
+- Enable comprehensive point editing system:
+  - **Safety-first gestures**: tap to delete points, long-press to edit position (prevents accidental deletions)
+  - **Position editing**: select points and reposition them with visual feedback
+  - **Midpoint insertion**: add points between existing route points using + markers
+  - **Context-aware interactions**: gesture behavior changes based on edit mode state
+  - **Visual feedback system**: edit instructions and mode indicators in distance panel
 - Support loop closure with additional segment calculation
+- Provide professional editing workflow with clear entry/exit modes
 
 ### Saved Routes
 
@@ -260,6 +269,7 @@ Implement these development practices:
 
 ## Change Log
 
+- **2025‑01‑27**: Comprehensive Point Editing System - Complete overhaul of route editing with enhanced safety (tap to delete, long-press to edit), UI reorganization (AppBar delete, distance panel edit, diskette save), advanced point manipulation (position editing, individual deletion, midpoint insertion), context-aware gestures, and professional editing workflow with visual feedback
 - **2025‑08‑25**: Loading Indicators Enhancement - Added comprehensive loading states for all file operations (import/export/save) with progress indicators, disabled concurrent operations, and improved user feedback
 - **2025‑08‑25**: Dynamic Point Sizing System - Implemented adaptive marker sizing based on route density (10-20px range) to prevent visual overlap in dense routes with automatic density analysis
 - **2025‑08‑25**: Enhanced Route Management - Migrated from SharedPreferences to Hive database supporting 50 routes with search, advanced filtering (distance, type, date, proximity), route name editing, and dedicated SavedRoutesPage with Material 3 design

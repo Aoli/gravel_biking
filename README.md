@@ -2,20 +2,37 @@
 
 Plan gravel rides on an interactive map. See ## Using the app
 
-- AppBar
+- **AppBar**
   - Measure toggle: green when on, red when off. When on, taps add points; when off, taps don't add points.
+  - Delete button: removes the last added route point (safer placement than in-map gestures).
   - Locate me: centers a marker at your current GPS position (after permission).
-- Map
+
+- **Map Interactions**
   - Tap to add points (when measurement mode is on). A polyline connects them.
-  - Tap a point to select it, then tap elsewhere to move it. Long‑press a point to delete it.
-- Distance panel
-  - Shows per‑segment distances and the total. Buttons for Undo, Save, and Clear.
-  - Save button (bookmark icon): quickly save current route with a custom name.
-  - Close loop/Open loop appears when you have 3+ points.
-- Drawer (hamburger)
-  - Saved Routes: Save up to 5 named routes locally. Tap any saved route to load it (map auto-centers). Delete routes with trash icon.
-  - GeoJSON: Import a LineString from file; Export your current route.
-  - GPX: Import a track; Export your current route as GPX 1.1.rom OpenStreetMap, measure custom routes with per‑segment and total distances, import/export your routes (GeoJSON/GPX), and quickly jump to your current GPS position.
+  - **Visual route indicators**:
+    - **Open routes**: Start point (green with play icon), end point (red with stop icon), intermediate points (blue)
+    - **Closed loop routes**: Start/end point (orange with refresh icon), intermediate points (blue)
+  - **Normal Mode**: Tap empty map areas to add new points.
+  - **Edit Mode**: Enhanced point manipulation with safety-first gestures:
+    - **Tap a point**: Select the point for position editing (safer than deletion).
+    - **Long-press a point**: Show confirmation dialog for deletion (prevents accidents).
+    - **Midpoint insertion**: In edit mode, + markers appear between points - tap to add a new point there.
+  - **Distance feedback**: Tap any point (in non-edit mode) to see compact distance overlay "P2 2.79km från Start" in lower left corner.
+
+- **Distance Panel** (Enhanced editing controls)
+  - Shows per-segment distances and the total distance.
+  - **Undo**: Remove the last added point.
+  - **Edit**: Enter edit mode for comprehensive point manipulation (position editing, deletion, midpoint insertion).
+  - **Save**: Save current route with a custom name (diskette icon for clarity).
+  - **Clear**: Remove all points and start over.
+  - **Close/Open loop**: Appears when you have 3+ points - connects last point to first.
+  - **Edit Instructions**: When in edit mode, displays comprehensive guidance for all editing operations.
+
+- **Drawer** (hamburger menu)
+  - **Saved Routes**: Save up to 50 named routes locally with search and filtering capabilities.
+  - **GeoJSON**: Import a LineString from file; Export your current route.
+  - **GPX**: Import a track; Export your current route as GPX 1.1.
+  - **Distance Markers**: Generate regular distance markers along your route at customizable intervals (0.5km - 10km) with orange square markers showing "1k", "2k", etc. Tap any marker to see distance confirmation overlay.
 
 ## Table of Contents
 
@@ -45,16 +62,26 @@ It runs on Android, iOS, Web, macOS, Linux, and Windows.
 ## Core features
 
 - **Cross-platform icon compatibility**: All icons use Material Design with Google Fonts integration for consistent visibility across Android, iOS, and web platforms
-- Gravel overlay from OpenStreetMap via the Overpass API, fetched for the current visible map bounds (debounced while panning/zooming).
-- Measurement mode with a green/red toggle in the AppBar.
+
+- **Interactive gravel overlay** from OpenStreetMap via the Overpass API, fetched for the current visible map bounds (debounced while panning/zooming).
+
+- **Advanced measurement system** with comprehensive editing capabilities:
+  - Measurement mode with a green/red toggle in the AppBar.
   - Add points by tapping the map (when enabled).
-  - Undo last point, Clear all.
-  - Editable points: tap a point to select then tap on the map to move; long‑press a point to delete.
+  - **Professional point editing**: Enter edit mode for full route manipulation:
+    - **Safe deletion**: Tap any point to delete it (preventing accidental deletions).
+    - **Position editing**: Long-press a point, then tap anywhere to move it there.
+    - **Midpoint insertion**: Add points between existing route points using + markers.
+  - Undo last point, Clear all points.
   - Close/Open loop: adds a final loop segment to the list and total.
-- Saved Routes: Save up to 5 named routes locally on your device.
+
+- **Enhanced Saved Routes**: Save up to 50 named routes locally on your device with advanced management:
   - Routes are automatically centered when loaded.
-  - Accessible from the drawer or quick-save button in the distance panel.
-  - Oldest routes are automatically removed when the limit is reached.
+  - Search functionality by route name and description.
+  - Advanced filtering: distance range, route type, date range, proximity.
+  - Route name editing with validation.
+  - Accessible from the drawer and quick-save button in the distance panel.
+  - Automatic FIFO removal when storage limit is reached.
 - Import/Export
   - GeoJSON LineString export/import.
   - GPX 1.1 export/import (trk/trkseg/trkpt). If the first and last points are the same, loop is inferred.
@@ -93,9 +120,21 @@ On Web, the app starts in a browser; on mobile/desktop, select a device in your 
 ## How it works (at a glance)
 
 - **Map rendering**: `flutter_map` provides a Leaflet‑style map with tile layers.
+
 - **Gravel fetch**: When the viewport changes, a 500ms debounce triggers an Overpass API request for gravel roads. JSON is parsed off the UI thread using `compute` and drawn as polylines.
-- **Measurement**: Route points are stored and distances computed with `latlong2.Distance`. Loop mode adds a last→first segment.
-- **Saved Routes**: Up to 5 routes stored locally using `SharedPreferences` with JSON serialization. FIFO removal when limit exceeded.
+
+- **Advanced measurement system**: Route points are stored and distances computed with `latlong2.Distance`. Comprehensive editing system includes:
+  - **Safety-first gestures**: Tap to delete points, long-press to edit position (prevents accidental deletions).
+  - **Professional editing workflow**: Clear edit mode entry/exit with visual feedback and instructions.
+  - **Midpoint insertion**: Add points between existing route points using visual + markers.
+  - **Context-aware interactions**: Gesture behavior adapts based on edit mode state.
+  - Loop mode adds a last→first segment for closed routes.
+
+- **Enhanced Saved Routes**: Up to 50 routes stored locally using `Hive` database with advanced management:
+  - Real-time search by name and description.
+  - Multi-criteria filtering: distance range, route type, date range, proximity.
+  - Route name editing with validation and error handling.
+  - Automatic SharedPreferences to Hive migration for existing users.
 - **Import/Export**: GeoJSON LineString and GPX 1.1 support. File operations use `file_picker` and `file_saver`.
 - **Architecture**: Refactored from monolithic structure into organized layers:
   - `models/` - Data structures (SavedRoute)
@@ -175,6 +214,7 @@ flutter build ios --dart-define-from-file=env.local.json
 ```
 
 Notes:
+
 - `env.local.json` is in .gitignore. Do not commit your key.
 - For web, set domain restrictions in your MapTiler dashboard.
 

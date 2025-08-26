@@ -7,13 +7,16 @@ class DistancePanel extends StatelessWidget {
   final VoidCallback onUndo;
   final VoidCallback onSave;
   final VoidCallback onClear;
+  final ValueChanged<bool> onEditModeChanged;
   final ThemeData theme;
   final bool measureEnabled;
   final bool loopClosed;
   final bool canToggleLoop;
   final VoidCallback onToggleLoop;
-  final int? editingIndex;
-  final VoidCallback onCancelEdit;
+  final bool editModeEnabled;
+  final bool showDistanceMarkers;
+  final ValueChanged<bool> onDistanceMarkersToggled;
+  final double distanceInterval;
 
   const DistancePanel({
     super.key,
@@ -21,14 +24,19 @@ class DistancePanel extends StatelessWidget {
     required this.onUndo,
     required this.onSave,
     required this.onClear,
+    required this.onEditModeChanged,
     required this.theme,
     required this.measureEnabled,
     required this.loopClosed,
     required this.canToggleLoop,
     required this.onToggleLoop,
-    required this.editingIndex,
-    required this.onCancelEdit,
+    required this.editModeEnabled,
+    required this.showDistanceMarkers,
+    required this.onDistanceMarkersToggled,
+    required this.distanceInterval,
   });
+
+
 
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
 
@@ -43,8 +51,8 @@ class DistancePanel extends StatelessWidget {
       elevation: 4,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 280),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        constraints: const BoxConstraints(maxWidth: 300), // Increased from 280
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Increased padding
         decoration: BoxDecoration(
           color: surfaceColor,
           borderRadius: BorderRadius.circular(12),
@@ -66,6 +74,7 @@ class DistancePanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Header row with title and primary actions
               Row(
                 children: [
                   Icon(Icons.straighten, color: primaryColor, size: 20),
@@ -81,6 +90,7 @@ class DistancePanel extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // Primary action buttons (undo & save)
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(6),
@@ -100,19 +110,107 @@ class DistancePanel extends StatelessWidget {
                         ),
                         IconButton(
                           tooltip: 'Spara rutt',
-                          icon: const Icon(Icons.bookmark_add, size: 18),
+                          icon: const Icon(Icons.save, size: 18),
                           color: primaryColor,
                           onPressed: onSave,
                           visualDensity: VisualDensity.compact,
                         ),
-                        IconButton(
-                          tooltip: 'Rensa rutt',
-                          icon: const Icon(Icons.delete_outline, size: 18),
-                          color: theme.colorScheme.error,
-                          onPressed: onClear,
-                          visualDensity: VisualDensity.compact,
-                        ),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Control toggles row - now with more space (300px)
+              Row(
+                children: [
+                  // Edit mode toggle - expanded
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: editModeEnabled 
+                          ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.4)
+                          : theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+                        border: Border.all(
+                          color: editModeEnabled 
+                            ? theme.colorScheme.tertiary.withValues(alpha: 0.4)
+                            : theme.colorScheme.outline.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit,
+                            size: 16,
+                            color: editModeEnabled ? theme.colorScheme.tertiary : onSurface.withValues(alpha: 0.6),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Redigera',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: editModeEnabled ? theme.colorScheme.onTertiaryContainer : onSurface.withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          Switch(
+                            value: editModeEnabled,
+                            onChanged: onEditModeChanged,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            activeColor: theme.colorScheme.tertiary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Distance markers toggle - expanded
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: showDistanceMarkers 
+                          ? theme.colorScheme.secondaryContainer.withValues(alpha: 0.4)
+                          : theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+                        border: Border.all(
+                          color: showDistanceMarkers 
+                            ? theme.colorScheme.secondary.withValues(alpha: 0.4)
+                            : theme.colorScheme.outline.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.place,
+                            size: 16,
+                            color: showDistanceMarkers ? theme.colorScheme.secondary : onSurface.withValues(alpha: 0.6),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Markörer',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: showDistanceMarkers ? theme.colorScheme.onSecondaryContainer : onSurface.withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          Switch(
+                            value: showDistanceMarkers,
+                            onChanged: onDistanceMarkersToggled,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            activeColor: theme.colorScheme.secondary,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -148,7 +246,48 @@ class DistancePanel extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 8),
-              if (editingIndex != null) ...[
+              // Show distance marker interval when markers are enabled
+              if (showDistanceMarkers && segmentMeters.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondaryContainer.withValues(
+                      alpha: 0.8,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: theme.colorScheme.secondary.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.place,
+                        size: 16,
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Avståndsmarkörer: ${distanceInterval == 0.5 ? "500m" : "${distanceInterval.toInt()}km"}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              // Show edit mode instructions when edit mode is enabled
+              if (editModeEnabled) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -175,21 +314,13 @@ class DistancePanel extends StatelessWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Redigerar punkt #${editingIndex! + 1} — tryck på kartan för att flytta',
+                          'Redigeringsläge aktivt\n• Tryck på punkt för att välja\n• Långtryck på punkt för att ta bort\n• Tryck på + för att lägga till mellan punkter',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onTertiaryContainer,
                             fontWeight: FontWeight.w500,
+                            fontSize: 11,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      IconButton(
-                        tooltip: 'Avbryt redigering',
-                        icon: const Icon(Icons.close, size: 16),
-                        color: theme.colorScheme.error,
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        onPressed: onCancelEdit,
                       ),
                     ],
                   ),
@@ -209,6 +340,19 @@ class DistancePanel extends StatelessWidget {
                   ),
                 ),
               ),
+              // Show helpful hint when not in edit mode but have points
+              if (!editModeEnabled && segmentMeters.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Tryck på punkt för avstånd från start • Sätt på redigeringsläge för att ändra rutter',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               if (segmentMeters.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -222,21 +366,38 @@ class DistancePanel extends StatelessWidget {
                 )
               else ...[
                 const SizedBox(height: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 160),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainer.withValues(
-                        alpha: 0.3,
-                      ),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
+                // Expandable segments - creative design
+                ExpansionTile(
+                  initiallyExpanded: false,
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+                  childrenPadding: const EdgeInsets.only(bottom: 8),
+                  backgroundColor: theme.colorScheme.surfaceContainer.withValues(alpha: 0.2),
+                  collapsedBackgroundColor: theme.colorScheme.surfaceContainer.withValues(alpha: 0.1),
+                  leading: Icon(
+                    Icons.analytics_outlined,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  ),
+                  title: Text(
+                    'Segment analys (${segmentMeters.length - (loopClosed ? 1 : 0)} segment${segmentMeters.length - (loopClosed ? 1 : 0) == 1 ? '' : ''}${loopClosed ? ' + loop' : ''})',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: onSurface,
                     ),
-                    child: SingleChildScrollView(
+                  ),
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -246,30 +407,94 @@ class DistancePanel extends StatelessWidget {
                             i++
                           )
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Text(
-                                'Segment ${i + 1}: ${CoordinateUtils.formatDistance(segmentMeters[i])}',
-                                style: TextStyle(
-                                  color: onSurface,
-                                  fontWeight: FontWeight.w400,
-                                ),
+                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primaryContainer,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${i + 1}',
+                                        style: TextStyle(
+                                          color: theme.colorScheme.onPrimaryContainer,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Segment ${i + 1}',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: onSurface,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    CoordinateUtils.formatDistance(segmentMeters[i]),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          if (loopClosed && segmentMeters.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Text(
-                                'Loop segment: ${CoordinateUtils.formatDistance(segmentMeters.last)}',
-                                style: TextStyle(
-                                  color: primaryColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
+                          if (loopClosed && segmentMeters.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              height: 1,
+                              color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                              margin: const EdgeInsets.symmetric(vertical: 4),
                             ),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.loop,
+                                    size: 12,
+                                    color: theme.colorScheme.onSecondaryContainer,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Loop slut → start',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: onSurface,
+                                      fontWeight: FontWeight.w500,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  CoordinateUtils.formatDistance(segmentMeters.last),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.secondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ],

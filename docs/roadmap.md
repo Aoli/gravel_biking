@@ -2,6 +2,72 @@
 
 This document tracks feature work one by one with clear status and brief notes.
 
+- [x] **Distance Markers System**: Customizable distance markers along route for better navigation and pacing.
+  - Status: Done (2025‑08‑26)
+  - What: Interactive distance marker system with full customization and smart positioning:
+    - **Configurable intervals**: Slider from 0.5km to 10km with 8 preset intervals (0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10km)
+    - **Smart generation**: Interpolates exact marker positions along route segments including closed loops
+    - **Visual markers**: Orange square markers with white borders and text showing distance ("1k", "2k", "500m")
+    - **Interactive markers**: Tap any distance marker to show confirmation overlay "Avståndsmarkering 2km från Start"
+    - **Toggle visibility**: Show/hide markers independently of generation
+    - **Route integration**: Markers automatically cleared when route is modified, loaded, or cleared
+    - **Professional UI**: Expandable drawer section with generate/clear controls and status display
+    - **Accurate placement**: Uses geodesic distance calculations for precise positioning along curved routes
+  - Benefits: Better route planning, pacing reference, navigation waypoints, professional route presentation
+
+- [x] **Compact Distance-to-Point Overlay**: Non-intrusive distance feedback with smart positioning.
+  - Status: Done (2025‑08‑26)
+  - What: Redesigned distance feedback system with compact overlay presentation:
+    - Compact format: "P2 2.79km från Start" instead of full dialog
+    - Smart positioning: Lower left corner to avoid covering the selected point
+    - Auto-dismissal: Disappears after 2 seconds, no manual interaction needed
+    - Non-blocking: Doesn't interrupt workflow or require user action
+    - Professional styling: Bordered container with theme-appropriate colors
+    - Enhanced UX: Quick distance reference without interface disruption
+  - Benefits: Instant distance feedback without workflow interruption, better spatial awareness, professional measurement tool experience
+
+- [x] **Protected Edit Mode with Distance Feedback**: Clear separation between measuring and editing modes.
+  - Status: Done (2025‑08‑26)  
+  - What: Complete redesign of point interaction system for safety and functionality:
+    - **Non-edit mode protection**: Points cannot be edited unless edit mode is explicitly activated
+    - **Distance-on-tap**: Tapping points shows distance from start in compact overlay format
+    - **Edit mode gating**: All editing functions (position changes, deletion) only work when edit button is green
+    - **Clear mode indication**: Visual feedback shows current mode state and available actions
+    - **User guidance**: Helpful hints explain interaction patterns for each mode
+  - Benefits: Eliminates accidental edits, provides instant measurement feedback, clear workflow separation
+
+- [x] **Visual Start/End Point Indicators**: Clear route direction visualization with colored markers and icons.
+  - Status: Done (2025‑08‑26)
+  - What: Enhanced route visualization with distinct start and end point markers:
+    - **Open routes**: Start point (green with play arrow ▶), end point (red with stop icon ⏹), intermediate points (blue)
+    - **Closed loops**: Start/end point (orange with refresh icon ↻ indicating loop), intermediate points (blue)
+    - Enhanced PointMarker widget with isStartPoint, isEndPoint, and isLoopClosed parameters
+    - Smart logic: handles both linear routes and closed loops with appropriate visual indicators
+    - Maintains all existing editing functionality with improved contextual feedback
+  - Benefits: Instant route type recognition, clear loop vs linear route distinction, professional mapping appearance
+
+- [x] **Enhanced Point Deletion Safety**: Gesture improvements with confirmation dialogs to prevent accidental point removal.
+  - Status: Done (2025‑08‑26)
+  - What: Completely redesigned point deletion workflow for maximum safety:
+    - Swapped gestures: Tap to select point for editing (safe), long-press for deletion (intentional)
+    - Added confirmation dialog: "Är du säker på att du vill ta bort punkt X?" with Cancel/Delete options
+    - Updated edit instructions to reflect new safer gesture patterns
+    - Prevents accidental route destruction during normal map interaction
+    - Maintains professional editing workflow while prioritizing user data safety
+  - Benefits: Eliminates accidental point deletions, provides clear deletion intent confirmation, safer editing experience
+
+- [x] **Comprehensive Point Editing System**: Complete overhaul of route editing with enhanced safety and functionality.
+  - Status: Done (2025‑01‑27)
+  - What: Implemented comprehensive point editing system with gesture safety and visual feedback:
+    - Enhanced safety: Swapped gesture handling - tap to delete points, long-press to edit position (safer than accidental deletion)
+    - UI reorganization: Moved delete icon to AppBar, edit button to distance panel, changed save icon to diskette for clarity
+    - Advanced point manipulation: Position editing, individual point deletion, and midpoint insertion between existing points
+    - Midpoint markers: Visual + indicators appear between points in edit mode for easy insertion
+    - Context-aware gestures: Tap and long-press behavior changes dynamically based on edit mode state
+    - Enhanced visual feedback: Comprehensive edit instructions and mode indicators in distance panel
+    - Professional editing workflow: Clear edit mode entry/exit with cancel functionality
+  - Benefits: Prevents accidental deletions, enables precise route adjustments, provides professional-grade editing capabilities
+
 - [x] **Loading Indicators for File Operations**: Enhanced UX with loading states during file operations.
   - Status: Done (2025‑08‑25)
   - What: Added comprehensive loading indicators for all file operations:

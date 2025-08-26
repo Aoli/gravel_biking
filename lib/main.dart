@@ -167,7 +167,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   final List<double> _segmentMeters = [];
   bool _measureEnabled = false;
   bool _loopClosed = false;
+  bool _editModeEnabled = false;
   int? _editingIndex;
+
+  // Distance markers state
+  final List<LatLng> _distanceMarkers = [];
+  bool _showDistanceMarkers = true;
+  double _distanceInterval = 1.0; // Default 1km intervals
 
   // Loading states for file operations
   bool _isExporting = false;
@@ -304,6 +310,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   void _loadRouteFromSavedRoute(SavedRoute savedRoute) {
     setState(() {
       _routePoints.clear();
+      _distanceMarkers.clear(); // Clear distance markers when loading new route
       _routePoints.addAll(savedRoute.latLngPoints);
       _segmentMeters.clear();
       _editingIndex = null;
@@ -650,6 +657,26 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                   setState(() => _measureEnabled = !_measureEnabled),
             ),
           ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).colorScheme.errorContainer,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.error,
+                width: 2,
+              ),
+            ),
+            child: IconButton(
+              tooltip: 'Rensa rutt',
+              icon: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.onErrorContainer,
+                size: 22,
+              ),
+              onPressed: _clearRoute,
+            ),
+          ),
         ],
       ),
       drawer: Drawer(
@@ -891,6 +918,101 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       onChanged: null, // Disabled for now
                     ),
                     const SizedBox(height: 8),
+                    // Distance Markers Section
+                    ExpansionTile(
+                      leading: Icon(
+                        Icons.straighten,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      title: Text(
+                        'Avståndsmarkeringar',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Lägg till markeringar längs rutt',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      children: [
+                        SwitchListTile(
+                          secondary: Icon(
+                            Icons.place,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          title: const Text('Visa avståndsmarkeringar'),
+                          subtitle: _distanceMarkers.isEmpty 
+                            ? const Text('Generera först markeringar nedan')
+                            : Text('${_distanceMarkers.length} markeringar aktiva'),
+                          value: _showDistanceMarkers,
+                          onChanged: _distanceMarkers.isEmpty 
+                            ? null 
+                            : (v) => setState(() => _showDistanceMarkers = v),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Intervall: ${_distanceInterval == 0.5 ? "500m" : "${_distanceInterval.toInt()}km"}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Slider(
+                                value: _distanceInterval,
+                                min: 0.5,
+                                max: 10.0,
+                                divisions: 8,
+                                onChanged: (value) => setState(() => _distanceInterval = value),
+                                label: _distanceInterval == 0.5 ? '500m' : '${_distanceInterval.toInt()}km',
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: _routePoints.length < 2 
+                                        ? null 
+                                        : () {
+                                            Navigator.of(context).pop();
+                                            _generateDistanceMarkers();
+                                          },
+                                      icon: const Icon(Icons.add_location, size: 16),
+                                      label: const Text('Generera'),
+                                      style: ElevatedButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: _distanceMarkers.isEmpty 
+                                        ? null 
+                                        : () {
+                                            setState(() => _distanceMarkers.clear());
+                                          },
+                                      icon: const Icon(Icons.clear, size: 16),
+                                      label: const Text('Rensa'),
+                                      style: OutlinedButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     Divider(
                       height: 1,
                       color: Theme.of(context).colorScheme.outlineVariant,
@@ -1058,10 +1180,12 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     _routePoints[_editingIndex!] = latLng;
                     _editingIndex = null;
                     _recomputeSegments();
+                    _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
                   } else {
                     if (_loopClosed) _loopClosed = false; // re-open when adding
                     _routePoints.add(latLng);
                     _recomputeSegments();
+                    _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
                   }
                 });
               },
@@ -1112,6 +1236,51 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                   ],
                 ),
+              // Distance markers layer
+              if (_showDistanceMarkers && _distanceMarkers.isNotEmpty)
+                MarkerLayer(
+                  markers: _distanceMarkers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final point = entry.value;
+                    final distanceKm = (index + 1) * _distanceInterval;
+                    
+                    return Marker(
+                      point: point,
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
+                      child: GestureDetector(
+                        onTap: () => _showDistanceMarkerInfo(index, distanceKm),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4), // Square with rounded corners
+                            color: Colors.orange,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              distanceKm < 1 
+                                ? '${(distanceKm * 1000).toInt()}m'.replaceAll('000m', 'k')
+                                : '${distanceKm.toInt()}k',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
               MarkerLayer(
                 markers: [
                   for (int i = 0; i < _routePoints.length; i++)
@@ -1123,20 +1292,110 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         height: dynamicSize,
                         alignment: Alignment.center,
                         child: GestureDetector(
-                          onTap: () => setState(() => _editingIndex = i),
-                          onLongPress: () => _deletePoint(i),
+                          onTap: () {
+                            if (_editModeEnabled) {
+                              // Only allow point selection when in edit mode
+                              setState(() => _editingIndex = i);
+                            } else {
+                              // Show distance from start to this point when not in edit mode
+                              _showDistanceToPoint(i);
+                            }
+                          },
+                          onLongPress: () {
+                            if (_editModeEnabled) {
+                              // Long press shows confirmation dialog for deletion (only in edit mode)
+                              _showDeletePointConfirmation(i);
+                            }
+                          },
                           child: PointMarker(
                             index: i,
                             isEditing: _editingIndex == i,
                             size:
                                 dynamicSize *
                                 0.8, // Make inner point slightly smaller
+                            isStartPoint: i == 0 && _routePoints.length > 1,
+                            isEndPoint: i == _routePoints.length - 1 && _routePoints.length > 1,
+                            isLoopClosed: _loopClosed,
                           ),
                         ),
                       );
                     }(),
                 ],
               ),
+              // Midpoint markers for adding points between existing points
+              if (_editModeEnabled && _routePoints.length >= 2)
+                MarkerLayer(
+                  markers: [
+                    // Add midpoint markers between consecutive points
+                    for (int i = 0; i < _routePoints.length - 1; i++)
+                      () {
+                        final midpoint = LatLng(
+                          (_routePoints[i].latitude + _routePoints[i + 1].latitude) / 2,
+                          (_routePoints[i].longitude + _routePoints[i + 1].longitude) / 2,
+                        );
+                        return Marker(
+                          point: midpoint,
+                          width: 16,
+                          height: 16,
+                          alignment: Alignment.center,
+                          child: GestureDetector(
+                            onTap: () => _addPointBetween(i, i + 1, midpoint),
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.onSecondary,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.add,
+                                size: 10,
+                                color: Theme.of(context).colorScheme.onSecondary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }(),
+                    // Add midpoint marker for loop closure if loop is closed
+                    if (_loopClosed && _routePoints.length >= 3)
+                      () {
+                        final midpoint = LatLng(
+                          (_routePoints.last.latitude + _routePoints.first.latitude) / 2,
+                          (_routePoints.last.longitude + _routePoints.first.longitude) / 2,
+                        );
+                        return Marker(
+                          point: midpoint,
+                          width: 16,
+                          height: 16,
+                          alignment: Alignment.center,
+                          child: GestureDetector(
+                            onTap: () => _addPointBetween(_routePoints.length - 1, 0, midpoint),
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.onSecondary,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.add,
+                                size: 10,
+                                color: Theme.of(context).colorScheme.onSecondary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }(),
+                  ],
+                ),
             ],
           ),
           // Minimal attribution to meet OSM/MapTiler requirements
@@ -1198,25 +1457,38 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               ),
             ),
           Align(
-            alignment: Alignment.bottomRight,
+            alignment: Alignment.bottomCenter, // Changed from bottomRight to use full width
             child: Padding(
-              padding: const EdgeInsets.only(right: 12, bottom: 12),
+              padding: const EdgeInsets.only(bottom: 12, left: 12, right: 12), // More balanced padding
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center, // Center alignment
                 children: [
                   DistancePanel(
                     segmentMeters: _segmentMeters,
                     onUndo: _undoLastPoint,
                     onSave: _showSaveRouteDialog,
                     onClear: _clearRoute,
+                    onEditModeChanged: (enabled) => setState(() {
+                      _editModeEnabled = enabled;
+                      if (!enabled) _editingIndex = null; // Clear selection when exiting edit mode
+                    }),
                     theme: Theme.of(context),
                     measureEnabled: _measureEnabled,
                     loopClosed: _loopClosed,
                     canToggleLoop: _routePoints.length >= 3,
                     onToggleLoop: _toggleLoop,
-                    editingIndex: _editingIndex,
-                    onCancelEdit: () => setState(() => _editingIndex = null),
+                    editModeEnabled: _editModeEnabled,
+                    showDistanceMarkers: _showDistanceMarkers,
+                    onDistanceMarkersToggled: (enabled) => setState(() {
+                      _showDistanceMarkers = enabled;
+                      if (enabled && _routePoints.length >= 2) {
+                        _generateDistanceMarkers();
+                      } else if (!enabled) {
+                        _distanceMarkers.clear();
+                      }
+                    }),
+                    distanceInterval: _distanceInterval,
                   ),
                 ],
               ),
@@ -1246,25 +1518,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               );
             },
           ),
-          Positioned(
-            bottom: 8,
-            right: 8,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(left: 4),
-                  child: IconButton(
-                    tooltip: 'Återställ kartposition',
-                    icon: const Icon(Icons.center_focus_strong, size: 20),
-                    onPressed: () {
-                      _mapController.move(const LatLng(59.3293, 18.0686), 12);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -1289,9 +1542,31 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     if (_routePoints.isEmpty && _segmentMeters.isEmpty) return;
     setState(() {
       _routePoints.clear();
+      _distanceMarkers.clear(); // Clear distance markers when clearing route
       _segmentMeters.clear();
       _loopClosed = false;
       _editingIndex = null;
+      _showDistanceMarkers = false; // Hide markers when route is cleared
+    });
+  }
+
+  void _addPointBetween(int beforeIndex, int afterIndex, LatLng midpoint) {
+    setState(() {
+      if (afterIndex == 0 && beforeIndex == _routePoints.length - 1) {
+        // Adding between last and first point (loop closure)
+        _routePoints.add(midpoint);
+      } else {
+        // Adding between consecutive points
+        _routePoints.insert(afterIndex, midpoint);
+      }
+      _recomputeSegments();
+      _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
+      // Keep edit mode active and select the new point
+      if (afterIndex == 0 && beforeIndex == _routePoints.length - 2) {
+        _editingIndex = _routePoints.length - 1; // New point at end
+      } else {
+        _editingIndex = afterIndex; // New point at insertion position
+      }
     });
   }
 
@@ -1300,6 +1575,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     setState(() {
       _loopClosed = !_loopClosed;
       _recomputeSegments();
+      _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
     });
   }
 
@@ -1363,10 +1639,223 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     return segs;
   }
 
+  void _generateDistanceMarkers() {
+    if (_routePoints.length < 2) return;
+
+    _distanceMarkers.clear();
+    final intervalMeters = _distanceInterval * 1000; // Convert km to meters
+    
+    double currentDistance = 0.0;
+    double nextMarkerDistance = intervalMeters;
+
+    for (int i = 1; i < _routePoints.length; i++) {
+      final segmentDistance = _distance.as(
+        LengthUnit.Meter, 
+        _routePoints[i - 1], 
+        _routePoints[i]
+      );
+      final segmentStart = currentDistance;
+      final segmentEnd = currentDistance + segmentDistance;
+
+      // Check if we need to place marker(s) in this segment
+      while (nextMarkerDistance <= segmentEnd) {
+        // Calculate position along this segment
+        final distanceIntoSegment = nextMarkerDistance - segmentStart;
+        final ratio = distanceIntoSegment / segmentDistance;
+        
+        // Interpolate position between the two points
+        final lat = _routePoints[i - 1].latitude + 
+          ((_routePoints[i].latitude - _routePoints[i - 1].latitude) * ratio);
+        final lon = _routePoints[i - 1].longitude + 
+          ((_routePoints[i].longitude - _routePoints[i - 1].longitude) * ratio);
+        
+        _distanceMarkers.add(LatLng(lat, lon));
+        nextMarkerDistance += intervalMeters;
+      }
+      
+      currentDistance = segmentEnd;
+    }
+
+    // Handle closed loop - check if we need markers in the closing segment
+    if (_loopClosed && _routePoints.length >= 3) {
+      final closingDistance = _distance.as(
+        LengthUnit.Meter, 
+        _routePoints.last, 
+        _routePoints.first
+      );
+      final segmentStart = currentDistance;
+      final segmentEnd = currentDistance + closingDistance;
+
+      while (nextMarkerDistance <= segmentEnd) {
+        final distanceIntoSegment = nextMarkerDistance - segmentStart;
+        final ratio = distanceIntoSegment / closingDistance;
+        
+        final lat = _routePoints.last.latitude + 
+          ((_routePoints.first.latitude - _routePoints.last.latitude) * ratio);
+        final lon = _routePoints.last.longitude + 
+          ((_routePoints.first.longitude - _routePoints.last.longitude) * ratio);
+        
+        _distanceMarkers.add(LatLng(lat, lon));
+        nextMarkerDistance += intervalMeters;
+      }
+    }
+
+    setState(() {
+      _showDistanceMarkers = true;
+    });
+  }
+
+  /// Helper method to regenerate distance markers if they were visible
+  void _updateDistanceMarkersIfVisible() {
+    if (_showDistanceMarkers && _routePoints.length >= 2) {
+      _generateDistanceMarkers();
+    }
+  }
+
+  void _showDeletePointConfirmation(int index) {
+    if (index < 0 || index >= _routePoints.length) return;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Ta bort punkt'),
+          content: Text('Är du säker på att du vill ta bort punkt ${index + 1}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Avbryt'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deletePoint(index);
+              },
+              child: const Text('Ta bort'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDistanceToPoint(int index) {
+    if (index < 0 || index >= _routePoints.length) return;
+    
+    // Calculate distance from start (point 0) to the selected point
+    double distanceFromStart = 0.0;
+    for (int i = 0; i < index; i++) {
+      distanceFromStart += _distance.as(LengthUnit.Meter, _routePoints[i], _routePoints[i + 1]);
+    }
+    
+    String formattedDistance;
+    if (distanceFromStart >= 1000) {
+      formattedDistance = '${(distanceFromStart / 1000).toStringAsFixed(2)}km';
+    } else {
+      formattedDistance = '${distanceFromStart.toInt()}m';
+    }
+    
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: 16,
+        top: 80, // Moved from bottom to top-left
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              'P${index + 1} $formattedDistance från Start',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    
+    // Auto-remove after 2 seconds
+    Timer(const Duration(seconds: 2), () {
+      overlayEntry.remove();
+    });
+  }
+
+  void _showDistanceMarkerInfo(int markerIndex, double distanceKm) {
+    String formattedDistance;
+    if (distanceKm < 1) {
+      formattedDistance = '${(distanceKm * 1000).toInt()}m';
+    } else {
+      formattedDistance = '${distanceKm.toStringAsFixed(1)}km'.replaceAll('.0km', 'km');
+    }
+    
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: 16,
+        top: 80, // Moved to top-left to match point distance overlay
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.orange,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              'Avståndsmarkering $formattedDistance från Start',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+    
+    // Auto-remove after 2 seconds
+    Timer(const Duration(seconds: 2), () {
+      overlayEntry.remove();
+    });
+  }
+
   void _deletePoint(int index) {
     if (index < 0 || index >= _routePoints.length) return;
     setState(() {
       _routePoints.removeAt(index);
+      _distanceMarkers.clear(); // Clear distance markers when modifying route
       if (_routePoints.length < 3) _loopClosed = false;
       if (_editingIndex != null) {
         if (_routePoints.isEmpty) {
@@ -1378,6 +1867,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
         }
       }
       _recomputeSegments();
+      _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
     });
   }
 
