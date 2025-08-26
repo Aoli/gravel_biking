@@ -2,6 +2,19 @@
 
 This document tracks feature work one by one with clear status and brief notes.
 
+- [x] **General Undo System**: Universal undo functionality for all edit operations with state history management.
+  - Status: Done (2025‑08‑26)
+  - What: Implemented comprehensive undo system replacing simple "Ångra senaste punkt" with full edit history:
+    - **Universal undo**: Can undo any edit operation (add points, move points, delete points, toggle loop, generate markers)
+    - **State history tracking**: Maintains up to 50 route state snapshots in memory with automatic cleanup
+    - **Complete state restoration**: Restores all route data including points, loop status, distance markers visibility and positions
+    - **Smart state saving**: Automatically saves state before any destructive operation
+    - **UI integration**: Undo button enabled/disabled based on history availability with visual feedback
+    - **RouteState model**: Immutable state snapshots with deep copying for data integrity
+    - **Memory management**: FIFO history with 50-state limit prevents memory issues
+    - **Context preservation**: Clears active editing state when undoing for clean interaction flow
+  - Benefits: Prevents data loss, enables experimentation, professional editing experience, comprehensive operation reversal
+
 - [x] **Comprehensive Testing Implementation**: Established professional testing framework throughout all development stages.
   - Status: Done (2025‑08‑26)
   - What: Complete testing infrastructure for high-quality development:
@@ -252,4 +265,4 @@ This document tracks feature work one by one with clear status and brief notes.
   - Approach: Consider flutter_map_tile_caching for tiles (note GPLv3/commercial licensing considerations), or a simple custom cache. Persist Overpass results locally (e.g., sqflite/hive) keyed by bbox/zoom.
 
 ---
-Last updated: 2025‑08‑25
+Last updated: 2025‑08‑26

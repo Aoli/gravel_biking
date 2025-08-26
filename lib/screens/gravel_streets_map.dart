@@ -46,6 +46,34 @@ List<LatLng> _parseGpxPoints(Uint8List data) {
   return pts;
 }
 
+/// Represents a snapshot of the route state for undo functionality
+class _RouteState {
+  final List<LatLng> routePoints;
+  final bool loopClosed;
+  final bool showDistanceMarkers;
+  final List<LatLng> distanceMarkers;
+
+  _RouteState({
+    required this.routePoints,
+    required this.loopClosed,
+    required this.showDistanceMarkers,
+    required this.distanceMarkers,
+  });
+
+  /// Create a copy of the current route state
+  _RouteState.fromCurrent({
+    required List<LatLng> routePoints,
+    required bool loopClosed,
+    required bool showDistanceMarkers,
+    required List<LatLng> distanceMarkers,
+  }) : this(
+         routePoints: List<LatLng>.from(routePoints),
+         loopClosed: loopClosed,
+         showDistanceMarkers: showDistanceMarkers,
+         distanceMarkers: List<LatLng>.from(distanceMarkers),
+       );
+}
+
 class GravelStreetsMap extends StatefulWidget {
   const GravelStreetsMap({super.key});
   @override
@@ -102,6 +130,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   // Global loading overlay for file operations
   bool get _isFileOperationLoading => _isExporting || _isImporting;
+
+  // Undo system for general edit operations
+  final List<_RouteState> _undoHistory = [];
+  static const int _maxUndoHistory = 50;
 
   // Dynamic point sizing based on route point density
   // This system automatically adjusts marker sizes to prevent visual overlap in dense routes
@@ -856,11 +888,33 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       ),
                       children: [
                         SwitchListTile(
-                          secondary: Icon(
-                            Icons.place,
-                            color: Theme.of(context).colorScheme.onSurface,
+                          secondary: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              color: Colors.orange,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'km',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
-                          title: const Text('Visa avståndsmarkeringar'),
+                          title: const Text('km'),
                           subtitle: _distanceMarkers.isEmpty
                               ? const Text('Generera först markeringar nedan')
                               : Text(
@@ -1107,17 +1161,25 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 if (!_measureEnabled) return;
                 setState(() {
                   if (_editingIndex != null) {
+                    // Save state before moving point
+                    _saveStateForUndo();
                     // Move selected point to this location
                     _routePoints[_editingIndex!] = latLng;
                     _editingIndex = null;
                     _recomputeSegments();
                     _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
-                  } else {
+                  } else if (!_editModeEnabled) {
+                    // Save state before adding new point
+                    _saveStateForUndo();
+                    // Only allow adding new points when edit mode is disabled
+                    // This prevents accidentally adding points while trying to edit existing ones
                     if (_loopClosed) _loopClosed = false; // re-open when adding
                     _routePoints.add(latLng);
                     _recomputeSegments();
                     _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
                   }
+                  // When edit mode is enabled but no point is selected, do nothing
+                  // This prevents accidental point addition during editing
                 });
               },
             ),
@@ -1443,7 +1505,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 children: [
                   DistancePanel(
                     segmentMeters: _segmentMeters,
-                    onUndo: _undoLastPoint,
+                    onUndo: _undoLastEdit,
                     onSave: _showSaveRouteDialog,
                     onClear: _clearRoute,
                     onEditModeChanged: (enabled) => setState(() {
@@ -1469,6 +1531,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       }
                     }),
                     distanceInterval: _distanceInterval,
+                    canUndo: _undoHistory.isNotEmpty,
                   ),
                 ],
               ),
@@ -1509,11 +1572,35 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     super.dispose();
   }
 
-  void _undoLastPoint() {
-    if (_routePoints.isEmpty) return;
+  void _saveStateForUndo() {
+    final currentState = _RouteState.fromCurrent(
+      routePoints: _routePoints,
+      loopClosed: _loopClosed,
+      showDistanceMarkers: _showDistanceMarkers,
+      distanceMarkers: _distanceMarkers,
+    );
+
+    _undoHistory.add(currentState);
+
+    // Limit history size to prevent memory issues
+    if (_undoHistory.length > _maxUndoHistory) {
+      _undoHistory.removeAt(0);
+    }
+  }
+
+  void _undoLastEdit() {
+    if (_undoHistory.isEmpty) return;
+
+    final previousState = _undoHistory.removeLast();
+
     setState(() {
-      _routePoints.removeLast();
-      if (_routePoints.length < 3) _loopClosed = false;
+      _routePoints.clear();
+      _routePoints.addAll(previousState.routePoints);
+      _loopClosed = previousState.loopClosed;
+      _showDistanceMarkers = previousState.showDistanceMarkers;
+      _distanceMarkers.clear();
+      _distanceMarkers.addAll(previousState.distanceMarkers);
+      _editingIndex = null; // Clear any active editing
       _recomputeSegments();
     });
   }
@@ -1531,6 +1618,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   }
 
   void _addPointBetween(int beforeIndex, int afterIndex, LatLng midpoint) {
+    _saveStateForUndo(); // Save state before adding midpoint
     setState(() {
       if (afterIndex == 0 && beforeIndex == _routePoints.length - 1) {
         // Adding between last and first point (loop closure)
@@ -1552,6 +1640,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   void _toggleLoop() {
     if (_routePoints.length < 3) return;
+    _saveStateForUndo(); // Save state before toggling loop
     setState(() {
       _loopClosed = !_loopClosed;
       _recomputeSegments();
@@ -1622,6 +1711,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   void _generateDistanceMarkers() {
     if (_routePoints.length < 2) return;
 
+    _saveStateForUndo(); // Save state before generating markers
     _distanceMarkers.clear();
     final intervalMeters = _distanceInterval * 1000; // Convert km to meters
 
@@ -1846,6 +1936,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   void _deletePoint(int index) {
     if (index < 0 || index >= _routePoints.length) return;
+    _saveStateForUndo(); // Save state before deleting point
     setState(() {
       _routePoints.removeAt(index);
       _distanceMarkers.clear(); // Clear distance markers when modifying route

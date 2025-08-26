@@ -179,6 +179,21 @@ Implement cross-platform icon compatibility:
 - Set consistent theming for light/dark modes with platform-specific color settings
 - Use JavaScript font loading API with error handling and console logging
 
+### Undo System
+
+Implement comprehensive undo functionality for all edit operations:
+
+- **Universal operation support**: Handle undo for all edit types (add/move/delete points, loop toggle, marker generation)
+- **State history management**: Maintain up to 50 route state snapshots using `_RouteState` immutable data class
+- **Complete state restoration**: Restore all route data including points, loop status, distance markers, and UI state
+- **Automatic state saving**: Call `_saveStateForUndo()` before any destructive operation
+- **Memory management**: FIFO history queue with configurable limits to prevent memory issues
+- **UI integration**:
+  - Update DistancePanel with `canUndo` parameter for conditional button enabling
+  - Change tooltip text to "Ångra senaste ändring" for clarity
+  - Visual feedback when undo history is available/empty
+- **Context preservation**: Clear active editing state (`_editingIndex`) when undoing for clean interaction flow
+
 ### Measurement System
 
 Build the measurement interface with these features:
@@ -232,6 +247,7 @@ Logical components and responsibilities:
 - **Map UI** (flutter_map): Renders tiles, overlays gravel polylines and measurement polyline/markers
 - **Data Fetcher** (Overpass): Viewport-based fetching with 500ms debounce, JSON parsing off UI thread
 - **Measurement Manager**: Route points, editing selection, distance calculations with geodesic accuracy
+- **Undo System**: State history management with immutable snapshots, automatic state saving, and universal operation reversal
 - **Enhanced Routes Manager**: Hive database with 50-route capacity, search, filtering, and editing
 - **Advanced Filtering**: Multi-criteria filtering by distance, type, date, and geographic proximity
 - **Import/Export**: Cross-platform GeoJSON/GPX with path_provider iOS compatibility and loading indicators
@@ -302,6 +318,7 @@ Implement these development practices:
 
 ## Change Log
 
+- **2025‑08‑26**: General Undo System - Implemented comprehensive undo functionality replacing simple point deletion with universal edit operation reversal, state history management (50 snapshots), complete route state restoration, automatic state saving before operations, and UI integration with conditional undo button enabling
 - **2025‑01‑27**: Comprehensive Point Editing System - Complete overhaul of route editing with enhanced safety (tap to delete, long-press to edit), UI reorganization (AppBar delete, distance panel edit, diskette save), advanced point manipulation (position editing, individual deletion, midpoint insertion), context-aware gestures, and professional editing workflow with visual feedback
 - **2025‑08‑25**: Loading Indicators Enhancement - Added comprehensive loading states for all file operations (import/export/save) with progress indicators, disabled concurrent operations, and improved user feedback
 - **2025‑08‑25**: Dynamic Point Sizing System - Implemented adaptive marker sizing based on route density (10-20px range) to prevent visual overlap in dense routes with automatic density analysis
@@ -316,4 +333,4 @@ Implement these development practices:
 - **2025‑08‑24**: Core Features - GPX/GeoJSON import/export, editable points, loop support, GPS integration
 
 ---
-Last updated: 2025‑08‑25
+Last updated: 2025‑08‑26

@@ -17,6 +17,7 @@ class DistancePanel extends StatelessWidget {
   final bool showDistanceMarkers;
   final ValueChanged<bool> onDistanceMarkersToggled;
   final double distanceInterval;
+  final bool canUndo;
 
   const DistancePanel({
     super.key,
@@ -34,6 +35,7 @@ class DistancePanel extends StatelessWidget {
     required this.showDistanceMarkers,
     required this.onDistanceMarkersToggled,
     required this.distanceInterval,
+    required this.canUndo,
   });
 
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
@@ -103,10 +105,12 @@ class DistancePanel extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: 'Ångra senaste punkt',
+                          tooltip: 'Ångra senaste ändring',
                           icon: const Icon(Icons.undo, size: 18),
-                          color: onSurface,
-                          onPressed: onUndo,
+                          color: canUndo
+                              ? onSurface
+                              : onSurface.withValues(alpha: 0.4),
+                          onPressed: canUndo ? onUndo : null,
                           visualDensity: VisualDensity.compact,
                         ),
                         IconButton(
@@ -159,7 +163,7 @@ class DistancePanel extends StatelessWidget {
                             size: 16,
                             color: editModeEnabled
                                 ? theme.colorScheme.tertiary
-                                : onSurface.withValues(alpha: 0.6),
+                                : onSurface.withOpacity(0.6),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -168,8 +172,8 @@ class DistancePanel extends StatelessWidget {
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: editModeEnabled
                                     ? theme.colorScheme.onTertiaryContainer
-                                    : onSurface.withValues(alpha: 0.8),
-                                fontWeight: FontWeight.w500,
+                                    : onSurface.withOpacity(0.8),
+                                fontWeight: FontWeight.w600,
                                 fontSize: 12,
                               ),
                             ),
@@ -180,6 +184,11 @@ class DistancePanel extends StatelessWidget {
                             materialTapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,
                             activeThumbColor: theme.colorScheme.tertiary,
+                            activeTrackColor: theme.colorScheme.tertiary
+                                .withOpacity(0.5),
+                            inactiveThumbColor: theme.colorScheme.outline,
+                            inactiveTrackColor:
+                                theme.colorScheme.surfaceContainerHighest,
                           ),
                         ],
                       ),
@@ -193,7 +202,7 @@ class DistancePanel extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         color: showDistanceMarkers
                             ? theme.colorScheme.secondaryContainer.withValues(
-                                alpha: 0.4,
+                                alpha: 0.9,
                               )
                             : theme.colorScheme.surfaceContainer.withValues(
                                 alpha: 0.3,
@@ -201,7 +210,7 @@ class DistancePanel extends StatelessWidget {
                         border: Border.all(
                           color: showDistanceMarkers
                               ? theme.colorScheme.secondary.withValues(
-                                  alpha: 0.4,
+                                  alpha: 0.8,
                                 )
                               : theme.colorScheme.outline.withValues(
                                   alpha: 0.2,
@@ -215,26 +224,26 @@ class DistancePanel extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.place,
-                            size: 16,
-                            color: showDistanceMarkers
-                                ? theme.colorScheme.secondary
-                                : onSurface.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Markörer',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: showDistanceMarkers
-                                    ? theme.colorScheme.onSecondaryContainer
-                                    : onSurface.withValues(alpha: 0.8),
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(2),
+                              color: Colors.orange,
+                              border: Border.all(color: Colors.white, width: 1),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'km',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
+                          const Spacer(),
                           Switch(
                             value: showDistanceMarkers,
                             onChanged: onDistanceMarkersToggled,
@@ -278,47 +287,7 @@ class DistancePanel extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
-              // Show distance marker interval when markers are enabled
-              if (showDistanceMarkers && segmentMeters.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer.withValues(
-                      alpha: 0.8,
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: theme.colorScheme.secondary.withValues(alpha: 0.5),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.place,
-                        size: 16,
-                        color: theme.colorScheme.onSecondaryContainer,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Avståndsmarkörer: ${distanceInterval == 0.5 ? "500m" : "${distanceInterval.toInt()}km"}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSecondaryContainer,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              SizedBox(height: 8),
               // Show edit mode instructions when edit mode is enabled
               if (editModeEnabled) ...[
                 Container(
