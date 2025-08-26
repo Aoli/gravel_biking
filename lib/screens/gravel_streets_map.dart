@@ -1351,7 +1351,45 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       }(),
                   ],
                 ),
-              // Distance markers layer - placed last to appear on top
+              // Distance marker dots - visible in view mode only (under text markers)
+              if (!_measureEnabled && _distanceMarkers.isNotEmpty)
+                MarkerLayer(
+                  markers: _distanceMarkers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final point = entry.value;
+                    final distanceKm = (index + 1) * _distanceInterval;
+
+                    return Marker(
+                      point: point,
+                      width: 6.0, // Larger for better visibility (was 4.8)
+                      height: 6.0,
+                      alignment: Alignment.center,
+                      child: GestureDetector(
+                        onTap: () => _showDistanceMarkerInfo(index, distanceKm),
+                        child: Container(
+                          width: 6.0,
+                          height: 6.0,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.deepOrange, // More vibrant orange
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 1.0, // Thicker border for visibility
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 2,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              // Distance text markers layer - placed last to appear on top
               if (_showDistanceMarkers && _distanceMarkers.isNotEmpty)
                 MarkerLayer(
                   markers: _distanceMarkers.asMap().entries.map((entry) {
@@ -1361,7 +1399,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
                     return Marker(
                       point: point,
-                      width: 24,
+                      width: 32, // Wider to accommodate decimal text
                       height: 24,
                       alignment: Alignment.center,
                       child: GestureDetector(
@@ -1386,7 +1424,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                               distanceKm < 1
                                   ? '${(distanceKm * 1000).toInt()}m'
                                         .replaceAll('000m', 'k')
-                                  : '${distanceKm.toInt()}k',
+                                  : distanceKm == distanceKm.toInt()
+                                  ? '${distanceKm.toInt()}k'
+                                  : '${distanceKm}k',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 8,
@@ -1399,6 +1439,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     );
                   }).toList(),
                 ),
+              // Distance marker dots - always visible on polyline
             ],
           ),
           // Route segments panel at the top

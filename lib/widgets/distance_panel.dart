@@ -167,15 +167,12 @@ class DistancePanel extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              'Redigera',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: editModeEnabled
-                                    ? theme.colorScheme.onTertiaryContainer
-                                    : onSurface.withOpacity(0.8),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
+                            child: Icon(
+                              Icons.edit_location,
+                              size: 18,
+                              color: editModeEnabled
+                                  ? theme.colorScheme.onTertiaryContainer
+                                  : onSurface.withOpacity(0.8),
                             ),
                           ),
                           Switch(

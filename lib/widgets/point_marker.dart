@@ -24,7 +24,6 @@ class PointMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final tertiaryColor = Theme.of(context).colorScheme.tertiary;
 
     // When measure mode is OFF, use subtle visualization
     if (!measureEnabled) {
@@ -48,7 +47,7 @@ class PointMarker extends StatelessWidget {
     IconData? iconData;
 
     if (isEditing) {
-      markerColor = tertiaryColor;
+      markerColor = Colors.red; // Distinct red color for selected point
       iconData = null;
     } else if (isStartPoint && isLoopClosed) {
       // Special styling for start point in closed loop (both start and end)
