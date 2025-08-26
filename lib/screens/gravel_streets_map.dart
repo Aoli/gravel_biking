@@ -1351,8 +1351,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       }(),
                   ],
                 ),
-              // Distance marker dots - visible in view mode only (under text markers)
-              if (!_measureEnabled && _distanceMarkers.isNotEmpty)
+              // Distance marker dots - visible in view mode as subtle fallback when text markers are disabled
+              if (!_measureEnabled &&
+                  !_showDistanceMarkers &&
+                  _distanceMarkers.isNotEmpty)
                 MarkerLayer(
                   markers: _distanceMarkers.asMap().entries.map((entry) {
                     final index = entry.key;
