@@ -508,14 +508,12 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   @override
   Widget build(BuildContext context) {
-    // Prefer a key-based provider for reliability if a key is supplied
+    // Prefer MapTiler for production reliability and compliance
     final useMapTiler = _mapTilerKey.isNotEmpty;
     final tileUrl = useMapTiler
         ? 'https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=$_mapTilerKey'
-        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-    final subdomains = useMapTiler
-        ? const <String>[]
-        : const <String>['a', 'b', 'c'];
+        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'; // No subdomains to avoid warning
+    final subdomains = const <String>[]; // Avoid subdomains entirely
     final attribution = useMapTiler
         ? '© MapTiler © OpenStreetMap contributors'
         : '© OpenStreetMap contributors';
