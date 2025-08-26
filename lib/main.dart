@@ -1398,6 +1398,17 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 ),
             ],
           ),
+          // Route segments panel at the top
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 0,
+            right: 0,
+            child: RouteSegmentsPanel(
+              segmentMeters: _segmentMeters,
+              loopClosed: _loopClosed,
+              theme: Theme.of(context),
+            ),
+          ),
           // Minimal attribution to meet OSM/MapTiler requirements
           Positioned(
             bottom: 4,
