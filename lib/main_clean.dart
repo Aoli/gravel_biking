@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
-// Import the main map screen
-import 'screens/gravel_streets_map.dart';
+import 'screens/map_screen.dart';
 
 void main() => runApp(const MyApp());
 
@@ -15,7 +13,7 @@ class MyApp extends StatelessWidget {
       title: 'Gravel First',
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
-      home: const GravelStreetsMap(),
+      home: const MapScreen(),
     );
   }
 

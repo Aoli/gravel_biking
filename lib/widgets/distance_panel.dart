@@ -36,8 +36,6 @@ class DistancePanel extends StatelessWidget {
     required this.distanceInterval,
   });
 
-
-
   double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
 
   @override
@@ -52,7 +50,10 @@ class DistancePanel extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 300), // Increased from 280
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Increased padding
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ), // Increased padding
         decoration: BoxDecoration(
           color: surfaceColor,
           borderRadius: BorderRadius.circular(12),
@@ -129,30 +130,45 @@ class DistancePanel extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        color: editModeEnabled 
-                          ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.4)
-                          : theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+                        color: editModeEnabled
+                            ? theme.colorScheme.tertiaryContainer.withValues(
+                                alpha: 0.4,
+                              )
+                            : theme.colorScheme.surfaceContainer.withValues(
+                                alpha: 0.3,
+                              ),
                         border: Border.all(
-                          color: editModeEnabled 
-                            ? theme.colorScheme.tertiary.withValues(alpha: 0.4)
-                            : theme.colorScheme.outline.withValues(alpha: 0.2),
+                          color: editModeEnabled
+                              ? theme.colorScheme.tertiary.withValues(
+                                  alpha: 0.4,
+                                )
+                              : theme.colorScheme.outline.withValues(
+                                  alpha: 0.2,
+                                ),
                           width: 1,
                         ),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.edit,
                             size: 16,
-                            color: editModeEnabled ? theme.colorScheme.tertiary : onSurface.withValues(alpha: 0.6),
+                            color: editModeEnabled
+                                ? theme.colorScheme.tertiary
+                                : onSurface.withValues(alpha: 0.6),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Redigera',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: editModeEnabled ? theme.colorScheme.onTertiaryContainer : onSurface.withValues(alpha: 0.8),
+                                color: editModeEnabled
+                                    ? theme.colorScheme.onTertiaryContainer
+                                    : onSurface.withValues(alpha: 0.8),
                                 fontWeight: FontWeight.w500,
                                 fontSize: 12,
                               ),
@@ -161,8 +177,9 @@ class DistancePanel extends StatelessWidget {
                           Switch(
                             value: editModeEnabled,
                             onChanged: onEditModeChanged,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            activeColor: theme.colorScheme.tertiary,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            activeThumbColor: theme.colorScheme.tertiary,
                           ),
                         ],
                       ),
@@ -174,30 +191,45 @@ class DistancePanel extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        color: showDistanceMarkers 
-                          ? theme.colorScheme.secondaryContainer.withValues(alpha: 0.4)
-                          : theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+                        color: showDistanceMarkers
+                            ? theme.colorScheme.secondaryContainer.withValues(
+                                alpha: 0.4,
+                              )
+                            : theme.colorScheme.surfaceContainer.withValues(
+                                alpha: 0.3,
+                              ),
                         border: Border.all(
-                          color: showDistanceMarkers 
-                            ? theme.colorScheme.secondary.withValues(alpha: 0.4)
-                            : theme.colorScheme.outline.withValues(alpha: 0.2),
+                          color: showDistanceMarkers
+                              ? theme.colorScheme.secondary.withValues(
+                                  alpha: 0.4,
+                                )
+                              : theme.colorScheme.outline.withValues(
+                                  alpha: 0.2,
+                                ),
                           width: 1,
                         ),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.place,
                             size: 16,
-                            color: showDistanceMarkers ? theme.colorScheme.secondary : onSurface.withValues(alpha: 0.6),
+                            color: showDistanceMarkers
+                                ? theme.colorScheme.secondary
+                                : onSurface.withValues(alpha: 0.6),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Markörer',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: showDistanceMarkers ? theme.colorScheme.onSecondaryContainer : onSurface.withValues(alpha: 0.8),
+                                color: showDistanceMarkers
+                                    ? theme.colorScheme.onSecondaryContainer
+                                    : onSurface.withValues(alpha: 0.8),
                                 fontWeight: FontWeight.w500,
                                 fontSize: 12,
                               ),
@@ -206,8 +238,9 @@ class DistancePanel extends StatelessWidget {
                           Switch(
                             value: showDistanceMarkers,
                             onChanged: onDistanceMarkersToggled,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            activeColor: theme.colorScheme.secondary,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            activeThumbColor: theme.colorScheme.secondary,
                           ),
                         ],
                       ),
@@ -417,8 +450,14 @@ class RouteSegmentsPanel extends StatelessWidget {
         child: ExpansionTile(
           initiallyExpanded: false,
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-          backgroundColor: theme.colorScheme.surfaceContainer.withValues(alpha: 0.2),
+          childrenPadding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            bottom: 16,
+          ),
+          backgroundColor: theme.colorScheme.surfaceContainer.withValues(
+            alpha: 0.2,
+          ),
           collapsedBackgroundColor: theme.colorScheme.surface,
           leading: Icon(
             Icons.analytics_outlined,
@@ -434,7 +473,9 @@ class RouteSegmentsPanel extends StatelessWidget {
           ),
           children: [
             Container(
-              constraints: const BoxConstraints(maxHeight: 300), // Limit height for scrolling
+              constraints: const BoxConstraints(
+                maxHeight: 300,
+              ), // Limit height for scrolling
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
