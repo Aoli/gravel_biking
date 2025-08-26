@@ -179,6 +179,10 @@ build_runner: ^2.4.7 # Build system for code generation
 - Maintain `docs/architecture.md` for major structural changes
 - Update `docs/roadmap.md` for feature planning and change tracking
 - Always check existing documentation in `/docs` before creating new files
+- Maintain a consistent documentation style and structure
+- Include code examples where applicable
+- Use clear and descriptive titles for all documentation sections
+- When creating new md-files, put them in `docs/` directory
 
 ### Testing
 
