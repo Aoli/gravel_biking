@@ -892,7 +892,11 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Intervall: ${_distanceInterval == 0.5 ? "500m" : "${_distanceInterval.toInt()}km"}',
+                                'Intervall: ${_distanceInterval == 0.5
+                                    ? "500m"
+                                    : _distanceInterval == _distanceInterval.toInt()
+                                    ? "${_distanceInterval.toInt()}km"
+                                    : "${_distanceInterval}km"}',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: Theme.of(
@@ -905,13 +909,17 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                               Slider(
                                 value: _distanceInterval,
                                 min: 0.5,
-                                max: 10.0,
-                                divisions: 8,
+                                max: 5.0,
+                                divisions:
+                                    9, // 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0
                                 onChanged: (value) =>
                                     setState(() => _distanceInterval = value),
                                 label: _distanceInterval == 0.5
                                     ? '500m'
-                                    : '${_distanceInterval.toInt()}km',
+                                    : _distanceInterval ==
+                                          _distanceInterval.toInt()
+                                    ? '${_distanceInterval.toInt()}km'
+                                    : '${_distanceInterval}km',
                               ),
                               const SizedBox(height: 8),
                               Row(
@@ -1194,54 +1202,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     ),
                   ],
                 ),
-              // Distance markers layer
-              if (_showDistanceMarkers && _distanceMarkers.isNotEmpty)
-                MarkerLayer(
-                  markers: _distanceMarkers.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final point = entry.value;
-                    final distanceKm = (index + 1) * _distanceInterval;
-
-                    return Marker(
-                      point: point,
-                      width: 24,
-                      height: 24,
-                      alignment: Alignment.center,
-                      child: GestureDetector(
-                        onTap: () => _showDistanceMarkerInfo(index, distanceKm),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              4,
-                            ), // Square with rounded corners
-                            color: Colors.orange,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              distanceKm < 1
-                                  ? '${(distanceKm * 1000).toInt()}m'
-                                        .replaceAll('000m', 'k')
-                                  : '${distanceKm.toInt()}k',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
               MarkerLayer(
                 markers: [
                   for (int i = 0; i < _routePoints.length; i++)
@@ -1390,6 +1350,54 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         );
                       }(),
                   ],
+                ),
+              // Distance markers layer - placed last to appear on top
+              if (_showDistanceMarkers && _distanceMarkers.isNotEmpty)
+                MarkerLayer(
+                  markers: _distanceMarkers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final point = entry.value;
+                    final distanceKm = (index + 1) * _distanceInterval;
+
+                    return Marker(
+                      point: point,
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
+                      child: GestureDetector(
+                        onTap: () => _showDistanceMarkerInfo(index, distanceKm),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              4,
+                            ), // Square with rounded corners
+                            color: Colors.orange,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              distanceKm < 1
+                                  ? '${(distanceKm * 1000).toInt()}m'
+                                        .replaceAll('000m', 'k')
+                                  : '${distanceKm.toInt()}k',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
             ],
           ),
