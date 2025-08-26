@@ -1801,9 +1801,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       }
     }
 
-    setState(() {
-      _showDistanceMarkers = true;
-    });
+    // Distance markers generated - respect user's display preference
+    setState(() {}); // Just trigger rebuild without forcing markers on
   }
 
   /// Helper method to regenerate distance markers if they were visible
