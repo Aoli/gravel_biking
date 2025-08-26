@@ -1450,9 +1450,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                     onClear: _clearRoute,
                     onEditModeChanged: (enabled) => setState(() {
                       _editModeEnabled = enabled;
-                      if (!enabled)
+                      if (!enabled) {
                         _editingIndex =
                             null; // Clear selection when exiting edit mode
+                      }
                     }),
                     theme: Theme.of(context),
                     measureEnabled: _measureEnabled,

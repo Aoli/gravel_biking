@@ -1,0 +1,32 @@
+# Semgrep ignore patterns for Gravel First Flutter App
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+lib/generated/
+build/
+.dart_tool/
+
+# Test files (less critical for security scanning)
+test/
+integration_test/
+
+# Dependencies
+.packages
+pubspec.lock
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Platform-specific directories
+android/app/src/main/gen/
+ios/Runner/GeneratedPluginRegistrant.*
+macos/Runner/GeneratedPluginRegistrant.*
+windows/runner/generated_plugin_registrant.*
+linux/runner/generated_plugin_registrant.*
+
+# Web build artifacts
+web/canvaskit/
