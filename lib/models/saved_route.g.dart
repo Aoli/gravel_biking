@@ -65,10 +65,7 @@ class LatLngDataAdapter extends TypeAdapter<LatLngData> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return LatLngData(
-      fields[0] as double,
-      fields[1] as double,
-    );
+    return LatLngData(fields[0] as double, fields[1] as double);
   }
 
   @override
