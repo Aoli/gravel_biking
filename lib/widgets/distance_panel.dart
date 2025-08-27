@@ -179,7 +179,9 @@ class _DistancePanelState extends State<DistancePanel>
                             tooltip: 'Rensa rutt',
                             icon: const Icon(Icons.clear_all, size: 18),
                             color: widget.theme.colorScheme.error,
-                            onPressed: widget.segmentMeters.isEmpty ? null : widget.onClear,
+                            onPressed: widget.segmentMeters.isEmpty
+                                ? null
+                                : widget.onClear,
                             visualDensity: VisualDensity.compact,
                           ),
                         ],

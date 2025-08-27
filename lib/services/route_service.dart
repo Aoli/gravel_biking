@@ -83,6 +83,17 @@ class RouteService {
         }
       }
     }
+
+    // Final validation to ensure the box is properly opened
+    if (!isStorageAvailable()) {
+      throw Exception(
+        'RouteService initialization completed but storage is not available. Box state: null=${_routeBox == null}, open=${_routeBox?.isOpen ?? false}',
+      );
+    }
+
+    debugPrint(
+      'RouteService: Initialization completed successfully. Box contains ${_routeBox!.length} routes.',
+    );
   }
 
   /// Get the Hive box (must be initialized first)
@@ -223,7 +234,18 @@ class RouteService {
 
   /// Check if storage is available
   bool isStorageAvailable() {
-    return _routeBox != null && _routeBox!.isOpen;
+    final isAvailable = _routeBox != null && _routeBox!.isOpen;
+    if (!isAvailable) {
+      debugPrint(
+        'RouteService: Storage not available - box null: ${_routeBox == null}, box open: ${_routeBox?.isOpen ?? false}',
+      );
+    }
+    return isAvailable;
+  }
+
+  /// Get diagnostic information about the current storage state
+  String getStorageDiagnostics() {
+    return 'RouteService State: box null=${_routeBox == null}, box open=${_routeBox?.isOpen ?? false}, box length=${_routeBox?.length ?? 'N/A'}';
   }
 
   /// Calculate segment distances for route points

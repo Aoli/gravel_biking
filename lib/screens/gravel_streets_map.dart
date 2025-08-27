@@ -226,18 +226,29 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   }
 
   Future<void> _initializeServices() async {
+    debugPrint('_initializeServices: Starting initialization...');
+
     try {
       await _routeService.initialize();
+
+      // Validate that initialization actually worked
+      if (!_routeService.isStorageAvailable()) {
+        throw Exception(
+          'RouteService initialization appeared successful but storage is not available',
+        );
+      }
+
       await _loadSavedRoutes();
       setState(() {
         _isInitialized = true;
       });
-      debugPrint('RouteService initialization completed successfully');
+      debugPrint('_initializeServices: Initialization completed successfully');
     } catch (e) {
-      debugPrint('Error initializing services: $e');
+      debugPrint('_initializeServices: Error initializing services: $e');
       setState(() {
         _isInitialized = false;
       });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -245,10 +256,13 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               'Fel vid initialisering av routelagring: ${e.toString()}',
             ),
             backgroundColor: Theme.of(context).colorScheme.error,
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 8),
             action: SnackBarAction(
               label: 'Försök igen',
-              onPressed: _initializeServices,
+              onPressed: () async {
+                debugPrint('_initializeServices: Manual retry triggered');
+                await _initializeServices();
+              },
             ),
           ),
         );
@@ -290,13 +304,25 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
     // Check if RouteService is properly initialized
     if (!_isInitialized || !_routeService.isStorageAvailable()) {
+      final initStatus = _isInitialized
+          ? 'initialiserad'
+          : 'inte initialiserad';
+      final storageStatus = _routeService.isStorageAvailable()
+          ? 'tillgänglig'
+          : 'inte tillgänglig';
+
+      debugPrint(
+        'RouteService save check failed - Initialisering: $initStatus, Lagring: $storageStatus',
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Routelagring är inte redo. Försöker initialisera igen...',
+            content: Text(
+              'Routelagring är inte redo ($initStatus, lagring $storageStatus). Försöker initialisera igen...',
             ),
             backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 6),
             action: SnackBarAction(
               label: 'Försök igen',
               onPressed: () async {
@@ -1215,6 +1241,54 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       ),
                       onTap: () => Navigator.of(context).pop(),
                     ),
+                    // Debug section for storage status
+                    if (kDebugMode) ...[
+                      const Divider(height: 1),
+                      ExpansionTile(
+                        leading: Icon(
+                          Icons.bug_report,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                        title: Text(
+                          'Debug Info',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Initialisering: ${_isInitialized ? "✓" : "✗"}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                Text(
+                                  'Lagring tillgänglig: ${_routeService.isStorageAvailable() ? "✓" : "✗"}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _routeService.getStorageDiagnostics(),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(fontFamily: 'monospace'),
+                                ),
+                                const SizedBox(height: 8),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    debugPrint(
+                                      'Manual re-initialization triggered',
+                                    );
+                                    await _initializeServices();
+                                  },
+                                  child: const Text('Testa om-initialisering'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
