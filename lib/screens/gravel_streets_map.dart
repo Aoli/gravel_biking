@@ -388,7 +388,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       if (value.trim().isNotEmpty && !isDialogSaving) {
                         setDialogState(() => isDialogSaving = true);
                         await _saveCurrentRouteInternal(value.trim());
-                        if (mounted) {
+                        if (mounted && context.mounted) {
                           Navigator.of(context).pop();
                         }
                       }
@@ -427,7 +427,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           if (name.isNotEmpty) {
                             setDialogState(() => isDialogSaving = true);
                             await _saveCurrentRouteInternal(name);
-                            if (mounted) {
+                            if (mounted && context.mounted) {
                               Navigator.of(context).pop();
                             }
                           }

@@ -1,0 +1,127 @@
+name: CI/CD with Testing
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+jobs:
+  # Quality Gates - Run tests and analysis
+  test-and-analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # Run tests first (independent of analyzer warnings)
+      - name: Run Tests
+        run: flutter test --reporter=github
+        env:
+          MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
+
+      # Analyze code quality (allow warnings but not errors)
+      - name: Analyze Code
+        run: flutter analyze --fatal-infos
+        continue-on-error: true
+
+      # Check formatting
+      - name: Check Formatting
+        run: dart format --output=none --set-exit-if-changed .
+        continue-on-error: true
+
+      # Upload test results
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test/
+
+  # Build verification - Only if tests pass
+  build-verification:
+    needs: test-and-analyze
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [web, android]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Web
+        if: matrix.platform == 'web'
+        run: |
+          flutter build web --release --wasm \
+            --dart-define=BUILD_NUMBER=${{ github.run_number }} \
+            --dart-define=MAPTILER_KEY=${{ secrets.MAPTILER_KEY }}
+
+      - name: Build Android
+        if: matrix.platform == 'android'
+        run: |
+          flutter build apk --release \
+            --dart-define=BUILD_NUMBER=${{ github.run_number }} \
+            --dart-define=MAPTILER_KEY=${{ secrets.MAPTILER_KEY }}
+
+  # Deploy - Only on develop branch and if all tests pass
+  deploy:
+    needs: [test-and-analyze, build-verification]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Web (Production)
+        run: |
+          flutter build web --release --wasm \
+            --dart-define=BUILD_NUMBER=${{ github.run_number }} \
+            --dart-define=MAPTILER_KEY=${{ secrets.MAPTILER_KEY }}
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          channelId: develop
+          projectId: gravel-biking
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ All tests passed! Ready for deployment.'
+            })

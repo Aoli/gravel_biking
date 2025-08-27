@@ -287,6 +287,13 @@
 				"$flutter-test"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Tests Only (Skip Analyzer)",
+			"type": "shell",
+			"command": "flutter test -r expanded",
+			"isBackground": false,
+			"group": "test"
 		}
 	]
 }
