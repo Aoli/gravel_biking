@@ -1,7 +1,9 @@
 // Test helpers and utilities for Gravel First testing
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:gravel_biking/models/saved_route.dart';
 
@@ -127,6 +129,32 @@ class TestData {
 
 /// Test utilities for common operations
 class TestUtils {
+  /// Setup Hive for testing with temporary directory
+  static Future<Directory> setupHiveForTest() async {
+    final tempDir = await Directory.systemTemp.createTemp('hive_test_');
+    Hive.init(tempDir.path);
+    
+    // Register adapters if not already registered
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(SavedRouteAdapter());
+    }
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(LatLngDataAdapter());
+    }
+    
+    return tempDir;
+  }
+
+  /// Clean up Hive after testing
+  static Future<void> cleanupHiveAfterTest(Directory tempDir) async {
+    await Hive.close();
+    try {
+      await tempDir.delete(recursive: true);
+    } catch (e) {
+      // Ignore cleanup errors in test environment
+    }
+  }
+
   /// Creates a test MaterialApp wrapper for widget testing
   static Widget createTestApp(Widget child) {
     return MaterialApp(
