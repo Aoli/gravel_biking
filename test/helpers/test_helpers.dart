@@ -133,7 +133,7 @@ class TestUtils {
   static Future<Directory> setupHiveForTest() async {
     final tempDir = await Directory.systemTemp.createTemp('hive_test_');
     Hive.init(tempDir.path);
-    
+
     // Register adapters if not already registered
     if (!Hive.isAdapterRegistered(0)) {
       Hive.registerAdapter(SavedRouteAdapter());
@@ -141,7 +141,7 @@ class TestUtils {
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(LatLngDataAdapter());
     }
-    
+
     return tempDir;
   }
 

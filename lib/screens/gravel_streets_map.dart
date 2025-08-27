@@ -147,7 +147,8 @@ class GravelStreetsMap extends StatefulWidget {
 class _GravelStreetsMapState extends State<GravelStreetsMap> {
   // Data
   List<Polyline> gravelPolylines = [];
-  bool _showGravelOverlay = true;
+  bool _showGravelOverlay =
+      false; // Default OFF - hide gravel overlay by default
   final bool _showTrvNvdbOverlay =
       false; // Disabled by default, prepared for future
   bool isLoading = true;
@@ -185,7 +186,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   // Distance markers state
   final List<LatLng> _distanceMarkers = [];
   bool _showDistanceMarkers = false; // Default OFF - show subtle orange dots
-  bool _showSegmentAnalysis = false; // Default OFF - hide segment analysis panel
+  bool _showSegmentAnalysis =
+      false; // Default OFF - hide segment analysis panel
   double _distanceInterval = 1.0; // Default 1km intervals
 
   // Loading states for file operations
