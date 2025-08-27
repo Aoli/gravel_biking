@@ -8,6 +8,10 @@ This directory contains all project documentation for **Gravel First**.
 
 Complete technical architecture, codebase organization, component responsibilities, and implementation details.
 
+### ⚡ [Large GPX Performance](large-gpx-performance.md)
+
+Performance optimization strategies for handling large GPX files with thousands of points, including distance-based decimation algorithms and zoom-based visibility culling.
+
 ### 🗺️ [Roadmap](roadmap.md)
 
 Feature roadmap, change history, and future development plans.

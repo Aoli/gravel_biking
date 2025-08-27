@@ -226,6 +226,8 @@ Support file operations for route data:
 
 - **GeoJSON**: Implement LineString format with loop state preservation
 - **GPX**: Support GPX 1.1 track format (trk/trkseg/trkpt structure)
+- **Performance**: Implement distance-based decimation for large GPX files (>2000 points)
+  - See [large-gpx-performance.md](large-gpx-performance.md) for detailed optimization strategies
 - **Cross-platform file handling**: Use conditional platform logic
   - Web: Direct FileSaver API for browser downloads
   - iOS/Android: Use path_provider + FileSaver for native file system access
