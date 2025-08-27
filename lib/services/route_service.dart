@@ -14,89 +14,30 @@ class RouteService {
 
   /// Initialize Hive storage with proper error handling and debugging
   Future<void> initialize() async {
-    debugPrint('RouteService: Starting initialization...');
-    debugPrint('RouteService: Platform: $defaultTargetPlatform');
-
-    // Check if Hive is initialized
-    if (!Hive.isAdapterRegistered(0) || !Hive.isAdapterRegistered(1)) {
-      debugPrint(
-        'RouteService: Hive adapters not registered! Re-registering...',
-      );
-      try {
-        Hive.registerAdapter(SavedRouteAdapter());
-        Hive.registerAdapter(LatLngDataAdapter());
-        debugPrint('RouteService: Adapters re-registered successfully');
-      } catch (e) {
-        debugPrint('RouteService: Error re-registering adapters: $e');
-      }
-    } else {
-      debugPrint('RouteService: Adapters already registered');
-    }
-
+    _log('Starting initialization...');
     try {
-      debugPrint('RouteService: Attempting to open Hive box "$_boxName"...');
-
-      // For Android WebView, we might need to wait longer
-      _routeBox = await Hive.openBox<SavedRoute>(_boxName);
-
-      debugPrint(
-        'RouteService: Hive box opened successfully (${_routeBox!.length} routes)',
-      );
-    } catch (e) {
-      debugPrint('RouteService: Error opening Hive box: $e');
-      debugPrint('RouteService: Error type: ${e.runtimeType}');
-      debugPrint('RouteService: Error details: ${e.toString()}');
-
-      // Try clearing any corrupted box and reopening
-      try {
-        debugPrint('RouteService: Attempting to delete and recreate box...');
-        await Hive.deleteBoxFromDisk(_boxName);
-
-        // Wait longer for Android WebView
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        debugPrint('RouteService: Trying to open box again after deletion...');
-        _routeBox = await Hive.openBox<SavedRoute>(_boxName);
-        debugPrint('RouteService: Box recreated successfully');
-      } catch (retryError) {
-        debugPrint('RouteService: Box recreation failed: $retryError');
-
-        // Final attempt with explicit path (for Android WebView)
-        try {
-          debugPrint('RouteService: Final attempt with different approach...');
-          await Future.delayed(const Duration(milliseconds: 1000));
-
-          // Try to initialize Hive again for Android WebView compatibility
-          try {
-            await Hive.initFlutter();
-          } catch (reinitError) {
-            debugPrint(
-              'RouteService: Hive reinit error (expected): $reinitError',
-            );
-          }
-
-          _routeBox = await Hive.openBox<SavedRoute>(_boxName);
-          debugPrint('RouteService: Final attempt successful!');
-        } catch (finalError) {
-          debugPrint('RouteService: All attempts failed: $finalError');
-          rethrow;
-        }
+      if (!Hive.isAdapterRegistered(0)) {
+        _log('Registering SavedRouteAdapter...');
+        Hive.registerAdapter(SavedRouteAdapter());
       }
-    }
+      if (!Hive.isAdapterRegistered(1)) {
+        _log('Registering LatLngDataAdapter...');
+        Hive.registerAdapter(LatLngDataAdapter());
+      }
 
-    // Final validation to ensure the box is properly opened
-    if (!isStorageAvailable()) {
+      _log('Attempting to open Hive box "saved_routes"...');
+      _routeBox = await Hive.openBox<SavedRoute>('saved_routes');
+      _log('Hive box opened successfully (${_routeBox?.length ?? 0} routes)');
+    } catch (e, s) {
+      _log('CRITICAL: Hive initialization failed: $e');
+      _log(s.toString());
+      // Re-throw the exception to make the failure visible.
       throw Exception(
-        'RouteService initialization completed but storage is not available. Box state: null=${_routeBox == null}, open=${_routeBox?.isOpen ?? false}',
+        'CRITICAL: Hive initialization failed. See logs for details.',
       );
     }
-
-    debugPrint(
-      'RouteService: Initialization completed successfully. Box contains ${_routeBox!.length} routes.',
-    );
   }
 
-  /// Get the Hive box (must be initialized first)
   Box<SavedRoute> get _box {
     if (_routeBox == null || !_routeBox!.isOpen) {
       throw Exception(
@@ -313,5 +254,9 @@ class RouteService {
   /// Close Hive box when done (call in app disposal)
   Future<void> dispose() async {
     await _routeBox?.close();
+  }
+
+  void _log(String message) {
+    debugPrint('RouteService: $message');
   }
 }

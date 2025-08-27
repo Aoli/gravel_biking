@@ -1,24 +1,27 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:gravel_biking/models/saved_route.dart';
+import 'package:gravel_biking/screens/gravel_streets_map.dart';
+import 'package:gravel_biking/services/route_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-
-// Import the main map screen
-import 'screens/gravel_streets_map.dart';
-import 'models/saved_route.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive for web platform compatibility
-  await Hive.initFlutter();
+  // Explicitly initialize Hive for Web or Native.
+  // This is the definitive fix for the Android WebView issue.
+  if (kIsWeb) {
+    // For ALL web environments (including Android WebView), initialize without a path.
+    // This forces Hive to use IndexedDB and completely avoids path_provider.
+    await Hive.initFlutter();
+  } else {
+    // For native mobile apps (iOS/Android), initialize with a path.
+    await Hive.initFlutter();
+  }
 
-  // Register Hive adapters
-  if (!Hive.isAdapterRegistered(0)) {
-    Hive.registerAdapter(SavedRouteAdapter());
-  }
-  if (!Hive.isAdapterRegistered(1)) {
-    Hive.registerAdapter(LatLngDataAdapter());
-  }
+  // Register adapters AFTER initializing Hive.
+  Hive.registerAdapter(SavedRouteAdapter());
+  Hive.registerAdapter(LatLngDataAdapter());
 
   runApp(const MyApp());
 }
