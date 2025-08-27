@@ -214,11 +214,28 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       'MapTiler Key: "$_mapTilerKey"',
     ); // Debug: Check if key is loaded
     _loadAppVersion();
-    _loadSavedRoutes();
+    _initializeServices();
     // Initial fetch for a sensible area (Stockholm bbox)
     _fetchGravelForBounds(
       LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1)),
     );
+  }
+
+  Future<void> _initializeServices() async {
+    try {
+      await _routeService.initialize();
+      await _loadSavedRoutes();
+    } catch (e) {
+      debugPrint('Error initializing services: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading saved routes: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadAppVersion() async {

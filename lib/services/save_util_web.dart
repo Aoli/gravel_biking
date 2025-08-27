@@ -7,11 +7,27 @@ Future<String> saveBytes(
   required String ext,
   required String mimeType,
 }) async {
+  // Convert string MIME type to FileSaver MimeType enum
+  MimeType fileTypeMime;
+  switch (mimeType.toLowerCase()) {
+    case 'application/json':
+    case 'application/geo+json':
+      fileTypeMime = MimeType.json;
+      break;
+    case 'application/gpx+xml':
+    case 'application/xml':
+    case 'text/xml':
+      fileTypeMime = MimeType.custom;
+      break;
+    default:
+      fileTypeMime = MimeType.other;
+  }
+
   await FileSaver.instance.saveFile(
     name: suggestedName,
     bytes: bytes,
     ext: ext,
-    mimeType: MimeType.other,
+    mimeType: fileTypeMime,
   );
   return suggestedName;
 }

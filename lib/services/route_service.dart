@@ -16,18 +16,14 @@ class RouteService {
 
   /// Initialize Hive storage
   Future<void> initialize() async {
-    await Hive.initFlutter();
-
-    // Register adapters if not already registered
-    if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(SavedRouteAdapter());
+    // Hive should already be initialized in main.dart, just open the box
+    try {
+      _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+      await _migrateFromSharedPreferences();
+    } catch (e) {
+      debugPrint('Error initializing RouteService: $e');
+      rethrow;
     }
-    if (!Hive.isAdapterRegistered(1)) {
-      Hive.registerAdapter(LatLngDataAdapter());
-    }
-
-    _routeBox = await Hive.openBox<SavedRoute>(_boxName);
-    await _migrateFromSharedPreferences();
   }
 
   /// Get the Hive box (lazy initialization if needed)

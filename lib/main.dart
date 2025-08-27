@@ -1,14 +1,31 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 // Import the main map screen
 import 'screens/gravel_streets_map.dart';
+import 'models/saved_route.dart';
 
-void main() => runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive for web platform compatibility
+  await Hive.initFlutter();
+
+  // Register Hive adapters
+  if (!Hive.isAdapterRegistered(0)) {
+    Hive.registerAdapter(SavedRouteAdapter());
+  }
+  if (!Hive.isAdapterRegistered(1)) {
+    Hive.registerAdapter(LatLngDataAdapter());
+  }
+
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -73,10 +90,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(
-          elevation: 1,
-          shadowColor: Colors.black54,
-        ),
+        style: IconButton.styleFrom(elevation: 1, shadowColor: Colors.black54),
       ),
       iconTheme: IconThemeData(
         applyTextScaling: false,
