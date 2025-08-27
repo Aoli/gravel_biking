@@ -185,6 +185,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   // Distance markers state
   final List<LatLng> _distanceMarkers = [];
   bool _showDistanceMarkers = false; // Default OFF - show subtle orange dots
+  bool _showSegmentAnalysis = false; // Default OFF - hide segment analysis panel
   double _distanceInterval = 1.0; // Default 1km intervals
 
   // Loading states for file operations
@@ -1057,6 +1058,32 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       color: Theme.of(context).colorScheme.outlineVariant,
                     ),
                     const SizedBox(height: 8),
+                    // Segment Analysis Toggle
+                    SwitchListTile(
+                      title: Text(
+                        'Segment analys',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Visa detaljerad analys av rutt-segment',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      secondary: Icon(
+                        Icons.analytics_outlined,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      value: _showSegmentAnalysis,
+                      onChanged: (value) {
+                        setState(() {
+                          _showSegmentAnalysis = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
                     // Saved Routes Section
                     ListTile(
                       leading: Icon(
@@ -1572,17 +1599,18 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               // Distance marker dots - always visible on polyline
             ],
           ),
-          // Route segments panel at the top
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 0,
-            right: 0,
-            child: RouteSegmentsPanel(
-              segmentMeters: _segmentMeters,
-              loopClosed: _loopClosed,
-              theme: Theme.of(context),
+          // Route segments panel at the top - conditionally displayed
+          if (_showSegmentAnalysis)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              left: 0,
+              right: 0,
+              child: RouteSegmentsPanel(
+                segmentMeters: _segmentMeters,
+                loopClosed: _loopClosed,
+                theme: Theme.of(context),
+              ),
             ),
-          ),
           // Minimal attribution to meet OSM/MapTiler requirements
           Positioned(
             bottom: 4,
