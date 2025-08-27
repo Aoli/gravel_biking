@@ -12,24 +12,56 @@ class RouteService {
   final Distance _distance = const Distance();
   Box<SavedRoute>? _routeBox;
 
-  /// Initialize Hive storage
+  /// Initialize Hive storage with proper error handling and debugging
   Future<void> initialize() async {
-    // Hive should already be initialized in main.dart, just open the box
+    debugPrint('RouteService: Starting initialization...');
+
+    // Check if Hive is initialized
+    if (!Hive.isAdapterRegistered(0) || !Hive.isAdapterRegistered(1)) {
+      debugPrint(
+        'RouteService: Hive adapters not registered! Re-registering...',
+      );
+      try {
+        Hive.registerAdapter(SavedRouteAdapter());
+        Hive.registerAdapter(LatLngDataAdapter());
+        debugPrint('RouteService: Adapters re-registered successfully');
+      } catch (e) {
+        debugPrint('RouteService: Error re-registering adapters: $e');
+      }
+    }
+
     try {
+      debugPrint('RouteService: Attempting to open Hive box "$_boxName"...');
       _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+      debugPrint(
+        'RouteService: Hive box opened successfully (${_routeBox!.length} routes)',
+      );
     } catch (e) {
-      debugPrint('Error initializing RouteService: $e');
-      // Do not rethrow; allow app to continue and retry lazily.
+      debugPrint('RouteService: Error opening Hive box: $e');
+      debugPrint('RouteService: Error type: ${e.runtimeType}');
+      debugPrint('RouteService: Error details: ${e.toString()}');
+
+      // Try clearing any corrupted box and reopening
+      try {
+        debugPrint('RouteService: Attempting to delete and recreate box...');
+        await Hive.deleteBoxFromDisk(_boxName);
+        await Future.delayed(const Duration(milliseconds: 200));
+        _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+        debugPrint('RouteService: Box recreated successfully');
+      } catch (retryError) {
+        debugPrint('RouteService: Box recreation failed: $retryError');
+        // This is a real initialization failure - rethrow to make it visible
+        rethrow;
+      }
     }
   }
 
-  /// Get the Hive box (lazy initialization if needed)
-  Future<Box<SavedRoute>> get _box async {
+  /// Get the Hive box (must be initialized first)
+  Box<SavedRoute> get _box {
     if (_routeBox == null || !_routeBox!.isOpen) {
-      await initialize();
-    }
-    if (_routeBox == null) {
-      throw Exception('Routes storage is unavailable');
+      throw Exception(
+        'RouteService not properly initialized. Hive box is not available.',
+      );
     }
     return _routeBox!;
   }
@@ -37,7 +69,7 @@ class RouteService {
   /// Load all saved routes
   Future<List<SavedRoute>> loadSavedRoutes() async {
     try {
-      final box = await _box;
+      final box = _box;
       return box.values.toList()
         ..sort((a, b) => b.savedAt.compareTo(a.savedAt));
     } catch (e) {
@@ -49,7 +81,7 @@ class RouteService {
   /// Search routes by name or description
   Future<List<SavedRoute>> searchRoutes(String query) async {
     try {
-      final box = await _box;
+      final box = _box;
       final allRoutes = box.values.toList();
 
       if (query.isEmpty) {
@@ -96,7 +128,7 @@ class RouteService {
       distance: totalDistance,
     );
 
-    final box = await _box;
+    final box = _box;
 
     // Remove oldest route if at capacity
     if (box.length >= maxSavedRoutes) {
@@ -111,7 +143,7 @@ class RouteService {
   /// Delete route by key
   Future<void> deleteRoute(int key) async {
     try {
-      final box = await _box;
+      final box = _box;
       await box.delete(key);
     } catch (e) {
       debugPrint('Error deleting route: $e');
@@ -121,7 +153,7 @@ class RouteService {
   /// Delete route by SavedRoute object
   Future<void> deleteRouteObject(SavedRoute route) async {
     try {
-      final box = await _box;
+      final box = _box;
       final key = route.key;
       if (key != null) {
         await box.delete(key);
@@ -134,7 +166,7 @@ class RouteService {
   /// Update route (replace existing route with new data)
   Future<void> updateRoute(SavedRoute oldRoute, SavedRoute newRoute) async {
     try {
-      final box = await _box;
+      final box = _box;
 
       // Find and delete the old route
       if (oldRoute.key != null) {
@@ -152,12 +184,17 @@ class RouteService {
   /// Get routes count
   Future<int> getRouteCount() async {
     try {
-      final box = await _box;
+      final box = _box;
       return box.length;
     } catch (e) {
       debugPrint('Error getting route count: $e');
       return 0;
     }
+  }
+
+  /// Check if storage is available
+  bool isStorageAvailable() {
+    return _routeBox != null && _routeBox!.isOpen;
   }
 
   /// Calculate segment distances for route points
