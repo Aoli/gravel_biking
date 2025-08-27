@@ -11,8 +11,8 @@ import 'package:file_saver/file_saver.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:xml/xml.dart' as xml;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+// SharedPreferences removed from project; backup file no longer imports it.
 // Data model for saved routes
 class SavedRoute {
   final String name;
@@ -195,28 +195,17 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   // Saved Routes Management
   Future<void> _loadSavedRoutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final routesJson = prefs.getStringList('saved_routes') ?? [];
-
+    // SharedPreferences dependency removed; keep backup file functional by
+    // initializing to an empty list without persistent storage.
     setState(() {
       _savedRoutes.clear();
-      for (final routeJson in routesJson) {
-        try {
-          final route = SavedRoute.fromJson(json.decode(routeJson));
-          _savedRoutes.add(route);
-        } catch (e) {
-          debugPrint('Error loading saved route: $e');
-        }
-      }
     });
   }
 
   Future<void> _saveSavedRoutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final routesJson = _savedRoutes
-        .map((route) => json.encode(route.toJson()))
-        .toList();
-    await prefs.setStringList('saved_routes', routesJson);
+    // No-op in backup file since persistent storage via SharedPreferences
+    // was removed from the project.
+    return;
   }
 
   Future<void> _saveCurrentRoute(String name) async {

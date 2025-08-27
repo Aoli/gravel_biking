@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/saved_route.dart';
 
 /// Enhanced service for managing saved routes with Hive storage
@@ -19,10 +17,9 @@ class RouteService {
     // Hive should already be initialized in main.dart, just open the box
     try {
       _routeBox = await Hive.openBox<SavedRoute>(_boxName);
-      await _migrateFromSharedPreferences();
     } catch (e) {
       debugPrint('Error initializing RouteService: $e');
-      rethrow;
+      // Do not rethrow; allow app to continue and retry lazily.
     }
   }
 
@@ -30,6 +27,9 @@ class RouteService {
   Future<Box<SavedRoute>> get _box async {
     if (_routeBox == null || !_routeBox!.isOpen) {
       await initialize();
+    }
+    if (_routeBox == null) {
+      throw Exception('Routes storage is unavailable');
     }
     return _routeBox!;
   }
@@ -220,38 +220,7 @@ class RouteService {
     }
   }
 
-  /// Migrate from SharedPreferences to Hive (one-time migration)
-  Future<void> _migrateFromSharedPreferences() async {
-    try {
-      final box = await _box;
-      if (box.isNotEmpty) return; // Already migrated
-
-      final prefs = await SharedPreferences.getInstance();
-      final routesJson = prefs.getStringList('saved_routes') ?? [];
-
-      if (routesJson.isEmpty) return;
-
-      debugPrint(
-        'Migrating ${routesJson.length} routes from SharedPreferences to Hive',
-      );
-
-      for (final routeJson in routesJson) {
-        try {
-          final routeData = json.decode(routeJson);
-          final route = SavedRoute.fromJson(routeData);
-          await box.add(route);
-        } catch (e) {
-          debugPrint('Error migrating route: $e');
-        }
-      }
-
-      // Clear old SharedPreferences data after successful migration
-      await prefs.remove('saved_routes');
-      debugPrint('Migration completed, SharedPreferences data cleared');
-    } catch (e) {
-      debugPrint('Error during migration: $e');
-    }
-  }
+  // SharedPreferences migration removed: Hive is the single source of truth.
 
   /// Close Hive box when done (call in app disposal)
   Future<void> dispose() async {

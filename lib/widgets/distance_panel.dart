@@ -163,7 +163,7 @@ class DistancePanel extends StatelessWidget {
                             size: 16,
                             color: editModeEnabled
                                 ? theme.colorScheme.tertiary
-                                : onSurface.withOpacity(0.6),
+                                : onSurface.withValues(alpha: 0.6),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -172,7 +172,7 @@ class DistancePanel extends StatelessWidget {
                               size: 18,
                               color: editModeEnabled
                                   ? theme.colorScheme.onTertiaryContainer
-                                  : onSurface.withOpacity(0.8),
+                                  : onSurface.withValues(alpha: 0.8),
                             ),
                           ),
                           Switch(
@@ -182,7 +182,7 @@ class DistancePanel extends StatelessWidget {
                                 MaterialTapTargetSize.shrinkWrap,
                             activeThumbColor: theme.colorScheme.tertiary,
                             activeTrackColor: theme.colorScheme.tertiary
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                             inactiveThumbColor: theme.colorScheme.outline,
                             inactiveTrackColor:
                                 theme.colorScheme.surfaceContainerHighest,
