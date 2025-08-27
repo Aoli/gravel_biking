@@ -25,8 +25,16 @@ class RouteService {
         Hive.registerAdapter(LatLngDataAdapter());
       }
 
-      _log('Attempting to open Hive box "saved_routes"...');
-      _routeBox = await Hive.openBox<SavedRoute>('saved_routes');
+      _log('Attempting to open Hive box "$_boxName"...');
+
+      // On Web (including Android Chrome/WebView), ensure IndexedDB is available.
+      // Some Android Chrome versions/devices may have IDB disabled (incognito, storage off).
+      if (kIsWeb) {
+        // Quick feature-detection hint for logs only (no direct IDB import here).
+        _log('Web runtime detected. Expecting IndexedDB backend for Hive.');
+      }
+
+      _routeBox = await Hive.openBox<SavedRoute>(_boxName);
       _log('Hive box opened successfully (${_routeBox?.length ?? 0} routes)');
     } catch (e, s) {
       _log('CRITICAL: Hive initialization failed: $e');

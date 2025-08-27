@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:gravel_biking/models/saved_route.dart';
 import 'package:gravel_biking/screens/gravel_streets_map.dart';
-import 'package:gravel_biking/services/route_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 Future<void> main() async {

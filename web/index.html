@@ -95,6 +95,63 @@
   
   <!-- Enhanced web app icon font loading script -->
   <script>
+    // Request persistent storage and probe IndexedDB availability (Android Chrome quirks)
+    (function() {
+      // Run as early as possible
+      const ensurePersistentStorage = async () => {
+        if (navigator.storage && navigator.storage.persist) {
+          try {
+            const already = await navigator.storage.persisted();
+            if (!already) {
+              const granted = await navigator.storage.persist();
+              console.log('[Storage] Persist requested, granted =', granted);
+            } else {
+              console.log('[Storage] Already persisted');
+            }
+          } catch (e) {
+            console.warn('[Storage] Persist request failed:', e);
+          }
+        } else {
+          console.warn('[Storage] navigator.storage.persist not available');
+        }
+      };
+
+      const probeIndexedDb = () => {
+        try {
+          if (!('indexedDB' in window)) {
+            console.warn('[IndexedDB] Not available on window');
+            return;
+          }
+          const req = indexedDB.open('hive_probe_db');
+          let opened = false;
+          req.onupgradeneeded = () => {
+            try { req.result.createObjectStore('probe'); } catch (_) {}
+          };
+          req.onsuccess = () => {
+            opened = true;
+            console.log('[IndexedDB] Open probe succeeded');
+            try { req.result.close(); } catch (_) {}
+            indexedDB.deleteDatabase('hive_probe_db');
+          };
+          req.onerror = (ev) => {
+            console.warn('[IndexedDB] Open probe error:', ev?.target?.error || ev);
+          };
+          // Safety timeout to log if nothing happens (some Chrome/WebView bugs)
+          setTimeout(() => {
+            if (!opened) {
+              console.warn('[IndexedDB] Open probe timed out (possible blocked storage, incognito, or restricted context)');
+            }
+          }, 3000);
+        } catch (e) {
+          console.warn('[IndexedDB] Exception during probe:', e);
+        }
+      };
+
+      // Kick off early
+      ensurePersistentStorage();
+      probeIndexedDb();
+    })();
+
     // Comprehensive Material Icons loading for all platforms including Android WebView
     document.addEventListener('DOMContentLoaded', function() {
       // Load multiple font formats for maximum compatibility
