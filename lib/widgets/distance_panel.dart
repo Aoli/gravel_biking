@@ -175,6 +175,13 @@ class _DistancePanelState extends State<DistancePanel>
                             onPressed: widget.onSave,
                             visualDensity: VisualDensity.compact,
                           ),
+                          IconButton(
+                            tooltip: 'Rensa rutt',
+                            icon: const Icon(Icons.clear_all, size: 18),
+                            color: widget.theme.colorScheme.error,
+                            onPressed: widget.segmentMeters.isEmpty ? null : widget.onClear,
+                            visualDensity: VisualDensity.compact,
+                          ),
                         ],
                       ),
                     ),

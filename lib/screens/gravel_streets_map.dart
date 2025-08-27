@@ -1435,8 +1435,21 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                                   isEditing: _editingIndex == i,
                                   isLoopClosed: _loopClosed,
                                 )
+                              : (!_measureEnabled && isStartOrEnd)
+                              ? PointMarker(
+                                  key: ValueKey(
+                                    'view_point_${i}_loop_$_loopClosed',
+                                  ),
+                                  index: i,
+                                  size: 18.0, // Larger base size for view mode
+                                  isStartPoint: isStartPoint,
+                                  isEndPoint: isEndPoint,
+                                  measureEnabled: false, // View mode
+                                  isEditing: false,
+                                  isLoopClosed: _loopClosed,
+                                )
                               : Container(
-                                  // Simple subtle circle in view mode
+                                  // Simple subtle circle for middle points in measure mode
                                   width: markerSize,
                                   height: markerSize,
                                   decoration: BoxDecoration(
