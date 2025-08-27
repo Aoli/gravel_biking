@@ -24,14 +24,15 @@ import '../services/route_service.dart';
 /// Background isolate function for parsing GPX track points
 /// This prevents UI freezing when processing large GPX files with thousands of points
 /// Handles both UTF-8 decoding and XML parsing in the background
-List<LatLng> _parseGpxPoints(Uint8List data) {
+/// Includes smart decimation for large routes to improve performance
+Map<String, dynamic> _parseGpxPoints(Uint8List data) {
   // Decode UTF-8 in background isolate
   final text = utf8.decode(data);
 
   // Parse XML in background isolate
   final doc = xml.XmlDocument.parse(text);
   final trkpts = doc.findAllElements('trkpt');
-  final pts = <LatLng>[];
+  final allPts = <LatLng>[];
 
   for (final p in trkpts) {
     final latStr = p.getAttribute('lat');
@@ -39,11 +40,48 @@ List<LatLng> _parseGpxPoints(Uint8List data) {
     if (latStr != null && lonStr != null) {
       final lat = double.tryParse(latStr);
       final lon = double.tryParse(lonStr);
-      if (lat != null && lon != null) pts.add(LatLng(lat, lon));
+      if (lat != null && lon != null) allPts.add(LatLng(lat, lon));
     }
   }
 
-  return pts;
+  // Smart decimation for large routes
+  final decimatedPts = allPts.length > 2000 ? _decimatePoints(allPts) : allPts;
+
+  return {
+    'points': decimatedPts,
+    'originalCount': allPts.length,
+    'decimatedCount': decimatedPts.length,
+  };
+}
+
+/// Distance-based point decimation to improve performance
+/// Keeps points that are at least minDistance meters apart
+List<LatLng> _decimatePoints(List<LatLng> points) {
+  if (points.length <= 2) return points;
+
+  const minDistanceMeters = 15.0; // Keep points at least 15m apart
+  const distance = Distance();
+  final decimated = <LatLng>[points.first]; // Always keep first point
+
+  for (int i = 1; i < points.length - 1; i++) {
+    final distanceToLast = distance.as(
+      LengthUnit.Meter,
+      decimated.last,
+      points[i],
+    );
+
+    // Keep point if it's far enough from the last kept point
+    if (distanceToLast >= minDistanceMeters) {
+      decimated.add(points[i]);
+    }
+  }
+
+  // Always keep last point
+  if (points.length > 1) {
+    decimated.add(points.last);
+  }
+
+  return decimated;
 }
 
 /// Represents a snapshot of the route state for undo functionality
@@ -1226,6 +1264,21 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         return null; // Hide middle points when measurement mode is off
                       }
 
+                      // Performance optimization: For large routes, show fewer points at low zoom levels
+                      final currentZoom = _lastZoom ?? 12.0;
+                      if (_routePoints.length > 1000 && currentZoom < 13.0) {
+                        // At low zoom, only show every 10th point (plus start/end)
+                        if (!isStartOrEnd && i % 10 != 0) {
+                          return null;
+                        }
+                      } else if (_routePoints.length > 500 &&
+                          currentZoom < 11.0) {
+                        // At very low zoom, only show every 20th point (plus start/end)
+                        if (!isStartOrEnd && i % 20 != 0) {
+                          return null;
+                        }
+                      }
+
                       final baseSize = _editModeEnabled ? 16.0 : 2.0;
                       final markerSize = _measureEnabled
                           ? baseSize
@@ -2358,7 +2411,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
       // Parse GPX in background isolate to prevent UI freezing
       // This handles both UTF-8 decoding and XML parsing in the background
-      final pts = await compute(_parseGpxPoints, data);
+      final result = await compute(_parseGpxPoints, data);
+      final pts = result['points'] as List<LatLng>;
+      final originalCount = result['originalCount'] as int;
+      final decimatedCount = result['decimatedCount'] as int;
 
       if (pts.isEmpty) {
         if (!mounted) return;
@@ -2401,7 +2457,11 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Importerade ${_routePoints.length} punkter från GPX'),
+          content: Text(
+            originalCount != decimatedCount
+                ? 'Importerade ${_routePoints.length} punkter från GPX (optimerad från $originalCount)'
+                : 'Importerade ${_routePoints.length} punkter från GPX',
+          ),
         ),
       );
     } catch (e) {
