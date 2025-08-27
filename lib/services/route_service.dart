@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
@@ -15,6 +15,7 @@ class RouteService {
   /// Initialize Hive storage with proper error handling and debugging
   Future<void> initialize() async {
     debugPrint('RouteService: Starting initialization...');
+    debugPrint('RouteService: Platform: $defaultTargetPlatform');
 
     // Check if Hive is initialized
     if (!Hive.isAdapterRegistered(0) || !Hive.isAdapterRegistered(1)) {
@@ -28,11 +29,16 @@ class RouteService {
       } catch (e) {
         debugPrint('RouteService: Error re-registering adapters: $e');
       }
+    } else {
+      debugPrint('RouteService: Adapters already registered');
     }
 
     try {
       debugPrint('RouteService: Attempting to open Hive box "$_boxName"...');
+
+      // For Android WebView, we might need to wait longer
       _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+
       debugPrint(
         'RouteService: Hive box opened successfully (${_routeBox!.length} routes)',
       );
@@ -45,13 +51,36 @@ class RouteService {
       try {
         debugPrint('RouteService: Attempting to delete and recreate box...');
         await Hive.deleteBoxFromDisk(_boxName);
-        await Future.delayed(const Duration(milliseconds: 200));
+
+        // Wait longer for Android WebView
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        debugPrint('RouteService: Trying to open box again after deletion...');
         _routeBox = await Hive.openBox<SavedRoute>(_boxName);
         debugPrint('RouteService: Box recreated successfully');
       } catch (retryError) {
         debugPrint('RouteService: Box recreation failed: $retryError');
-        // This is a real initialization failure - rethrow to make it visible
-        rethrow;
+
+        // Final attempt with explicit path (for Android WebView)
+        try {
+          debugPrint('RouteService: Final attempt with different approach...');
+          await Future.delayed(const Duration(milliseconds: 1000));
+
+          // Try to initialize Hive again for Android WebView compatibility
+          try {
+            await Hive.initFlutter();
+          } catch (reinitError) {
+            debugPrint(
+              'RouteService: Hive reinit error (expected): $reinitError',
+            );
+          }
+
+          _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+          debugPrint('RouteService: Final attempt successful!');
+        } catch (finalError) {
+          debugPrint('RouteService: All attempts failed: $finalError');
+          rethrow;
+        }
       }
     }
   }

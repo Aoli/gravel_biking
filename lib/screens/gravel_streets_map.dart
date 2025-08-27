@@ -194,6 +194,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   bool _isExporting = false;
   bool _isImporting = false;
   bool _isSaving = false;
+  bool _isInitialized = false; // Track RouteService initialization status
 
   // Global loading overlay for file operations
   bool get _isFileOperationLoading => _isExporting || _isImporting;
@@ -228,13 +229,27 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     try {
       await _routeService.initialize();
       await _loadSavedRoutes();
+      setState(() {
+        _isInitialized = true;
+      });
+      debugPrint('RouteService initialization completed successfully');
     } catch (e) {
       debugPrint('Error initializing services: $e');
+      setState(() {
+        _isInitialized = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading saved routes: ${e.toString()}'),
+            content: Text(
+              'Fel vid initialisering av routelagring: ${e.toString()}',
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Försök igen',
+              onPressed: _initializeServices,
+            ),
           ),
         );
       }
@@ -270,6 +285,30 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Ingen rutt att spara')));
+      return;
+    }
+
+    // Check if RouteService is properly initialized
+    if (!_isInitialized || !_routeService.isStorageAvailable()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Routelagring är inte redo. Försöker initialisera igen...',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            action: SnackBarAction(
+              label: 'Försök igen',
+              onPressed: () async {
+                await _initializeServices();
+                if (_isInitialized) {
+                  _saveCurrentRouteInternal(name);
+                }
+              },
+            ),
+          ),
+        );
+      }
       return;
     }
 
