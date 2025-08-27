@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/coordinate_utils.dart';
 
 /// Widget for displaying route distance measurements and controls
-class DistancePanel extends StatelessWidget {
+class DistancePanel extends StatefulWidget {
   final List<double> segmentMeters;
   final VoidCallback onUndo;
   final VoidCallback onSave;
@@ -38,13 +38,56 @@ class DistancePanel extends StatelessWidget {
     required this.canUndo,
   });
 
-  double get _totalMeters => segmentMeters.fold(0.0, (a, b) => a + b);
+  @override
+  State<DistancePanel> createState() => _DistancePanelState();
+}
+
+class _DistancePanelState extends State<DistancePanel>
+    with TickerProviderStateMixin {
+  bool _isExpanded = true; // Default to expanded
+  late AnimationController _controller;
+  late Animation<double> _expandAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+    if (_isExpanded) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggleExpanded() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+      if (_isExpanded) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
+
+  double get _totalMeters => widget.segmentMeters.fold(0.0, (a, b) => a + b);
 
   @override
   Widget build(BuildContext context) {
-    final surfaceColor = theme.colorScheme.surface;
-    final onSurface = theme.colorScheme.onSurface;
-    final primaryColor = theme.colorScheme.primary;
+    final surfaceColor = widget.theme.colorScheme.surface;
+    final onSurface = widget.theme.colorScheme.onSurface;
+    final primaryColor = widget.theme.colorScheme.primary;
 
     return Material(
       color: Colors.transparent,
@@ -60,7 +103,7 @@ class DistancePanel extends StatelessWidget {
           color: surfaceColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+            color: widget.theme.colorScheme.outline.withValues(alpha: 0.2),
             width: 1,
           ),
           boxShadow: const [
@@ -78,291 +121,331 @@ class DistancePanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Header row with title and primary actions
-              Row(
-                children: [
-                  Icon(Icons.tune, color: primaryColor, size: 20),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Kontroller',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  // Primary action buttons (undo & save)
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
-                      color: theme.colorScheme.secondaryContainer.withValues(
-                        alpha: 0.3,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Ångra senaste ändring',
-                          icon: const Icon(Icons.undo, size: 18),
-                          color: canUndo
-                              ? onSurface
-                              : onSurface.withValues(alpha: 0.4),
-                          onPressed: canUndo ? onUndo : null,
-                          visualDensity: VisualDensity.compact,
+              GestureDetector(
+                onTap: _toggleExpanded,
+                child: Row(
+                  children: [
+                    Icon(Icons.tune, color: primaryColor, size: 20),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Kontroller',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: widget.theme.textTheme.titleMedium?.copyWith(
+                          color: onSurface,
+                          fontWeight: FontWeight.w600,
                         ),
-                        IconButton(
-                          tooltip: 'Spara rutt',
-                          icon: const Icon(Icons.save, size: 18),
-                          color: primaryColor,
-                          onPressed: onSave,
-                          visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    // Expand/collapse icon
+                    AnimatedRotation(
+                      turns: _isExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 20,
+                        color: onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Primary action buttons (undo & save) - always visible
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color: widget.theme.colorScheme.secondaryContainer
+                            .withValues(alpha: 0.3),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Ångra senaste ändring',
+                            icon: const Icon(Icons.undo, size: 18),
+                            color: widget.canUndo
+                                ? onSurface
+                                : onSurface.withValues(alpha: 0.4),
+                            onPressed: widget.canUndo ? widget.onUndo : null,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          IconButton(
+                            tooltip: 'Spara rutt',
+                            icon: const Icon(Icons.save, size: 18),
+                            color: primaryColor,
+                            onPressed: widget.onSave,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Expandable content
+              SizeTransition(
+                sizeFactor: _expandAnimation,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    // Control toggles row - now with more space (300px)
+                    Row(
+                      children: [
+                        // Edit mode toggle - expanded
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: widget.editModeEnabled
+                                  ? widget.theme.colorScheme.tertiaryContainer
+                                        .withValues(alpha: 0.4)
+                                  : widget.theme.colorScheme.surfaceContainer
+                                        .withValues(alpha: 0.3),
+                              border: Border.all(
+                                color: widget.editModeEnabled
+                                    ? widget.theme.colorScheme.tertiary
+                                          .withValues(alpha: 0.4)
+                                    : widget.theme.colorScheme.outline
+                                          .withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.edit,
+                                  size: 16,
+                                  color: widget.editModeEnabled
+                                      ? widget.theme.colorScheme.tertiary
+                                      : onSurface.withValues(alpha: 0.6),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Icon(
+                                    Icons.edit_location,
+                                    size: 18,
+                                    color: widget.editModeEnabled
+                                        ? widget
+                                              .theme
+                                              .colorScheme
+                                              .onTertiaryContainer
+                                        : onSurface.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                                Switch(
+                                  value: widget.editModeEnabled,
+                                  onChanged: widget.onEditModeChanged,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  activeThumbColor:
+                                      widget.theme.colorScheme.tertiary,
+                                  activeTrackColor: widget
+                                      .theme
+                                      .colorScheme
+                                      .tertiary
+                                      .withValues(alpha: 0.5),
+                                  inactiveThumbColor:
+                                      widget.theme.colorScheme.outline,
+                                  inactiveTrackColor: widget
+                                      .theme
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Distance markers toggle - expanded
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: widget.showDistanceMarkers
+                                  ? widget.theme.colorScheme.secondaryContainer
+                                        .withValues(alpha: 0.9)
+                                  : widget.theme.colorScheme.surfaceContainer
+                                        .withValues(alpha: 0.3),
+                              border: Border.all(
+                                color: widget.showDistanceMarkers
+                                    ? widget.theme.colorScheme.secondary
+                                          .withValues(alpha: 0.8)
+                                    : widget.theme.colorScheme.outline
+                                          .withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(2),
+                                    color: Colors.orange,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      'km',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Switch(
+                                  value: widget.showDistanceMarkers,
+                                  onChanged: widget.onDistanceMarkersToggled,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  activeThumbColor:
+                                      widget.theme.colorScheme.secondary,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Control toggles row - now with more space (300px)
-              Row(
-                children: [
-                  // Edit mode toggle - expanded
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: editModeEnabled
-                            ? theme.colorScheme.tertiaryContainer.withValues(
-                                alpha: 0.4,
-                              )
-                            : theme.colorScheme.surfaceContainer.withValues(
-                                alpha: 0.3,
-                              ),
-                        border: Border.all(
-                          color: editModeEnabled
-                              ? theme.colorScheme.tertiary.withValues(
-                                  alpha: 0.4,
-                                )
-                              : theme.colorScheme.outline.withValues(
-                                  alpha: 0.2,
-                                ),
-                          width: 1,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.edit,
+                    if (widget.canToggleLoop) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: onSurface,
+                            backgroundColor:
+                                widget.theme.colorScheme.secondaryContainer,
+                            elevation: 1,
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                          ),
+                          onPressed: widget.onToggleLoop,
+                          icon: Icon(
+                            widget.loopClosed ? Icons.link_off : Icons.link,
                             size: 16,
-                            color: editModeEnabled
-                                ? theme.colorScheme.tertiary
-                                : onSurface.withValues(alpha: 0.6),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Icon(
-                              Icons.edit_location,
-                              size: 18,
-                              color: editModeEnabled
-                                  ? theme.colorScheme.onTertiaryContainer
-                                  : onSurface.withValues(alpha: 0.8),
+                          label: Text(
+                            widget.loopClosed ? 'Öppna slinga' : 'Stäng slinga',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: onSurface,
                             ),
-                          ),
-                          Switch(
-                            value: editModeEnabled,
-                            onChanged: onEditModeChanged,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                            activeThumbColor: theme.colorScheme.tertiary,
-                            activeTrackColor: theme.colorScheme.tertiary
-                                .withValues(alpha: 0.5),
-                            inactiveThumbColor: theme.colorScheme.outline,
-                            inactiveTrackColor:
-                                theme.colorScheme.surfaceContainerHighest,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Distance markers toggle - expanded
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: showDistanceMarkers
-                            ? theme.colorScheme.secondaryContainer.withValues(
-                                alpha: 0.9,
-                              )
-                            : theme.colorScheme.surfaceContainer.withValues(
-                                alpha: 0.3,
-                              ),
-                        border: Border.all(
-                          color: showDistanceMarkers
-                              ? theme.colorScheme.secondary.withValues(
-                                  alpha: 0.8,
-                                )
-                              : theme.colorScheme.outline.withValues(
-                                  alpha: 0.2,
-                                ),
-                          width: 1,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(2),
-                              color: Colors.orange,
-                              border: Border.all(color: Colors.white, width: 1),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'km',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          Switch(
-                            value: showDistanceMarkers,
-                            onChanged: onDistanceMarkersToggled,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                            activeThumbColor: theme.colorScheme.secondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (canToggleLoop) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: onSurface,
-                      backgroundColor: theme.colorScheme.secondaryContainer,
-                      elevation: 1,
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                    ),
-                    onPressed: onToggleLoop,
-                    icon: Icon(
-                      loopClosed ? Icons.link_off : Icons.link,
-                      size: 16,
-                    ),
-                    label: Text(
-                      loopClosed ? 'Öppna slinga' : 'Stäng slinga',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: onSurface,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              SizedBox(height: 8),
-              // Show edit mode instructions when edit mode is enabled
-              if (editModeEnabled) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.tertiaryContainer.withValues(
-                      alpha: 0.8,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: theme.colorScheme.tertiary.withValues(alpha: 0.5),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.edit,
-                        size: 16,
-                        color: theme.colorScheme.onTertiaryContainer,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Redigeringsläge aktivt\n• Tryck på punkt för att välja\n• Långtryck på punkt för att ta bort\n• Tryck på + för att lägga till mellan punkter',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onTertiaryContainer,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 11,
                           ),
                         ),
                       ),
                     ],
-                  ),
-                ),
-              ],
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'Total: ${CoordinateUtils.formatDistance(_totalMeters)}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
+                    const SizedBox(height: 8),
+                    // Show edit mode instructions when edit mode is enabled
+                    if (widget.editModeEnabled) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: widget.theme.colorScheme.tertiaryContainer
+                              .withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: widget.theme.colorScheme.tertiary.withValues(
+                              alpha: 0.5,
+                            ),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit,
+                              size: 16,
+                              color:
+                                  widget.theme.colorScheme.onTertiaryContainer,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Redigeringsläge aktivt\n• Tryck på punkt för att välja\n• Långtryck på punkt för att ta bort\n• Tryck på + för att lägga till mellan punkter',
+                                style: widget.theme.textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: widget
+                                          .theme
+                                          .colorScheme
+                                          .onTertiaryContainer,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 11,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Total: ${CoordinateUtils.formatDistance(_totalMeters)}',
+                        style: widget.theme.textTheme.titleSmall?.copyWith(
+                          color: onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    // Show helpful hint when not in edit mode but have points
+                    if (!widget.editModeEnabled &&
+                        widget.segmentMeters.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Tryck på punkt för avstånd från start • Sätt på redigeringsläge för att ändra rutter',
+                          style: widget.theme.textTheme.bodySmall?.copyWith(
+                            color: widget.theme.colorScheme.onSurfaceVariant,
+                            fontSize: 10,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    if (widget.segmentMeters.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Tryck på kartan för att lägga till punkter i redigeringsläge (grön redigeringsknapp)',
+                          style: TextStyle(
+                            color: onSurface.withValues(alpha: 0.7),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              // Show helpful hint when not in edit mode but have points
-              if (!editModeEnabled && segmentMeters.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Tryck på punkt för avstånd från start • Sätt på redigeringsläge för att ändra rutter',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 10,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              if (segmentMeters.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Tryck på kartan för att lägga till punkter i redigeringsläge (grön redigeringsknapp)',
-                    style: TextStyle(
-                      color: onSurface.withValues(alpha: 0.7),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
