@@ -18,6 +18,7 @@ import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
 import '../widgets/point_marker.dart';
 import '../widgets/distance_panel.dart';
+import '../widgets/riverpod_demo_widget.dart';
 import '../screens/saved_routes_page.dart';
 import '../services/route_service.dart';
 
@@ -767,6 +768,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ),
                       ),
                     ),
+                    // TODO: Remove this demo widget after full Riverpod migration
+                    const RiverpodDemoWidget(),
                     ListTile(
                       title: Text(
                         'Import / Export',

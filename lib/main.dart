@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gravel_biking/models/saved_route.dart';
 import 'package:gravel_biking/screens/gravel_streets_map.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -22,7 +23,12 @@ Future<void> main() async {
   Hive.registerAdapter(SavedRouteAdapter());
   Hive.registerAdapter(LatLngDataAdapter());
 
-  runApp(const MyApp());
+  runApp(
+    // ProviderScope enables Riverpod state management throughout the app
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

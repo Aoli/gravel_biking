@@ -45,6 +45,9 @@ dependencies:
   path_provider: ^2.1.4
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  
+  # State Management
+  flutter_riverpod: ^2.4.9
 
 dev_dependencies:
   flutter_test:
