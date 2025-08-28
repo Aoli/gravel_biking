@@ -6,13 +6,11 @@ import 'package:gravel_biking/services/route_service.dart';
 /// Creates and manages the RouteService instance that handles
 /// saved routes storage using Hive.
 ///
-/// This is a singleton provider that initializes the service
-/// and keeps it available throughout the app lifecycle.
+/// This is a singleton provider that creates the service
+/// but does NOT automatically initialize it to avoid race conditions.
+/// Use routeServiceInitializedProvider to ensure proper initialization.
 final routeServiceProvider = Provider<RouteService>((ref) {
   final routeService = RouteService();
-
-  // Initialize the service when first accessed
-  routeService.initialize();
 
   // Clean up when provider is disposed
   ref.onDispose(() {

@@ -1,12 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:xml/xml.dart' as xml;
 
 /// Service for handling file import/export functionality
@@ -52,21 +50,17 @@ class FileService {
     final bytes = Uint8List.fromList(utf8.encode(content));
 
     try {
-      // Use FileSaver for web and path_provider for iOS/mobile
+      // Enhanced web compatibility - especially for Android WebView/browsers
       if (kIsWeb) {
         await FileSaver.instance.saveFile(
-          name: 'gravel_route.geojson',
+          name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.geojson',
           bytes: bytes,
           ext: 'geojson',
           mimeType: MimeType.json,
         );
       } else {
-        // For iOS/mobile platforms, save to Documents directory first
-        final directory = await getApplicationDocumentsDirectory();
-        final file = File('${directory.path}/gravel_route.geojson');
-        await file.writeAsBytes(bytes);
-
-        // Then use FileSaver to show save dialog
+        // For native iOS/Android platforms - use FileSaver directly for better compatibility
+        // On Android, this will use the system's file picker/storage access framework
         await FileSaver.instance.saveFile(
           name: 'gravel_route.geojson',
           bytes: bytes,
@@ -242,21 +236,17 @@ class FileService {
     final bytes = Uint8List.fromList(utf8.encode(gpxString));
 
     try {
-      // Use FileSaver for web and path_provider for iOS/mobile
+      // Enhanced web compatibility - especially for Android WebView/browsers
       if (kIsWeb) {
         await FileSaver.instance.saveFile(
-          name: 'gravel_route.gpx',
+          name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.gpx',
           bytes: bytes,
           ext: 'gpx',
           mimeType: MimeType.other,
         );
       } else {
-        // For iOS/mobile platforms, save to Documents directory first
-        final directory = await getApplicationDocumentsDirectory();
-        final file = File('${directory.path}/gravel_route.gpx');
-        await file.writeAsBytes(bytes);
-
-        // Then use FileSaver to show save dialog
+        // For native iOS/Android platforms - use FileSaver directly for better compatibility
+        // On Android, this will use the system's file picker/storage access framework
         await FileSaver.instance.saveFile(
           name: 'gravel_route.gpx',
           bytes: bytes,

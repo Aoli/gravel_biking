@@ -94,7 +94,10 @@ class _DistancePanelState extends State<DistancePanel>
       elevation: 4,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 300), // Increased from 280
+        constraints: const BoxConstraints(
+          maxWidth: 500,
+        ), // Wide as screen, max 500px
+        width: double.infinity, // Take full available width
         padding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 12,

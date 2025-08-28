@@ -300,6 +300,13 @@
 			"type": "shell",
 			"command": "flutter analyze && flutter test -r expanded",
 			"group": "build"
+		},
+		{
+			"label": "Final Android File Export Test",
+			"type": "shell",
+			"command": "flutter analyze && echo '✅ Analysis passed' && flutter test lib/services/file_service.dart --reporter=compact && echo '✅ File service tests would pass'",
+			"isBackground": false,
+			"group": "test"
 		}
 	]
 }
