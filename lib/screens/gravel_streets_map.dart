@@ -155,6 +155,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       false; // Disabled by default, prepared for future
   bool isLoading = true;
   LatLng? _myPosition;
+  DateTime? _lastRateLimitError;
+  int _retryAttempts = 0;
+  static const int _maxRetryAttempts = 3;
+  static const Duration _rateLimitCooldown = Duration(minutes: 1);
   Timer? _moveDebounce;
   LatLngBounds? _lastFetchedBounds;
   LatLngBounds? _lastEventBounds;
@@ -566,7 +570,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     _lastZoom = event.camera.zoom;
     _moveDebounce?.cancel();
     _moveDebounce = Timer(
-      const Duration(milliseconds: 500),
+      const Duration(
+        milliseconds: 1000,
+      ), // Increased from 500ms to reduce API calls
       _queueViewportFetch,
     );
   }
@@ -594,6 +600,26 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   }
 
   Future<void> _fetchGravelForBounds(LatLngBounds bounds) async {
+    // Check if we're in a rate limit cooldown period
+    if (_lastRateLimitError != null) {
+      final timeSinceLastError = DateTime.now().difference(
+        _lastRateLimitError!,
+      );
+      if (timeSinceLastError < _rateLimitCooldown) {
+        debugPrint(
+          'Gravel fetch skipped - in rate limit cooldown (${_rateLimitCooldown.inSeconds - timeSinceLastError.inSeconds}s remaining)',
+        );
+        return;
+      }
+      // Clear the rate limit error after cooldown
+      _lastRateLimitError = null;
+      _retryAttempts = 0;
+    }
+
+    await _fetchGravelWithRetry(bounds);
+  }
+
+  Future<void> _fetchGravelWithRetry(LatLngBounds bounds) async {
     _lastFetchedBounds = bounds;
     const url = 'https://overpass-api.de/api/interpreter';
     final sw = bounds.southWest;
@@ -618,7 +644,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
         body: {'data': query},
         headers: {'User-Agent': ua},
       );
+
       if (res.statusCode == 200) {
+        // Success - reset retry attempts
+        _retryAttempts = 0;
         final lines = await compute(
           CoordinateUtils.extractPolylineCoords,
           res.body,
@@ -636,7 +665,31 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
           gravelPolylines = polys;
           isLoading = false;
         });
+      } else if (res.statusCode == 429) {
+        // Rate limited - handle specially
+        _lastRateLimitError = DateTime.now();
+        _retryAttempts++;
+        debugPrint(
+          'Rate limited by Overpass API (429) - attempt $_retryAttempts/$_maxRetryAttempts',
+        );
+
+        if (_retryAttempts < _maxRetryAttempts) {
+          // Exponential backoff: wait 2^attempt seconds before retry
+          final delaySeconds = (1 << _retryAttempts);
+          debugPrint('Retrying in ${delaySeconds}s...');
+          await Future.delayed(Duration(seconds: delaySeconds));
+          if (mounted) {
+            await _fetchGravelWithRetry(bounds);
+          }
+        } else {
+          debugPrint(
+            'Max retry attempts reached. Entering cooldown period of ${_rateLimitCooldown.inMinutes} minutes.',
+          );
+          if (!mounted) return;
+          setState(() => isLoading = false);
+        }
       } else {
+        // Other HTTP error
         debugPrint('Failed to load gravel streets: ${res.statusCode}');
         if (!mounted) return;
         setState(() => isLoading = false);
