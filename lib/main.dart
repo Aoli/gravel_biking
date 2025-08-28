@@ -20,8 +20,10 @@ library;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:gravel_biking/screens/gravel_streets_map.dart';
 import 'package:gravel_biking/services/storage_service.dart';
+import 'firebase_options.dart';
 
 /// Application entry point with centralized storage initialization
 ///
@@ -33,6 +35,17 @@ import 'package:gravel_biking/services/storage_service.dart';
 /// core functionality without persistent route storage.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('✅ Firebase initialized successfully');
+  } catch (e) {
+    debugPrint('❌ Firebase initialization failed: $e');
+    debugPrint('App will continue without authentication features');
+  }
 
   // Initialize storage through the centralized service
   final storageService = StorageService();
