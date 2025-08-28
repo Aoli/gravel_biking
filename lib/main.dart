@@ -1,3 +1,22 @@
+/// Gravel First - Flutter application entry point
+///
+/// Cross-platform gravel biking route planning app with interactive maps.
+/// Displays gravel roads from OpenStreetMap and provides tools for measuring
+/// custom routes with import/export capabilities.
+///
+/// Key features:
+/// - Interactive map with gravel road overlay
+/// - Route measurement and editing tools
+/// - GPX and GeoJSON import/export
+/// - Persistent route storage with Hive
+/// - Riverpod state management
+///
+/// Platform support:
+/// - Web (primary target with PWA capabilities)
+/// - Android and iOS (future native app development)
+/// - Desktop platforms (Windows, macOS, Linux)
+library;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +24,14 @@ import 'package:gravel_biking/models/saved_route.dart';
 import 'package:gravel_biking/screens/gravel_streets_map.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+/// Application entry point with database initialization
+///
+/// Initializes the Flutter framework and sets up Hive database with type adapters
+/// for persistent route storage. Implements graceful degradation if storage fails,
+/// particularly important for web environments with restricted storage access.
+///
+/// The app continues to function even if Hive initialization fails, providing
+/// core functionality without persistent storage.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 

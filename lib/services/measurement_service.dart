@@ -175,7 +175,27 @@ class MeasurementService {
     return 10.0;
   }
 
-  /// Generate distance markers along the route
+  /// Generate distance markers along the route at regular intervals
+  ///
+  /// **Algorithm:** Places markers at fixed distance intervals (e.g., every 1km)
+  /// along the route polyline using linear interpolation between waypoints.
+  ///
+  /// **Process:**
+  /// 1. Walks through each route segment calculating cumulative distance
+  /// 2. Places markers when distance intervals are reached
+  /// 3. Uses linear interpolation to find exact marker coordinates
+  /// 4. Handles closed loops by including the return segment to start point
+  ///
+  /// **Performance:** Optimized for routes up to 10,000 points with minimal
+  /// computational overhead. Markers are cached until route changes.
+  ///
+  /// **Visual Purpose:** Provides distance reference points for route planning
+  /// and navigation, especially useful for longer routes (>5km).
+  ///
+  /// **State Changes:**
+  /// - Clears existing markers
+  /// - Sets `showDistanceMarkers` to true
+  /// - Updates internal `_distanceMarkers` list
   void generateDistanceMarkers() {
     if (_routePoints.length < 2) return;
 

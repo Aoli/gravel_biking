@@ -93,25 +93,25 @@ Organize the application using this exact layered structure:
 lib/
 ├── main.dart                    # Clean app entry point (88 lines)
 ├── screens/
-│   ├── gravel_streets_map.dart  # Main map screen (2265 lines)
-│   └── saved_routes_page.dart   # Enhanced route management
+│   ├── gravel_streets_map.dart  # Main map screen (3071 lines)
+│   └── saved_routes_page.dart   # Enhanced route management (843 lines)
 ├── services/
-│   ├── measurement_service.dart # Route measurement logic (331 lines)
-│   ├── map_service.dart         # Map operations service
-│   ├── route_service.dart       # Hive-based route management
-│   ├── location_service.dart    # GPS location handling
-│   └── file_service.dart        # Cross-platform import/export
+│   ├── measurement_service.dart # Route measurement logic (348 lines)
+│   ├── route_service.dart       # Hive-based route management (384 lines)
+│   ├── location_service.dart    # GPS location handling (72 lines)
+│   └── file_service.dart        # Cross-platform import/export (372 lines)
 ├── models/
-│   └── saved_route.dart         # Hive data model
+│   ├── saved_route.dart         # Hive data model (101 lines)
+│   └── saved_route.g.dart       # Generated Hive adapters (auto-generated)
 ├── utils/
-│   └── coordinate_utils.dart    # Coordinate parsing utilities
+│   └── coordinate_utils.dart    # Coordinate parsing utilities (29 lines)
 ├── widgets/
-│   ├── point_marker.dart        # Route point marker component
-│   └── distance_panel.dart      # Distance measurement panel
+│   ├── point_marker.dart        # Route point marker component (172 lines)
+│   └── distance_panel.dart      # Distance measurement panel (644 lines)
 └── providers/                   # State management (see state-management.md)
-    ├── ui_providers.dart        # UI state providers
-    ├── loading_providers.dart   # Loading state management
-    └── service_providers.dart   # Service instance providers
+    ├── ui_providers.dart        # UI state providers (27 lines)
+    ├── loading_providers.dart   # Loading state management (20 lines)
+    └── service_providers.dart   # Service instance providers (42 lines)
 ```
 
 ### 3.2 Import Dependency Rules
@@ -499,6 +499,92 @@ Through proper architecture implementation:
 5. **Scalability**: New features added without increasing complexity
 6. **Collaboration**: Multiple developers can work on different components
 
+## 10. Documentation Standards
+
+### 10.1 Dart Code Documentation
+
+All Dart files must follow these documentation requirements:
+
+#### **File-Level Documentation**
+```dart
+/// Brief description of the file's primary purpose
+/// 
+/// Detailed explanation of key functionality, architectural decisions,
+/// and integration patterns. Include usage examples for complex APIs.
+```
+
+#### **Class Documentation**
+```dart
+/// Class purpose and responsibility
+/// 
+/// **Key Features:**
+/// - Feature 1 with brief explanation
+/// - Feature 2 with brief explanation
+/// 
+/// **Usage Pattern:**
+/// - How to instantiate and use the class
+/// - Important method call sequences
+/// - State management considerations
+class ExampleClass {
+```
+
+#### **Method Documentation**
+```dart
+/// Method purpose and behavior
+/// 
+/// **Parameters:**
+/// - param1: Description of parameter and valid values
+/// - param2: Description with constraints or special handling
+/// 
+/// **Returns:** Description of return value and possible states
+/// 
+/// **Side Effects:** Any state changes or external operations
+/// 
+/// **Performance:** Complexity notes for expensive operations
+void exampleMethod(Type param1, Type param2) {
+```
+
+### 10.2 Documentation Completeness Status
+
+#### **✅ Fully Documented Files**
+
+- `lib/main.dart` - Complete app entry point documentation
+- `lib/models/saved_route.dart` - Full model documentation
+- `lib/providers/` - All provider files fully documented
+- `lib/utils/coordinate_utils.dart` - Complete utility documentation
+- `lib/widgets/point_marker.dart` - Comprehensive widget documentation
+
+#### **🔧 Partially Documented Files**
+
+- `lib/services/measurement_service.dart` - Core methods documented, some getters/setters need docs
+- `lib/services/route_service.dart` - Class documented, some complex methods need enhancement
+- `lib/services/location_service.dart` - Basic documentation present
+- `lib/services/file_service.dart` - Class documented, method docs could be enhanced
+- `lib/widgets/distance_panel.dart` - Widget documented, internal methods need docs
+
+#### **📋 Major Documentation Needs**
+
+- `lib/screens/gravel_streets_map.dart` - 3071 lines, minimal documentation
+  - Background isolate functions need comprehensive docs
+  - Complex state management logic needs explanation
+  - Map interaction handlers need documentation
+
+### 10.3 Documentation Maintenance
+
+1. **Update Triggers**: Documentation must be updated when:
+   - Adding new public APIs or methods
+   - Changing method signatures or behavior
+   - Modifying class responsibilities
+   - Adding complex algorithms or business logic
+
+2. **Review Process**: All PRs must include documentation updates for:
+   - New features or components
+   - API changes or enhancements
+   - Performance optimizations
+   - Bug fixes that change behavior
+
+3. **Documentation Testing**: Use `flutter doc` to verify all public APIs have documentation.
+
 ### 9.2 Change History
 
 - **2025-01-27**: Comprehensive Point Editing System - Complete editing overhaul with safety-first gestures
@@ -511,6 +597,6 @@ Through proper architecture implementation:
 
 ---
 
-*Last updated: 2025-01-27*
+Last updated: 2025-08-28
 
-*This document serves as the central technical hub. Refer to spoke documents for domain-specific implementation details.*
+This document serves as the central technical hub. Refer to spoke documents for domain-specific implementation details.
