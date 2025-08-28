@@ -455,6 +455,22 @@ Configure web-specific features:
 - **Service Worker**: Offline capability implementation
 - **Responsive Design**: Mobile and desktop compatibility
 
+#### 7.1.1 WebAssembly (Wasm) vs JS build
+
+Observed in production (2025-08-28): Flutter Web builds targeting WebAssembly triggered `UnimplementedError` during Hive/IndexedDB box open in hosted environments, while identical code paths worked when built without Wasm (JS/dart2js). Local `flutter run -d chrome` rarely reproduced.
+
+Decision:
+- Build web for hosting using JS (non-Wasm) for maximum IndexedDB/Hive compatibility.
+- CI/CD passes `--no-wasm --web-renderer=html` to `flutter build web`.
+- RouteService degrades gracefully where storage is restricted (private mode/WebView), but the JS build avoids the Wasm-specific regressions observed.
+
+Rationale:
+- Error surfaced only in compiled/hosted Wasm builds: `UnimplementedError` at box open despite IndexedDB open probe success.
+- Switching to JS build restored stable Hive storage on the same hosting stack.
+
+Follow-up:
+- Track Flutter/Web and Hive release notes for Wasm/IndexedDB fixes and reassess enabling Wasm later.
+
 ### 7.2 Mobile Platform Preparation
 
 Prepare for future native development:
