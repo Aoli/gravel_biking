@@ -16,7 +16,7 @@ final gravelOverlayProvider = StateProvider<bool>((ref) => false);
 /// Provider for distance markers visibility
 ///
 /// Controls whether distance markers are shown along the route.
-final distanceMarkersProvider = StateProvider<bool>((ref) => false);
+final distanceMarkersProvider = StateProvider<bool>((ref) => true);
 
 /// Provider for distance marker interval
 ///

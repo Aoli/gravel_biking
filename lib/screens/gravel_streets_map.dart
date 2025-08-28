@@ -584,18 +584,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                   loopClosed: ref.watch(loopClosedProvider),
                   onAddBetween: _addPointBetween,
                 ),
-              // Distance marker dots - always visible as subtle fallback when text markers are disabled
-              if (!ref.watch(distanceMarkersProvider) &&
-                  _distanceMarkers.isNotEmpty)
-                DistanceDotsLayer(
-                  markers: _distanceMarkers,
-                  intervalMeters: ref.watch(distanceIntervalProvider),
-                  onTap: (index, km) => _showDistanceMarkerInfo(index, km),
-                ),
-              // Distance text markers layer - placed last to appear on top
+              // Distance markers layer - shown only when toggle is enabled
               if (ref.watch(distanceMarkersProvider) &&
                   _distanceMarkers.isNotEmpty)
-                DistanceTextLayer(
+                DistanceDotsLayer(
                   markers: _distanceMarkers,
                   intervalMeters: ref.watch(distanceIntervalProvider),
                   onTap: (index, km) => _showDistanceMarkerInfo(index, km),
