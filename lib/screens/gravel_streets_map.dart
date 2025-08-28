@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:file_picker/file_picker.dart';
-import '../services/save_util.dart' as saver;
+import 'package:file_saver/file_saver.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:xml/xml.dart' as xml;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -2731,20 +2731,18 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       final content = const JsonEncoder.withIndent('  ').convert(fc);
       final bytes = Uint8List.fromList(utf8.encode(content));
 
-      final savedPath = await saver.saveBytes(
-        'gravel_route.geojson',
-        bytes,
+      await FileSaver.instance.saveFile(
+        name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.geojson',
+        bytes: bytes,
         ext: 'geojson',
-        mimeType: 'application/geo+json',
+        mimeType: MimeType.json,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            kIsWeb
-                ? 'Rutt exporterad som GeoJSON'
-                : 'Rutt exporterad: $savedPath',
-            style: const TextStyle(fontWeight: FontWeight.w500),
+          content: const Text(
+            'Rutt exporterad som GeoJSON',
+            style: TextStyle(fontWeight: FontWeight.w500),
           ),
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           behavior: SnackBarBehavior.floating,
@@ -2932,20 +2930,16 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
         },
       );
       final gpxString = builder.buildDocument().toXmlString(pretty: true);
-      final savedPath = await saver.saveBytes(
-        'gravel_route.gpx',
-        Uint8List.fromList(utf8.encode(gpxString)),
+      await FileSaver.instance.saveFile(
+        name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.gpx',
+        bytes: Uint8List.fromList(utf8.encode(gpxString)),
         ext: 'gpx',
-        mimeType: 'application/gpx+xml',
+        mimeType: MimeType.other,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            kIsWeb ? 'Rutt exporterad som GPX' : 'Rutt exporterad: $savedPath',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: const Text('Rutt exporterad som GPX')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

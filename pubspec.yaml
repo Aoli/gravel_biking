@@ -42,7 +42,6 @@ dependencies:
   geolocator: ^12.0.0
   xml: ^6.5.0
   package_info_plus: ^8.0.0
-  path_provider: ^2.1.4
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
