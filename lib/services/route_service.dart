@@ -39,22 +39,36 @@ class RouteService {
 
       if (kIsWeb) {
         _log('Web runtime detected. Using IndexedDB backend for Hive.');
-        
-        // Enhanced web error handling with automatic repair
+
+        // Enhanced web error handling with targeted handling for browsers
+        // that throw UnimplementedError for IndexedDB operations.
         try {
           _routeBox = await Hive.openBox<SavedRoute>(_boxName);
-        } catch (openError) {
-          _log('Open failed on web: $openError');
-          _log('Attempting automatic storage repair by deleting box and retrying...');
+  } catch (openError) {
+          _log('Open failed on web: ${openError.runtimeType}');
           
+          // Some browsers/environments (or restrictive modes) throw
+          // UnimplementedError for IndexedDB. In this case, disable storage
+          // gracefully without attempting repair or rethrowing.
+          if (openError is UnimplementedError) {
+            _log('IndexedDB unavailable (UnimplementedError). Disabling storage gracefully.');
+            _storageDisabled = true;
+            _routeBox = null;
+            return; // Exit initialize() early; app continues without storage
+          }
+
+          _log('Attempting automatic storage repair by deleting box and retrying...');
           try {
             await Hive.deleteBoxFromDisk(_boxName);
             _log('Box deleted. Retrying open...');
             _routeBox = await Hive.openBox<SavedRoute>(_boxName);
           } catch (repairError, repairStack) {
-            _log('Automatic repair failed: $repairError');
+            _log('Automatic repair failed: ${repairError.runtimeType}');
             _log('Repair stack: $repairStack');
-            rethrow;
+            // Do not rethrow; degrade gracefully on web
+            _storageDisabled = true;
+            _routeBox = null;
+            return;
           }
         }
       } else {
