@@ -283,11 +283,31 @@ class RouteService {
 
   /// Get diagnostic information about the current storage state
   String getStorageDiagnostics() {
-    return 'RouteService State: '
-        'storage disabled=$_storageDisabled, '
-        'box null=${_routeBox == null}, '
-        'box open=${_routeBox?.isOpen ?? false}, '
-        'box length=${_routeBox?.length ?? 'N/A'}';
+    final diagnostics = StringBuffer();
+    diagnostics.writeln('RouteService State:');
+    diagnostics.writeln('  storage disabled=$_storageDisabled');
+    diagnostics.writeln('  box null=${_routeBox == null}');
+    diagnostics.writeln('  box open=${_routeBox?.isOpen ?? false}');
+    diagnostics.writeln('  box length=${_routeBox?.length ?? 'N/A'}');
+
+    if (kIsWeb) {
+      diagnostics.writeln('Web Environment:');
+      diagnostics.writeln('  - Platform: ${kIsWeb ? 'Web' : 'Native'}');
+      diagnostics.writeln('  - Routes stored: ${_routeBox?.length ?? 0}');
+      diagnostics.writeln('  - Max routes: $maxSavedRoutes');
+
+      // Mobile-specific guidance
+      if (_storageDisabled) {
+        diagnostics.writeln('Troubleshooting for mobile Chrome:');
+        diagnostics.writeln('  1. Clear browser cache and data');
+        diagnostics.writeln('  2. Check Chrome storage permissions');
+        diagnostics.writeln('  3. Try incognito/private mode');
+        diagnostics.writeln('  4. Check available storage space');
+        diagnostics.writeln('  5. Restart browser and try again');
+      }
+    }
+
+    return diagnostics.toString();
   }
 
   /// Calculate segment distances for route points
