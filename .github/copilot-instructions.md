@@ -1,21 +1,6 @@
 # GitHub Copilot Instructions for Gravel First
 
-This document provides GitHub Copilot with specific context and guidelines for working with the Gravel First ### Code Quality Standards
-
-### Documentation
-
-- Use dartdoc comments for public APIs
-- Document complex algorithms and business logic (filtering, geographic calculations)
-- Maintain `docs/architecture.md` for major structural changes
-- Update `docs/roadmap.md` for feature planning and change tracking
-- Always check existing documentation in `/docs` before creating new files
-
-### Data Storage
-
-- Use Hive type adapters for type-safe database operations
-- Generate adapters with `build_runner` for model classes
-- Implement proper error handling for database operations
-- Use FIFO removal patterns for storage limitspplication.
+This document provides GitHub Copilot with specific context and guidelines for working with the Gravel First application.
 
 ## Project Overview
 
@@ -23,13 +8,24 @@ This document provides GitHub Copilot with specific context and guidelines for w
 
 ## Documentation Structure
 
-All project documentation is organized in the `/docs` folder:
+All project documentation follows a **hub-and-spoke architecture** organized in the `/docs` folder:
 
-- `docs/architecture.md` - Complete architecture and technical implementation details
-- `docs/roadmap.md` - Feature roadmap and change history
-- `.github/copilot-instructions.md` - This file with Copilot-specific guidance
+### 🏛️ Central Hub
 
-**Important**: Always check existing documentation in `/docs` before creating new files to avoid duplication.
+- `docs/architecture.md` - **Primary technical reference** with complete implementation guidelines and cross-references to all spoke documents
+
+### 📍 Spoke Documents
+
+- `docs/state-management.md` - Comprehensive Riverpod implementation guide with provider patterns and migration strategies
+- `docs/testing.md` - Professional testing framework covering TDD, CI/CD, and comprehensive testing standards
+- `docs/api.md` - External API documentation for Overpass API, MapTiler service, security, and compliance
+- `docs/roadmap.md` - Feature development tracking with completion status
+
+### 🤖 AI Assistant Context
+
+- `.github/copilot-instructions.md` - This file providing Copilot-specific guidance and quick reference
+
+**Critical Rule**: Always check `docs/architecture.md` first as the central hub, then reference appropriate spoke documents for specialized topics. Never create new documentation files without checking the existing hub-and-spoke structure.
 
 ## Platform Development Priorities
 
@@ -69,13 +65,14 @@ All project documentation is organized in the `/docs` folder:
 
 ### Content Organization
 
-- **Place all documentation in `/docs` folder** - Never create documentation files in other locations
-- **Use descriptive filenames** - Choose names that clearly indicate content purpose
-- **Maintain cross-references** - Link related documentation sections appropriately
-- **Update systematically** - Keep documentation current with code changes
+- **Use hub-and-spoke architecture** - `docs/architecture.md` is the central hub; all technical details go in appropriate spoke documents
+- **Reference hierarchy**: Check architecture.md → consult relevant spoke document → implement with this file's quick guidance
+- **Update systematically** - Changes to major patterns must update the central hub document
+- **Maintain cross-references** - Link between hub and spoke documents appropriately
 
 ### Architecture Documentation Format
 
+- **Use hub-and-spoke architecture** - `docs/architecture.md` is the central hub; all technical details go in appropriate spoke documents
 - **Write in imperative style** - Provide clear directives for implementation
 - **Focus on "how to implement"** - Give practical guidance for developers
 - **Include code examples** - Show concrete implementation patterns
