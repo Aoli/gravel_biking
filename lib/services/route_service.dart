@@ -25,16 +25,27 @@ class RouteService {
       // Enhanced web environment handling for Android Chrome/WebView
       if (kIsWeb) {
         _log('Web runtime detected. Using IndexedDB backend for Hive.');
-
-        // Try to open with a timeout for web environments
-        _routeBox = await Hive.openBox<SavedRoute>(_boxName).timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            throw Exception(
-              'Hive box opening timed out - possible storage restrictions in browser',
-            );
-          },
-        );
+        // Open normally without an aggressive timeout. In some browsers a stale
+        // or large IndexedDB can take longer to open and a timeout would cause
+        // false negatives. If opening fails, attempt an automatic repair by
+        // deleting the box and reopening once.
+        try {
+          _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+        } catch (openError) {
+          _log('Open failed on web: $openError');
+          _log(
+            'Attempting automatic storage repair by deleting box and retrying...',
+          );
+          try {
+            await Hive.deleteBoxFromDisk(_boxName);
+            _log('Box deleted. Retrying open...');
+            _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+          } catch (repairError, repairStack) {
+            _log('Automatic repair failed: $repairError');
+            _log('Repair stack: $repairStack');
+            rethrow; // Let outer catch mark storage disabled
+          }
+        }
       } else {
         // Native platforms
         _routeBox = await Hive.openBox<SavedRoute>(_boxName);
@@ -62,6 +73,29 @@ class RouteService {
       }
 
       // Don't throw - let the app continue with storage disabled
+    }
+  }
+
+  /// Forcefully reset web storage by deleting the Hive box from disk and reopening it.
+  /// Returns true on success. Safe to call only when storage is disabled or to
+  /// recover from corrupted state on the web.
+  Future<bool> resetStorage() async {
+    try {
+      _log('Resetting storage: closing and deleting box "$_boxName"...');
+      await _routeBox?.close();
+      _routeBox = null;
+      await Hive.deleteBoxFromDisk(_boxName);
+      _log('Reopening box after reset...');
+      _routeBox = await Hive.openBox<SavedRoute>(_boxName);
+      _storageDisabled = false;
+      _log('Storage reset successful. Box length: ${_routeBox?.length ?? 0}');
+      return true;
+    } catch (e, s) {
+      _log('Storage reset failed: $e');
+      _log('Stack trace: $s');
+      _storageDisabled = true;
+      _routeBox = null;
+      return false;
     }
   }
 
