@@ -95,6 +95,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   bool _editModeEnabled = false;
   // Distance markers state
   final List<LatLng> _distanceMarkers = [];
+  final List<LatLng> _halfDistanceMarkers = [];
   // Distance markers visibility managed by distanceMarkersProvider
   bool _showSegmentAnalysis =
       false; // Default OFF - hide segment analysis panel
@@ -592,6 +593,14 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                   intervalMeters: ref.watch(distanceIntervalProvider),
                   onTap: (index, km) => _showDistanceMarkerInfo(index, km),
                 ),
+              // Half-distance markers layer - shown with distance markers
+              if (ref.watch(distanceMarkersProvider) &&
+                  _halfDistanceMarkers.isNotEmpty)
+                HalfDistanceMarkersLayer(
+                  markers: _halfDistanceMarkers,
+                  intervalMeters: ref.watch(distanceIntervalProvider) / 2,
+                  onTap: (index, km) {}, // No action for half-distance markers
+                ),
               // Distance marker dots - always visible on polyline
             ],
           ),
@@ -605,6 +614,54 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                 segmentMeters: _segmentMeters,
                 loopClosed: ref.watch(loopClosedProvider),
                 theme: Theme.of(context),
+              ),
+            ),
+          // Total distance display in top right corner
+          if (_routePoints.length >= 2 && _segmentMeters.isNotEmpty)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.3),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.straighten,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatTotalDistance(),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           // Minimal attribution to meet OSM/MapTiler requirements
@@ -1049,6 +1106,136 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
           margin: const EdgeInsets.all(16),
         ),
       );
+    }
+  }
+
+  /// Override to generate both full and half distance markers
+  @override
+  void recalcDistanceMarkers() {
+    if (_routePoints.length < 2) return;
+
+    saveStateForUndo();
+    _distanceMarkers.clear();
+    _halfDistanceMarkers.clear();
+
+    final intervalMeters = ref.read(distanceIntervalProvider); // in meters
+    final halfIntervalMeters = intervalMeters / 2;
+
+    double currentDistance = 0.0;
+    double nextMainMarkerDistance = intervalMeters;
+    double nextHalfMarkerDistance = halfIntervalMeters;
+
+    for (int i = 1; i < _routePoints.length; i++) {
+      final segmentDistance = _distance.as(
+        LengthUnit.Meter,
+        _routePoints[i - 1],
+        _routePoints[i],
+      );
+      final segmentStart = currentDistance;
+      final segmentEnd = currentDistance + segmentDistance;
+
+      // Place main markers within this segment
+      while (nextMainMarkerDistance <= segmentEnd) {
+        final distanceIntoSegment = nextMainMarkerDistance - segmentStart;
+        final ratio = distanceIntoSegment / segmentDistance;
+
+        final lat =
+            _routePoints[i - 1].latitude +
+            ((_routePoints[i].latitude - _routePoints[i - 1].latitude) * ratio);
+        final lon =
+            _routePoints[i - 1].longitude +
+            ((_routePoints[i].longitude - _routePoints[i - 1].longitude) *
+                ratio);
+
+        _distanceMarkers.add(LatLng(lat, lon));
+        nextMainMarkerDistance += intervalMeters;
+      }
+
+      // Place half markers within this segment
+      while (nextHalfMarkerDistance <= segmentEnd) {
+        final distanceIntoSegment = nextHalfMarkerDistance - segmentStart;
+        final ratio = distanceIntoSegment / segmentDistance;
+
+        final lat =
+            _routePoints[i - 1].latitude +
+            ((_routePoints[i].latitude - _routePoints[i - 1].latitude) * ratio);
+        final lon =
+            _routePoints[i - 1].longitude +
+            ((_routePoints[i].longitude - _routePoints[i - 1].longitude) *
+                ratio);
+
+        _halfDistanceMarkers.add(LatLng(lat, lon));
+        nextHalfMarkerDistance +=
+            intervalMeters; // Jump by full interval to get half points
+      }
+
+      currentDistance = segmentEnd;
+    }
+
+    // Handle closed loop - check closing segment for both main and half markers
+    if (ref.read(loopClosedProvider) && _routePoints.length >= 3) {
+      final closingDistance = _distance.as(
+        LengthUnit.Meter,
+        _routePoints.last,
+        _routePoints.first,
+      );
+      final segmentStart = currentDistance;
+      final segmentEnd = currentDistance + closingDistance;
+
+      // Main markers in closing segment
+      while (nextMainMarkerDistance <= segmentEnd) {
+        final distanceIntoSegment = nextMainMarkerDistance - segmentStart;
+        final ratio = distanceIntoSegment / closingDistance;
+
+        final lat =
+            _routePoints.last.latitude +
+            ((_routePoints.first.latitude - _routePoints.last.latitude) *
+                ratio);
+        final lon =
+            _routePoints.last.longitude +
+            ((_routePoints.first.longitude - _routePoints.last.longitude) *
+                ratio);
+
+        _distanceMarkers.add(LatLng(lat, lon));
+        nextMainMarkerDistance += intervalMeters;
+      }
+
+      // Half markers in closing segment
+      while (nextHalfMarkerDistance <= segmentEnd) {
+        final distanceIntoSegment = nextHalfMarkerDistance - segmentStart;
+        final ratio = distanceIntoSegment / closingDistance;
+
+        final lat =
+            _routePoints.last.latitude +
+            ((_routePoints.first.latitude - _routePoints.last.latitude) *
+                ratio);
+        final lon =
+            _routePoints.last.longitude +
+            ((_routePoints.first.longitude - _routePoints.last.longitude) *
+                ratio);
+
+        _halfDistanceMarkers.add(LatLng(lat, lon));
+        nextHalfMarkerDistance += intervalMeters;
+      }
+    }
+
+    // Trigger rebuild
+    setState(() {});
+  }
+
+  /// Format total route distance for display
+  String _formatTotalDistance() {
+    if (_segmentMeters.isEmpty) return '0 km';
+
+    final totalMeters = _segmentMeters.reduce((a, b) => a + b);
+    final totalKm = totalMeters / 1000.0;
+
+    if (totalKm < 1.0) {
+      return '${totalMeters.round()} m';
+    } else if (totalKm < 10.0) {
+      return '${totalKm.toStringAsFixed(1)} km';
+    } else {
+      return '${totalKm.round()} km';
     }
   }
 }

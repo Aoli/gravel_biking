@@ -254,3 +254,66 @@ class DistanceTextLayer extends StatelessWidget {
     );
   }
 }
+
+/// Half-distance markers layer - smaller dots at half intervals
+class HalfDistanceMarkersLayer extends StatelessWidget {
+  const HalfDistanceMarkersLayer({
+    super.key,
+    required this.markers,
+    required this.intervalMeters,
+    required this.onTap,
+  });
+
+  final List<LatLng> markers;
+  final double intervalMeters;
+  final void Function(int index, double distanceKm) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (markers.isEmpty) return const SizedBox.shrink();
+
+    return MarkerLayer(
+      markers: markers.asMap().entries.map((entry) {
+        final index = entry.key;
+        final point = entry.value;
+        final distanceKm = ((index + 1) * intervalMeters / 2) / 1000.0;
+
+        return Marker(
+          point: point,
+          width: 20.0, // Smaller touch area for half markers
+          height: 20.0,
+          alignment: Alignment.center,
+          child: GestureDetector(
+            onTap: () => onTap(index, distanceKm),
+            child: Container(
+              width: 20.0,
+              height: 20.0,
+              color:
+                  Colors.transparent, // Transparent background for touch area
+              child: Center(
+                child: Container(
+                  width: 6.0, // Smaller than main markers (10px)
+                  height: 6.0,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors
+                        .blue
+                        .shade600, // Different color (blue vs orange)
+                    border: Border.all(color: Colors.white, width: 0.5),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 1,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
