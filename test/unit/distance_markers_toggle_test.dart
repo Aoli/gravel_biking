@@ -9,8 +9,11 @@ void main() {
       addTearDown(container.dispose);
 
       final distanceMarkersEnabled = container.read(distanceMarkersProvider);
-      expect(distanceMarkersEnabled, isTrue,
-          reason: 'Distance markers should be enabled by default');
+      expect(
+        distanceMarkersEnabled,
+        isTrue,
+        reason: 'Distance markers should be enabled by default',
+      );
     });
 
     test('should toggle distance markers visibility', () {

@@ -587,7 +587,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               // Distance markers layer - shown only when toggle is enabled
               if (ref.watch(distanceMarkersProvider) &&
                   _distanceMarkers.isNotEmpty)
-                DistanceDotsLayer(
+                DistanceMarkersLayer(
                   markers: _distanceMarkers,
                   intervalMeters: ref.watch(distanceIntervalProvider),
                   onTap: (index, km) => _showDistanceMarkerInfo(index, km),

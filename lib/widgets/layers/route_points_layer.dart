@@ -41,11 +41,12 @@ class RoutePointsLayer extends StatelessWidget {
 
   List<Marker> _buildMarkerForIndex(BuildContext context, int i) {
     final markers = <Marker>[];
-    final isStartPoint = i == 0 && points.length > 1;
+    final isStartPoint = i == 0; // Always treat first point as start point
     final isEndPoint = i == points.length - 1 && points.length > 1;
     final isStartOrEnd = isStartPoint || isEndPoint;
 
     // In non-measurement mode, only show start/end points (when enough points)
+    // Exception: always show the first point, even if it's the only point
     if (!measureEnabled && !isStartOrEnd && points.length > 2) {
       return markers; // empty
     }
@@ -90,6 +91,18 @@ class RoutePointsLayer extends StatelessWidget {
                   isStartPoint: isStartPoint,
                   isEndPoint: isEndPoint,
                   measureEnabled: false,
+                  isEditing: false,
+                  isLoopClosed: isLoopClosed,
+                )
+              : measureEnabled &&
+                    isStartPoint // Show green start marker in measure mode
+              ? PointMarker(
+                  key: ValueKey('measure_start_point_${i}_loop_$isLoopClosed'),
+                  index: i,
+                  size: markerSize,
+                  isStartPoint: isStartPoint,
+                  isEndPoint: isEndPoint,
+                  measureEnabled: measureEnabled,
                   isEditing: false,
                   isLoopClosed: isLoopClosed,
                 )
