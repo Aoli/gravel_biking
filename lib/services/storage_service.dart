@@ -50,6 +50,54 @@ class StorageService {
     }
   }
 
+  /// Test that Hive can actually perform box operations
+  ///
+  /// This is critical for web environments where IndexedDB may be
+  /// available but restricted. We test with a temporary box to ensure
+  /// the full storage pipeline works before reporting success.
+  Future<void> _testBoxOperations() async {
+    const testBoxName = '_storage_test';
+    Box<String>? testBox;
+
+    try {
+      debugPrint('StorageService: Testing box operations...');
+
+      // Try to open a simple test box
+      testBox = await Hive.openBox<String>(testBoxName);
+
+      // Test write operation
+      await testBox.put('test_key', 'test_value');
+
+      // Test read operation
+      final value = testBox.get('test_key');
+      if (value != 'test_value') {
+        throw Exception('Storage read/write test failed');
+      }
+
+      debugPrint('StorageService: Box operations test passed');
+    } catch (e) {
+      debugPrint('StorageService: Box operations test failed: $e');
+      // Clean up and re-throw
+      if (testBox != null && testBox.isOpen) {
+        try {
+          await testBox.close();
+        } catch (_) {}
+      }
+      rethrow;
+    } finally {
+      // Clean up test box
+      if (testBox != null && testBox.isOpen) {
+        try {
+          await testBox.close();
+          await Hive.deleteBoxFromDisk(testBoxName);
+          debugPrint('StorageService: Test box cleaned up');
+        } catch (e) {
+          debugPrint('StorageService: Test box cleanup failed: $e');
+        }
+      }
+    }
+  }
+
   /// Initialize Hive storage system
   ///
   /// This should be called only once during app startup.
@@ -90,6 +138,9 @@ class StorageService {
       } else {
         debugPrint('StorageService: LatLngDataAdapter already registered');
       }
+
+      // Verify that we can actually open a box (critical for web)
+      await _testBoxOperations();
 
       _isInitialized = true;
       _initializationFailed = false;
