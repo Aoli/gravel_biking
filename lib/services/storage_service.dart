@@ -139,8 +139,16 @@ class StorageService {
         debugPrint('StorageService: LatLngDataAdapter already registered');
       }
 
-      // Verify that we can actually open a box (critical for web)
-      await _testBoxOperations();
+      // Verify that we can actually open a box
+      // On Web, skip this proactive test and let RouteService handle
+      // opening with graceful degradation to avoid UnimplementedError
+      if (!kIsWeb) {
+        await _testBoxOperations();
+      } else {
+        debugPrint(
+          'StorageService: Skipping box operations test on Web; RouteService will handle box opening',
+        );
+      }
 
       _isInitialized = true;
       _initializationFailed = false;
