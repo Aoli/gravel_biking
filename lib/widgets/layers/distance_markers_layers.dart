@@ -38,8 +38,8 @@ class DistanceMarkersLayer extends StatelessWidget {
           point: point,
           width: 80.0, // Increased width to accommodate larger touch area
           height: 40.0, // Increased height for larger touch area
-          alignment: Alignment
-              .centerLeft, // Align to center-left so dot is centered on route
+          alignment:
+              Alignment.center, // Center the marker container on the point
           child: GestureDetector(
             onTap: () => onTap(index, distanceKm),
             child: Container(
@@ -52,7 +52,7 @@ class DistanceMarkersLayer extends StatelessWidget {
                   // Orange dot positioned precisely on the polyline
                   Positioned(
                     left:
-                        0, // Position dot at the exact left edge (on polyline)
+                        35.0, // Center the 10px dot in the 80px container (40 - 5)
                     top: 15.0, // Center vertically in 40px height container
                     child: Container(
                       width: 10.0,
@@ -73,7 +73,8 @@ class DistanceMarkersLayer extends StatelessWidget {
                   ),
                   // Distance label positioned to the right of the dot
                   Positioned(
-                    left: 16.0, // Position label 16px from left (dot + spacing)
+                    left:
+                        51.0, // Position label 16px from dot center (35 + 5 + 16 - 5)
                     top: 8.0, // Center the label vertically
                     child: Container(
                       padding: const EdgeInsets.symmetric(
