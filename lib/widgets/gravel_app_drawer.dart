@@ -1,0 +1,482 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
+
+import '../providers/loading_providers.dart';
+import '../providers/ui_providers.dart';
+import 'save_route_dialog.dart';
+
+class GravelAppDrawer extends ConsumerWidget {
+  const GravelAppDrawer({
+    super.key,
+    required this.onImportGeoJson,
+    required this.onExportGeoJson,
+    required this.onImportGpx,
+    required this.onExportGpx,
+    required this.onSaveRoute,
+    required this.hasRoute,
+    required this.savedRoutesCount,
+    required this.maxSavedRoutes,
+    required this.distanceMarkers,
+    required this.showTrvNvdbOverlay,
+    required this.onToggleDistanceMarkers,
+    required this.onGenerateDistanceMarkers,
+    required this.onClearDistanceMarkers,
+    required this.onSavedRoutesTap,
+    this.onSavedRoutesInfo,
+    required this.showSegmentAnalysis,
+    required this.onToggleSegmentAnalysis,
+    required this.footer,
+  });
+
+  final Future<void> Function() onImportGeoJson;
+  final Future<void> Function() onExportGeoJson;
+  final Future<void> Function() onImportGpx;
+  final Future<void> Function() onExportGpx;
+  final Future<void> Function(String name) onSaveRoute;
+  final bool hasRoute;
+  final int savedRoutesCount;
+  final int maxSavedRoutes;
+
+  final List<LatLng> distanceMarkers;
+  final bool showTrvNvdbOverlay;
+  final void Function(bool value) onToggleDistanceMarkers;
+  final VoidCallback onGenerateDistanceMarkers;
+  final VoidCallback onClearDistanceMarkers;
+  final VoidCallback onSavedRoutesTap;
+  final VoidCallback? onSavedRoutesInfo;
+  final bool showSegmentAnalysis;
+  final ValueChanged<bool> onToggleSegmentAnalysis;
+  final Widget footer;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  DrawerHeader(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Text(
+                        'Gravel First',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    title: Text(
+                      'Import / Export',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    leading: Icon(
+                      Icons.folder,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  ExpansionTile(
+                    leading: Icon(
+                      Icons.map,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    title: Text(
+                      'GeoJSON',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    initiallyExpanded: false,
+                    children: [
+                      ListTile(
+                        leading: ref.watch(isImportingProvider)
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.upload_file,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                        title: Text(
+                          ref.watch(isImportingProvider)
+                              ? 'Importerar GeoJSON...'
+                              : 'Importera GeoJSON',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        enabled:
+                            !ref.watch(isImportingProvider) &&
+                            !ref.watch(isExportingProvider),
+                        onTap: () async {
+                          ref.read(isImportingProvider.notifier).state = true;
+                          Navigator.of(context).pop();
+                          await Future.delayed(
+                            const Duration(milliseconds: 100),
+                          );
+                          await onImportGeoJson();
+                        },
+                      ),
+                      ListTile(
+                        leading: ref.watch(isExportingProvider)
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.download,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                        title: Text(
+                          ref.watch(isExportingProvider)
+                              ? 'Exporterar GeoJSON...'
+                              : 'Exportera GeoJSON',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        enabled:
+                            !ref.watch(isImportingProvider) &&
+                            !ref.watch(isExportingProvider),
+                        onTap: () async {
+                          ref.read(isExportingProvider.notifier).state = true;
+                          Navigator.of(context).pop();
+                          await Future.delayed(
+                            const Duration(milliseconds: 100),
+                          );
+                          await onExportGeoJson();
+                        },
+                      ),
+                    ],
+                  ),
+                  ExpansionTile(
+                    leading: Icon(
+                      Icons.route,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    title: Text(
+                      'GPX',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    initiallyExpanded: false,
+                    children: [
+                      ListTile(
+                        leading: ref.watch(isImportingProvider)
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.upload_file,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                        title: Text(
+                          ref.watch(isImportingProvider)
+                              ? 'Importerar GPX...'
+                              : 'Importera GPX',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        enabled:
+                            !ref.watch(isImportingProvider) &&
+                            !ref.watch(isExportingProvider),
+                        onTap: () async {
+                          ref.read(isImportingProvider.notifier).state = true;
+                          Navigator.of(context).pop();
+                          await Future.delayed(
+                            const Duration(milliseconds: 100),
+                          );
+                          await onImportGpx();
+                        },
+                      ),
+                      ListTile(
+                        leading: ref.watch(isExportingProvider)
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.download,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                        title: Text(
+                          ref.watch(isExportingProvider)
+                              ? 'Exporterar GPX...'
+                              : 'Exportera GPX',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        enabled:
+                            !ref.watch(isImportingProvider) &&
+                            !ref.watch(isExportingProvider),
+                        onTap: () async {
+                          ref.read(isExportingProvider.notifier).state = true;
+                          Navigator.of(context).pop();
+                          await Future.delayed(
+                            const Duration(milliseconds: 100),
+                          );
+                          await onExportGpx();
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  SwitchListTile(
+                    secondary: Icon(
+                      Icons.layers,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    title: Text(
+                      'Grus-lager',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    subtitle: Text(
+                      'Visa OpenStreetMap/Overpass grusvägar',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    value: ref.watch(gravelOverlayProvider),
+                    onChanged: (v) =>
+                        ref.read(gravelOverlayProvider.notifier).state = v,
+                  ),
+                  SwitchListTile(
+                    secondary: Icon(
+                      Icons.terrain,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    title: Text(
+                      'TRV NVDB grus-lager',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    subtitle: Text(
+                      'Visa Trafikverket NVDB grusvägar',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    value: showTrvNvdbOverlay,
+                    onChanged: null,
+                  ),
+                  const SizedBox(height: 8),
+                  ExpansionTile(
+                    leading: Icon(
+                      Icons.straighten,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    title: Text(
+                      'Avståndsmarkeringar',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Lägg till markeringar längs rutt',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    children: [
+                      SwitchListTile(
+                        secondary: const SizedBox(),
+                        title: const Text('km'),
+                        subtitle: distanceMarkers.isEmpty
+                            ? const Text('Inga markeringar')
+                            : Text('${distanceMarkers.length} markeringar'),
+                        value: ref.watch(distanceMarkersProvider),
+                        onChanged: distanceMarkers.isEmpty
+                            ? null
+                            : (v) => onToggleDistanceMarkers(v),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Row(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: onGenerateDistanceMarkers,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Generera'),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton.icon(
+                              onPressed: distanceMarkers.isEmpty
+                                  ? null
+                                  : onClearDistanceMarkers,
+                              icon: const Icon(Icons.clear),
+                              label: const Text('Rensa'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Divider(
+                    height: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  const SizedBox(height: 8),
+                  // Segment Analysis Toggle
+                  SwitchListTile(
+                    title: Text(
+                      'Segment analys',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Visa detaljerad analys av rutt-segment',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    secondary: Icon(
+                      Icons.analytics_outlined,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    value: showSegmentAnalysis,
+                    onChanged: onToggleSegmentAnalysis,
+                  ),
+                  const SizedBox(height: 8),
+                  // Saved Routes Section
+                  ListTile(
+                    leading: Icon(
+                      Icons.bookmark,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    title: const Text('Sparade rutter'),
+                    subtitle: Text('$savedRoutesCount/$maxSavedRoutes rutter'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.help,
+                            size: 20,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                          onPressed: () async {
+                            if (onSavedRoutesInfo != null) {
+                              onSavedRoutesInfo!();
+                              return;
+                            }
+                            // Default help dialog
+                            await showDialog<void>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.help,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text('Om sparade rutter'),
+                                  ],
+                                ),
+                                content: const Text(
+                                  'Sparade rutter lagras endast lokalt på din enhet och försvinner om appen avinstalleras eller enhetens data rensas.\n\n'
+                                  'För mer varaktig lagring eller för att flytta rutter till andra tjänster som Strava, Garmin Connect eller andra appar, använd Import/Export funktionerna för att spara som GeoJSON eller GPX-filer.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Information om sparade rutter',
+                        ),
+                        const Icon(Icons.chevron_right),
+                      ],
+                    ),
+                    onTap: onSavedRoutesTap,
+                  ),
+                  // Save current route
+                  ListTile(
+                    leading: ref.watch(isSavingProvider)
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            Icons.add,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                    title: Text(
+                      ref.watch(isSavingProvider)
+                          ? 'Sparar rutt...'
+                          : 'Spara aktuell rutt',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    enabled: hasRoute && !ref.watch(isSavingProvider),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      await SaveRouteDialog.show(
+                        context,
+                        onSave: onSaveRoute,
+                        savedRoutesCount: savedRoutesCount,
+                        maxSavedRoutes: maxSavedRoutes,
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.close),
+                    title: const Text('Stäng'),
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                  if (kDebugMode) ...[
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        'Debug: Storage status shown in main screen footer',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.orange),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            footer,
+          ],
+        ),
+      ),
+    );
+  }
+}

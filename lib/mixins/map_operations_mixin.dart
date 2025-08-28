@@ -227,7 +227,7 @@ List<Polyline> _parseGravelData(Map<String, dynamic> data) {
             Polyline(
               points: coords,
               strokeWidth: 2.0,
-              color: const Color(0xFF8BC34A).withOpacity(0.7),
+              color: const Color(0xFF8BC34A).withValues(alpha: 0.7),
             ),
           );
         }

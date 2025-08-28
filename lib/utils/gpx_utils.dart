@@ -21,7 +21,7 @@ import 'package:xml/xml.dart' as xml;
 /// - `data`: Raw GPX file bytes
 ///
 /// **Returns:**
-/// - Map with 'points' (List<LatLng>) and 'originalCount' (int)
+/// - Map with 'points' (List of LatLng) and 'originalCount' (int)
 Map<String, dynamic> parseGpxPoints(Uint8List data) {
   // Decode UTF-8 in background isolate
   final text = utf8.decode(data);
@@ -73,7 +73,7 @@ Map<String, dynamic> parseGpxPoints(Uint8List data) {
 /// - Visual route appearance remains virtually identical
 /// - Distance calculations remain accurate within GPS precision limits
 ///
-/// See `/docs/large-gpx-performance.md` for detailed documentation
+/// See the docs at /docs/large-gpx-performance.md for detailed documentation
 List<LatLng> decimatePoints(List<LatLng> points) {
   if (points.length <= 3) return points;
 

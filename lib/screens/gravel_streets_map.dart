@@ -1,26 +1,26 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:file_saver/file_saver.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:xml/xml.dart' as xml;
 import 'package:package_info_plus/package_info_plus.dart';
 
 // Import our components
 import '../models/saved_route.dart';
 import '../models/route_state_snapshot.dart';
-import '../utils/coordinate_utils.dart';
-import '../utils/gpx_utils.dart';
-import '../widgets/point_marker.dart';
+import '../widgets/info_overlay.dart';
 import '../widgets/distance_panel.dart';
+import '../widgets/gravel_app_drawer.dart';
+import '../widgets/gravel_app_bar.dart';
+import '../widgets/save_route_dialog.dart';
+import '../widgets/layers/start_stop_markers_layer.dart';
+import '../widgets/layers/user_location_layer.dart';
+import '../widgets/layers/distance_markers_layers.dart';
+import '../widgets/layers/route_points_layer.dart';
+import '../widgets/layers/midpoint_add_markers_layer.dart';
 import '../providers/service_providers.dart';
 import '../screens/saved_routes_page.dart';
 import '../providers/ui_providers.dart';
@@ -28,6 +28,7 @@ import '../providers/loading_providers.dart';
 import '../mixins/file_operations_mixin.dart';
 import '../mixins/map_operations_mixin.dart';
 import '../mixins/route_management_mixin.dart';
+import '../services/gravel_overpass_service.dart';
 
 class GravelStreetsMap extends ConsumerStatefulWidget {
   const GravelStreetsMap({super.key});
@@ -36,30 +37,32 @@ class GravelStreetsMap extends ConsumerStatefulWidget {
 }
 
 class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
-    with TickerProviderStateMixin, FileOperationsMixin, MapOperationsMixin, RouteManagementMixin {
+    with
+        TickerProviderStateMixin,
+        FileOperationsMixin,
+        MapOperationsMixin,
+        RouteManagementMixin {
   // Data
   List<Polyline> gravelPolylines = [];
+  final GravelOverpassService _overpassService = GravelOverpassService();
   // Note: _showGravelOverlay is now managed by gravelOverlayProvider
   final bool _showTrvNvdbOverlay =
       false; // Disabled by default, prepared for future
   bool isLoading = true;
   LatLng? _myPosition;
-  DateTime? _lastRateLimitError;
-  int _retryAttempts = 0;
-  static const int _maxRetryAttempts = 3;
-  static const Duration _rateLimitCooldown = Duration(minutes: 1);
   Timer? _moveDebounce;
   LatLngBounds? _lastFetchedBounds;
   LatLngBounds? _lastEventBounds;
   // Map control
   final MapController _mapController = MapController();
-  
+
   // Implement abstract method from MapOperationsMixin
   @override
   LatLngBounds getCurrentBounds() {
     final camera = _mapController.camera;
     return camera.visibleBounds;
   }
+
   double? _lastZoom;
   // CI/CD build number (provided via --dart-define=BUILD_NUMBER=123), empty locally
   final String _buildNumber = const String.fromEnvironment(
@@ -402,139 +405,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     }
   }
 
-  Future<void> _showSaveRouteDialog() async {
-    if (_routePoints.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Ingen rutt att spara')));
-      return;
-    }
-
-    final TextEditingController nameController = TextEditingController();
-    bool isDialogSaving = false;
-
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false, // Always prevent dismissing during save
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Spara rutt'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_savedRoutes.length >= _maxSavedRoutes)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        'Maxantal rutter nått (50). Den äldsta rutten kommer att tas bort.',
-                        style: TextStyle(color: Colors.orange, fontSize: 12),
-                      ),
-                    ),
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Ruttnamn',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLength: 50,
-                    autofocus: true,
-                    enabled: !isDialogSaving,
-                    onSubmitted: (value) async {
-                      if (value.trim().isNotEmpty && !isDialogSaving) {
-                        setDialogState(() => isDialogSaving = true);
-                        await _saveCurrentRouteInternal(value.trim());
-                        if (mounted && context.mounted) {
-                          Navigator.of(context).pop();
-                        }
-                      }
-                    },
-                  ),
-                  if (isDialogSaving)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          SizedBox(width: 12),
-                          Text('Sparar rutt...'),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isDialogSaving
-                      ? null
-                      : () => Navigator.of(context).pop(),
-                  child: const Text('Avbryt'),
-                ),
-                ElevatedButton(
-                  onPressed: isDialogSaving
-                      ? null
-                      : () async {
-                          final name = nameController.text.trim();
-                          if (name.isNotEmpty) {
-                            setDialogState(() => isDialogSaving = true);
-                            await _saveCurrentRouteInternal(name);
-                            if (mounted && context.mounted) {
-                              Navigator.of(context).pop();
-                            }
-                          }
-                        },
-                  child: isDialogSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Spara'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _showSavedRoutesHelpDialog() async {
-    return showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(
-                Icons.help,
-                color: Theme.of(context).colorScheme.primary,
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              const Text('Om sparade rutter'),
-            ],
-          ),
-          content: const Text(
-            'Sparade rutter lagras endast lokalt på din enhet och försvinner om appen avinstalleras eller enhetens data rensas.\n\n'
-            'För mer varaktig lagring eller för att flytta rutter till andra tjänster som Strava, Garmin Connect eller andra appar, använd Import/Export funktionerna för att spara som GeoJSON eller GPX-filer.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // Old inline dialogs removed - use extracted widgets
 
   void _onMapEvent(MapEvent event) {
     // Debounce on any map movement/zoom/rotate event
@@ -589,179 +460,20 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     debugPrint(
       '📍 Bounds: ${bounds.southWest.latitude.toStringAsFixed(4)},${bounds.southWest.longitude.toStringAsFixed(4)} to ${bounds.northEast.latitude.toStringAsFixed(4)},${bounds.northEast.longitude.toStringAsFixed(4)}',
     );
-
-    // Check if we're in a rate limit cooldown period
-    if (_lastRateLimitError != null) {
-      final timeSinceLastError = DateTime.now().difference(
-        _lastRateLimitError!,
-      );
-      if (timeSinceLastError < _rateLimitCooldown) {
-        final remainingSeconds =
-            _rateLimitCooldown.inSeconds - timeSinceLastError.inSeconds;
-        debugPrint(
-          '⏸️  [${timestamp.toIso8601String()}] Gravel fetch SKIPPED - in rate limit cooldown (${remainingSeconds}s remaining of ${_rateLimitCooldown.inSeconds}s)',
-        );
-        return;
-      }
-      // Clear the rate limit error after cooldown
-      debugPrint(
-        '✅ [${timestamp.toIso8601String()}] Rate limit cooldown expired, clearing error state',
-      );
-      _lastRateLimitError = null;
-      _retryAttempts = 0;
-    }
-
-    await _fetchGravelWithRetry(bounds);
-  }
-
-  Future<void> _fetchGravelWithRetry(LatLngBounds bounds) async {
-    final startTime = DateTime.now();
-    debugPrint(
-      '🚀 [${startTime.toIso8601String()}] Starting API request (attempt ${_retryAttempts + 1}/$_maxRetryAttempts)',
+    final result = await _overpassService.fetchPolylinesForBounds(
+      bounds,
+      appVersion: _appVersion,
     );
-
-    _lastFetchedBounds = bounds;
-    const url = 'https://overpass-api.de/api/interpreter';
-    final sw = bounds.southWest;
-    final ne = bounds.northEast;
-    final south = sw.latitude.toStringAsFixed(6);
-    final west = sw.longitude.toStringAsFixed(6);
-    final north = ne.latitude.toStringAsFixed(6);
-    final east = ne.longitude.toStringAsFixed(6);
-    final sb = StringBuffer()
-      ..writeln('[out:json];')
-      ..writeln(
-        'way["highway"~"(residential|service|track|unclassified|road)"]["surface"="gravel"]($south, $west, $north, $east);',
-      )
-      ..writeln('out geom;');
-    final query = sb.toString();
-
-    debugPrint('📝 Query size: ${query.length} characters');
-    debugPrint(
-      '🌍 Area coverage: ~${((ne.latitude - sw.latitude) * (ne.longitude - sw.longitude) * 12100).toStringAsFixed(1)} km²',
-    );
-
-    try {
-      // Provide a clear and contactable User-Agent as per Overpass/OSM policy
-      final ua =
-          'Gravel First${_appVersion.isNotEmpty ? '/$_appVersion' : ''} (+https://github.com/Aoli/gravel_biking)';
-
-      debugPrint('📡 Making HTTP POST to $url');
-      final res = await http
-          .post(
-            Uri.parse(url),
-            body: {'data': query},
-            headers: {'User-Agent': ua},
-          )
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              debugPrint(
-                '⏰ [${DateTime.now().toIso8601String()}] Request TIMEOUT after 30 seconds',
-              );
-              throw TimeoutException(
-                'Request timeout after 30 seconds',
-                const Duration(seconds: 30),
-              );
-            },
-          );
-
-      final responseTime = DateTime.now().difference(startTime);
+    if (result != null) {
+      if (!mounted) return;
+      setState(() {
+        gravelPolylines = result;
+        isLoading = false;
+      });
       debugPrint(
-        '📥 [${DateTime.now().toIso8601String()}] Response received: ${res.statusCode} (${responseTime.inMilliseconds}ms)',
+        '✨ [${DateTime.now().toIso8601String()}] Gravel data updated successfully',
       );
-
-      if (res.statusCode == 200) {
-        // Success - reset retry attempts
-        _retryAttempts = 0;
-        debugPrint('✅ Success! Response size: ${res.body.length} bytes');
-        debugPrint('🔄 Processing polylines with compute...');
-
-        final processStart = DateTime.now();
-        final lines = await compute(
-          CoordinateUtils.extractPolylineCoords,
-          res.body,
-        );
-        final processTime = DateTime.now().difference(processStart);
-        debugPrint(
-          '🏗️ Processed ${lines.length} polylines in ${processTime.inMilliseconds}ms',
-        );
-
-        final polys = <Polyline>[
-          for (final pts in lines)
-            Polyline(
-              points: [for (final p in pts) LatLng(p[0], p[1])],
-              color: Colors.brown,
-              strokeWidth: 4,
-            ),
-        ];
-
-        debugPrint('🎯 Created ${polys.length} polyline objects');
-        if (!mounted) return;
-        setState(() {
-          gravelPolylines = polys;
-          isLoading = false;
-        });
-        debugPrint(
-          '✨ [${DateTime.now().toIso8601String()}] Gravel data updated successfully',
-        );
-      } else if (res.statusCode == 429) {
-        // Rate limited - handle specially
-        _lastRateLimitError = DateTime.now();
-        _retryAttempts++;
-        debugPrint(
-          '🚫 [${DateTime.now().toIso8601String()}] RATE LIMITED (429) - attempt $_retryAttempts/$_maxRetryAttempts after ${responseTime.inMilliseconds}ms',
-        );
-
-        if (_retryAttempts < _maxRetryAttempts) {
-          // Exponential backoff: wait 2^attempt seconds before retry
-          final delaySeconds = (1 << _retryAttempts);
-          debugPrint(
-            '⏳ [${DateTime.now().toIso8601String()}] Waiting ${delaySeconds}s before retry (exponential backoff)...',
-          );
-          await Future.delayed(Duration(seconds: delaySeconds));
-          if (mounted) {
-            debugPrint(
-              '🔄 [${DateTime.now().toIso8601String()}] Retry attempt ${_retryAttempts + 1}/$_maxRetryAttempts starting now',
-            );
-            await _fetchGravelWithRetry(bounds);
-          }
-        } else {
-          debugPrint(
-            '🛑 [${DateTime.now().toIso8601String()}] MAX RETRY ATTEMPTS REACHED! Entering cooldown period of ${_rateLimitCooldown.inMinutes} minutes.',
-          );
-          if (!mounted) return;
-          setState(() => isLoading = false);
-        }
-      } else {
-        // Other HTTP error
-        final errorTime = DateTime.now();
-        debugPrint(
-          '❌ [${errorTime.toIso8601String()}] HTTP ERROR ${res.statusCode} after ${errorTime.difference(startTime).inMilliseconds}ms',
-        );
-        if (res.headers.containsKey('retry-after')) {
-          debugPrint(
-            '🔄 Server suggests retry after: ${res.headers['retry-after']}',
-          );
-        }
-        if (res.body.isNotEmpty && res.body.length < 1000) {
-          debugPrint('📄 Error response body: ${res.body}');
-        }
-        if (!mounted) return;
-        setState(() => isLoading = false);
-      }
-    } catch (e) {
-      final errorTime = DateTime.now();
-      final errorDuration = errorTime.difference(startTime);
-      if (e is TimeoutException) {
-        debugPrint(
-          '⏰ [${errorTime.toIso8601String()}] REQUEST TIMEOUT after ${errorDuration.inMilliseconds}ms: $e',
-        );
-      } else {
-        debugPrint(
-          '💥 [${errorTime.toIso8601String()}] EXCEPTION after ${errorDuration.inMilliseconds}ms: ${e.runtimeType} - $e',
-        );
-      }
+    } else {
       if (!mounted) return;
       setState(() => isLoading = false);
     }
@@ -780,764 +492,104 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         : '© OpenStreetMap contributors';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Gravel First',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        elevation: 1,
-        shadowColor: Colors.black26,
-        actions: [
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              border: Border.all(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outline.withValues(alpha: 0.5),
-                width: 1,
-              ),
-            ),
-            child: IconButton(
-              tooltip: 'Hitta mig',
-              icon: Icon(
-                Icons.my_location,
-                color: Theme.of(context).colorScheme.onSecondaryContainer,
-                size: 22,
-              ),
-              onPressed: _locateMe,
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: ref.watch(measureModeProvider)
-                  ? Colors.green.shade600
-                  : Colors.red.shade600,
-              border: Border.all(
-                color: ref.watch(measureModeProvider)
-                    ? Colors.green.shade800
-                    : Colors.red.shade800,
-                width: 2,
-              ),
-            ),
-            child: IconButton(
-              tooltip: ref.watch(measureModeProvider)
-                  ? 'Stäng av mätläge'
-                  : 'Aktivera mätläge',
-              icon: const Icon(Icons.straighten, color: Colors.white, size: 22),
-              onPressed: () {
-                // Toggle measure mode using Riverpod provider
-                final currentMode = ref.read(measureModeProvider);
-                ref.read(measureModeProvider.notifier).state = !currentMode;
-              },
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).colorScheme.errorContainer,
-              border: Border.all(
-                color: Theme.of(context).colorScheme.error,
-                width: 2,
-              ),
-            ),
-            child: IconButton(
-              tooltip: 'Rensa rutt',
-              icon: Icon(
-                Icons.delete_outline,
-                color: Theme.of(context).colorScheme.onErrorContainer,
-                size: 22,
-              ),
-              onPressed: _clearRoute,
-            ),
-          ),
-        ],
+      appBar: GravelAppBar(
+        measureEnabled: ref.watch(measureModeProvider),
+        onLocateMe: _locateMe,
+        onToggleMeasure: () {
+          final currentMode = ref.read(measureModeProvider);
+          ref.read(measureModeProvider.notifier).state = !currentMode;
+        },
+        onClearRoute: _clearRoute,
       ),
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    DrawerHeader(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: Text(
-                          'Gravel First',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ),
-                    ),
-                    ListTile(
-                      title: Text(
-                        'Import / Export',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w500),
-                      ),
-                      leading: Icon(
-                        Icons.folder,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    ExpansionTile(
-                      leading: Icon(
-                        Icons.map,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      title: Text(
-                        'GeoJSON',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      initiallyExpanded: false,
-                      children: [
-                        ListTile(
-                          leading: ref.watch(isImportingProvider)
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.upload_file,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                ),
-                          title: Text(
-                            ref.watch(isImportingProvider)
-                                ? 'Importerar GeoJSON...'
-                                : 'Importera GeoJSON',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          enabled:
-                              !ref.watch(isImportingProvider) &&
-                              !ref.watch(isExportingProvider),
-                          onTap: () async {
-                            // Set loading state first while drawer is still open
-                            ref.read(isImportingProvider.notifier).state = true;
-                            Navigator.of(context).pop();
+      drawer: GravelAppDrawer(
+        onImportGeoJson: () async {
+          await importGeoJsonRoute((points, loopClosed) {
+            setState(() {
+              _routePoints
+                ..clear()
+                ..addAll(points);
+              ref.read(editingIndexProvider.notifier).state = null;
+              ref
+                  .read(routeNotifierProvider.notifier)
+                  .setLoopClosed(loopClosed && _routePoints.length >= 3);
+              _recomputeSegments();
+            });
 
-                            // Add a small delay to ensure UI is updated
-                            await Future.delayed(
-                              const Duration(milliseconds: 100),
-                            );
-                            await importGeoJsonRoute((points, loopClosed) {
-                              setState(() {
-                                _routePoints
-                                  ..clear()
-                                  ..addAll(points);
-                                ref.read(editingIndexProvider.notifier).state = null;
-                                ref
-                                    .read(routeNotifierProvider.notifier)
-                                    .setLoopClosed(loopClosed && _routePoints.length >= 3);
-                                _recomputeSegments();
-                              });
+            if (_routePoints.isNotEmpty) {
+              _centerMapOnRoute();
+              _autoGenerateDistanceMarkers();
+            }
+          });
+        },
+        onExportGeoJson: () async {
+          await exportGeoJsonRoute(_routePoints);
+        },
+        onImportGpx: () async {
+          await importGpxRoute((points, loopClosed) {
+            setState(() {
+              _routePoints
+                ..clear()
+                ..addAll(points);
+              ref.read(editingIndexProvider.notifier).state = null;
+              ref
+                  .read(routeNotifierProvider.notifier)
+                  .setLoopClosed(loopClosed);
+              if (_routePoints.length > 1000) {
+                _segmentMeters.clear();
+              } else {
+                _recomputeSegments();
+              }
+            });
 
-                              // Center map on the imported route
-                              if (_routePoints.isNotEmpty) {
-                                _centerMapOnRoute();
-                                _autoGenerateDistanceMarkers(); // Auto-generate distance markers for imported route
-                              }
-                            });
-                          },
-                        ),
-                        ListTile(
-                          leading: ref.watch(isExportingProvider)
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.download,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                ),
-                          title: Text(
-                            ref.watch(isExportingProvider)
-                                ? 'Exporterar GeoJSON...'
-                                : 'Exportera GeoJSON',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          enabled:
-                              !ref.watch(isImportingProvider) &&
-                              !ref.watch(isExportingProvider),
-                          onTap: () async {
-                            // Set loading state first while drawer is still open
-                            ref.read(isExportingProvider.notifier).state = true;
-                            Navigator.of(context).pop();
+            if (_routePoints.length > 1000) {
+              Future.delayed(
+                const Duration(milliseconds: 100),
+                _recomputeSegmentsAsync,
+              );
+            }
 
-                            // Add a small delay to ensure UI is updated
-                            await Future.delayed(
-                              const Duration(milliseconds: 100),
-                            );
-                            await exportGeoJsonRoute(_routePoints);
-                          },
-                        ),
-                      ],
-                    ),
-                    ExpansionTile(
-                      leading: Icon(
-                        Icons.route,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      title: Text(
-                        'GPX',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      initiallyExpanded: false,
-                      children: [
-                        ListTile(
-                          leading: ref.watch(isImportingProvider)
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.upload_file,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                ),
-                          title: Text(
-                            ref.watch(isImportingProvider)
-                                ? 'Importerar GPX...'
-                                : 'Importera GPX',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          enabled:
-                              !ref.watch(isImportingProvider) &&
-                              !ref.watch(isExportingProvider),
-                          onTap: () async {
-                            // Set loading state first while drawer is still open
-                            ref.read(isImportingProvider.notifier).state = true;
-                            Navigator.of(context).pop();
-
-                            // Add a small delay to ensure UI is updated
-                            await Future.delayed(
-                              const Duration(milliseconds: 100),
-                            );
-                            await importGpxRoute((points, loopClosed) {
-                              setState(() {
-                                _routePoints
-                                  ..clear()
-                                  ..addAll(points);
-                                ref.read(editingIndexProvider.notifier).state = null;
-                                ref.read(routeNotifierProvider.notifier).setLoopClosed(loopClosed);
-                                // For large routes, clear segments and compute later
-                                if (_routePoints.length > 1000) {
-                                  _segmentMeters.clear();
-                                } else {
-                                  _recomputeSegments();
-                                }
-                              });
-
-                              // Trigger async segment computation for large routes after UI update
-                              if (_routePoints.length > 1000) {
-                                Future.delayed(
-                                  const Duration(milliseconds: 100),
-                                  _recomputeSegmentsAsync,
-                                );
-                              }
-
-                              // Center map on the imported route
-                              if (_routePoints.isNotEmpty) {
-                                _centerMapOnRoute();
-                                _autoGenerateDistanceMarkers(); // Auto-generate distance markers for imported route
-                              }
-                            });
-                          },
-                        ),
-                        ListTile(
-                          leading: ref.watch(isExportingProvider)
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.download,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                ),
-                          title: Text(
-                            ref.watch(isExportingProvider)
-                                ? 'Exporterar GPX...'
-                                : 'Exportera GPX',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          enabled:
-                              !ref.watch(isImportingProvider) &&
-                              !ref.watch(isExportingProvider),
-                          onTap: () async {
-                            // Set loading state first while drawer is still open
-                            ref.read(isExportingProvider.notifier).state = true;
-                            Navigator.of(context).pop();
-
-                            // Add a small delay to ensure UI is updated
-                            await Future.delayed(
-                              const Duration(milliseconds: 100),
-                            );
-                            await _exportGpxRoute();
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    SwitchListTile(
-                      secondary: Icon(
-                        Icons.layers,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      title: Text(
-                        'Grus-lager',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      subtitle: Text(
-                        'Visa OpenStreetMap/Overpass grusvägar',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      value: ref.watch(gravelOverlayProvider),
-                      onChanged: (v) =>
-                          ref.read(gravelOverlayProvider.notifier).state = v,
-                    ),
-                    SwitchListTile(
-                      secondary: Icon(
-                        Icons.terrain,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      title: Text(
-                        'TRV NVDB grus-lager',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      subtitle: Text(
-                        'Visa Trafikverket NVDB grusvägar',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      value: _showTrvNvdbOverlay,
-                      onChanged: null, // Disabled for now
-                    ),
-                    const SizedBox(height: 8),
-                    // Distance Markers Section
-                    ExpansionTile(
-                      leading: Icon(
-                        Icons.straighten,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      title: Text(
-                        'Avståndsmarkeringar',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Lägg till markeringar längs rutt',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      children: [
-                        SwitchListTile(
-                          secondary: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4),
-                              color: Colors.orange,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'km',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          title: const Text('km'),
-                          subtitle: _distanceMarkers.isEmpty
-                              ? const Text('Generera först markeringar nedan')
-                              : Text(
-                                  '${_distanceMarkers.length} markeringar aktiva',
-                                ),
-                          value: ref.watch(distanceMarkersProvider),
-                          onChanged: _distanceMarkers.isEmpty
-                              ? null
-                              : (v) =>
-                                    ref
-                                            .read(
-                                              distanceMarkersProvider.notifier,
-                                            )
-                                            .state =
-                                        v,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Intervall: ${ref.watch(distanceIntervalProvider) == 500
-                                    ? "500m"
-                                    : ref.watch(distanceIntervalProvider) == ref.watch(distanceIntervalProvider).toInt()
-                                    ? "${(ref.watch(distanceIntervalProvider) / 1000).toInt()}km"
-                                    : "${ref.watch(distanceIntervalProvider) / 1000}km"}',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                              const SizedBox(height: 8),
-                              Slider(
-                                value: ref.watch(distanceIntervalProvider),
-                                min: 500.0,
-                                max: 5000.0,
-                                divisions:
-                                    9, // 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000
-                                onChanged: (value) =>
-                                    ref
-                                            .read(
-                                              distanceIntervalProvider.notifier,
-                                            )
-                                            .state =
-                                        value,
-                                label:
-                                    ref.watch(distanceIntervalProvider) == 500
-                                    ? '500m'
-                                    : ref.watch(distanceIntervalProvider) ==
-                                          ref
-                                              .watch(distanceIntervalProvider)
-                                              .toInt()
-                                    ? '${(ref.watch(distanceIntervalProvider) / 1000).toInt()}km'
-                                    : '${ref.watch(distanceIntervalProvider) / 1000}km',
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: _routePoints.length < 2
-                                          ? null
-                                          : () {
-                                              Navigator.of(context).pop();
-                                              _generateDistanceMarkers();
-                                            },
-                                      icon: const Icon(
-                                        Icons.add_location,
-                                        size: 16,
-                                      ),
-                                      label: const Text('Generera'),
-                                      style: ElevatedButton.styleFrom(
-                                        visualDensity: VisualDensity.compact,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: _distanceMarkers.isEmpty
-                                          ? null
-                                          : () {
-                                              setState(
-                                                () => _distanceMarkers.clear(),
-                                              );
-                                            },
-                                      icon: const Icon(Icons.clear, size: 16),
-                                      label: const Text('Rensa'),
-                                      style: OutlinedButton.styleFrom(
-                                        visualDensity: VisualDensity.compact,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Divider(
-                      height: 1,
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                    const SizedBox(height: 8),
-                    // Segment Analysis Toggle
-                    SwitchListTile(
-                      title: Text(
-                        'Segment analys',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Visa detaljerad analys av rutt-segment',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      secondary: Icon(
-                        Icons.analytics_outlined,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      value: _showSegmentAnalysis,
-                      onChanged: (value) {
-                        setState(() {
-                          _showSegmentAnalysis = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    // Saved Routes Section
-                    ListTile(
-                      leading: Icon(
-                        Icons.bookmark,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      title: Text(
-                        'Sparade rutter',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '${_savedRoutes.length}/50 rutter',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.help,
-                              size: 20,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                            onPressed: _showSavedRoutesHelpDialog,
-                            visualDensity: VisualDensity.compact,
-                            tooltip: 'Information om sparade rutter',
-                          ),
-                          Icon(
-                            Icons.chevron_right,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                      onTap: () {
-                        Navigator.of(context).pop(); // Close drawer
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SavedRoutesPage(
-                              routeService: ref.read(routeServiceProvider),
-                              onLoadRoute:
-                                  _loadRouteFromSavedRoute, // Use new method that preserves loop state
-                              onRoutesChanged:
-                                  _loadSavedRoutes, // Add callback for when routes are modified
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    // Save current route button
-                    ListTile(
-                      leading: ref.watch(isSavingProvider)
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              Icons.add,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                      title: Text(
-                        ref.watch(isSavingProvider)
-                            ? 'Sparar rutt...'
-                            : 'Spara aktuell rutt',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      enabled:
-                          _routePoints.isNotEmpty &&
-                          !ref.watch(isSavingProvider),
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _showSaveRouteDialog();
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.close,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      title: Text(
-                        'Stäng',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    // Debug section for storage status
-                    if (kDebugMode) ...[
-                      const Divider(height: 1),
-                      ExpansionTile(
-                        leading: Icon(
-                          Icons.bug_report,
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
-                        title: Text(
-                          'Debug Info',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Initialisering: ${_isInitialized ? "✓" : "✗"}',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                Text(
-                                  'Lagring tillgänglig: ${ref.watch(routeServiceProvider).isStorageAvailable() ? "✓" : "✗"}',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  ref
-                                      .watch(routeServiceProvider)
-                                      .getStorageDiagnostics(),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(fontFamily: 'monospace'),
-                                ),
-                                const SizedBox(height: 8),
-                                ElevatedButton(
-                                  onPressed: () async {
-                                    debugPrint(
-                                      'Manual re-initialization triggered',
-                                    );
-                                    await _initializeServices();
-                                  },
-                                  child: const Text('Testa om-initialisering'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
+            if (_routePoints.isNotEmpty) {
+              _centerMapOnRoute();
+              _autoGenerateDistanceMarkers();
+            }
+          });
+        },
+        onExportGpx: () async {
+          await exportGpxRoute(_routePoints);
+        },
+        onSaveRoute: _saveCurrentRouteInternal,
+        hasRoute: _routePoints.isNotEmpty,
+        savedRoutesCount: _savedRoutes.length,
+        maxSavedRoutes: _maxSavedRoutes,
+        distanceMarkers: _distanceMarkers,
+        showTrvNvdbOverlay: _showTrvNvdbOverlay,
+        // Segment analysis toggle
+        onToggleSegmentAnalysis: (v) =>
+            setState(() => _showSegmentAnalysis = v),
+        showSegmentAnalysis: _showSegmentAnalysis,
+        onToggleDistanceMarkers: (v) =>
+            ref.read(distanceMarkersProvider.notifier).state = v,
+        onGenerateDistanceMarkers: _routePoints.length < 2
+            ? () {}
+            : () {
+                _generateDistanceMarkers();
+              },
+        onClearDistanceMarkers: _distanceMarkers.isEmpty
+            ? () {}
+            : () => setState(() => _distanceMarkers.clear()),
+        onSavedRoutesTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SavedRoutesPage(
+                routeService: ref.read(routeServiceProvider),
+                onLoadRoute: _loadRouteFromSavedRoute,
+                onRoutesChanged: _loadSavedRoutes,
               ),
-              const Divider(height: 1),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainer.withValues(alpha: 0.3),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '© Gravel First 2025',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Builder(
-                      builder: (context) {
-                        final parts = <String>[];
-                        if (_appVersion.isNotEmpty) {
-                          parts.add('v$_appVersion');
-                        }
-                        if (_buildNumber.isNotEmpty) {
-                          parts.add('#$_buildNumber');
-                        }
-                        final label = parts.join(' ');
-                        if (label.isEmpty) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            label,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.7),
-                                  fontWeight: FontWeight.w300,
-                                  fontSize: 11,
-                                ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
+        footer: _buildDrawerFooter(context),
       ),
       body: Stack(
         children: [
@@ -1603,456 +655,55 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                     ),
                 ],
               ),
-              if (_myPosition != null)
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _myPosition!,
-                      width: 30,
-                      height: 30,
-                      alignment: Alignment.center,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.25),
-                        ),
-                        child: Container(
-                          margin: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              UserLocationLayer(position: _myPosition),
               // Start/stop markers - shown in both view mode and when creating routes
               if (_routePoints.length >= 2)
-                MarkerLayer(
-                  markers: [
-                    // Start/Stop markers
-                    if (ref.watch(loopClosedProvider))
-                      // For closed loops, show a combined start/stop marker
-                      Marker(
-                        point: _routePoints.first,
-                        width: 24,
-                        height: 16,
-                        alignment: Alignment.center,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 3,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(6),
-                                      bottomLeft: Radius.circular(6),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.only(
-                                      topRight: Radius.circular(6),
-                                      bottomRight: Radius.circular(6),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else ...[
-                      // Separate start and stop markers for non-loop routes
-                      // Start marker (green)
-                      Marker(
-                        point: _routePoints.first,
-                        width: 20,
-                        height: 20,
-                        alignment: Alignment.center,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.green,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 3,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.play_arrow,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
-                      ),
-                      // Stop marker (red)
-                      Marker(
-                        point: _routePoints.last,
-                        width: 20,
-                        height: 20,
-                        alignment: Alignment.center,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.red,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 3,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.stop,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                StartStopMarkersLayer(
+                  routePoints: _routePoints,
+                  isLoopClosed: ref.watch(loopClosedProvider),
                 ),
-              MarkerLayer(
-                markers: [
-                  for (int i = 0; i < _routePoints.length; i++)
-                    () {
-                      // Route points visibility logic:
-                      // - Measurement mode ON: Show all points
-                      // - Measurement mode OFF: Only show start/finish points, hide middle points
-                      final isStartPoint = i == 0 && _routePoints.length > 1;
-                      final isEndPoint =
-                          i == _routePoints.length - 1 &&
-                          _routePoints.length > 1;
-                      final isStartOrEnd = isStartPoint || isEndPoint;
-
-                      // In non-measurement mode, only show start/end points
-                      if (!ref.watch(measureModeProvider) &&
-                          !isStartOrEnd &&
-                          _routePoints.length > 2) {
-                        return null; // Hide middle points when measurement mode is off
-                      }
-
-                      // Zoom-based visibility optimization for large routes
-                      // This provides additional performance improvement beyond point decimation
-                      // by reducing the number of markers rendered at different zoom levels
-                      final currentZoom = _lastZoom ?? 12.0;
-                      if (_routePoints.length > 1000 && currentZoom < 13.0) {
-                        // At medium-low zoom, show every 10th point (90% marker reduction)
-                        if (!isStartOrEnd && i % 10 != 0) {
-                          return null;
-                        }
-                      } else if (_routePoints.length > 500 &&
-                          currentZoom < 11.0) {
-                        // At very low zoom, show every 20th point (95% marker reduction)
-                        if (!isStartOrEnd && i % 20 != 0) {
-                          return null;
-                        }
-                      }
-                      // At high zoom (≥13), show all decimated points for full detail
-
-                      final baseSize = _editModeEnabled ? 16.0 : 2.0;
-                      final markerSize = ref.watch(measureModeProvider)
-                          ? baseSize
-                          : baseSize * 0.8;
-
-                      return Marker(
-                        point: _routePoints[i],
-                        width: markerSize,
-                        height: markerSize,
-                        alignment: Alignment.center,
-                        child: GestureDetector(
-                          onTap: () {
-                            if (_editModeEnabled) {
-                              // Only allow point selection when in edit mode
-                              ref.read(editingIndexProvider.notifier).state = i;
-                            } else {
-                              // Show distance from start to this point when not in edit mode
-                              _showDistanceToPoint(i);
-                            }
-                          },
-                          onLongPress: () {
-                            if (_editModeEnabled) {
-                              // Long press shows confirmation dialog for deletion (only in edit mode)
-                              _showDeletePointConfirmation(i);
-                            }
-                          },
-                          child: _editModeEnabled
-                              ? PointMarker(
-                                  key: ValueKey(
-                                    'point_${i}_measure_${ref.watch(measureModeProvider)}_edit_${ref.watch(editingIndexProvider)}_loop_${ref.watch(loopClosedProvider)}',
-                                  ),
-                                  index: i,
-                                  size: 16.0,
-                                  isStartPoint:
-                                      i == 0 && _routePoints.length > 1,
-                                  isEndPoint:
-                                      i == _routePoints.length - 1 &&
-                                      _routePoints.length > 1,
-                                  measureEnabled: ref.watch(
-                                    measureModeProvider,
-                                  ),
-                                  isEditing:
-                                      ref.watch(editingIndexProvider) == i,
-                                  isLoopClosed: ref.watch(loopClosedProvider),
-                                )
-                              : (!ref.watch(measureModeProvider) &&
-                                    isStartOrEnd)
-                              ? PointMarker(
-                                  key: ValueKey(
-                                    'view_point_${i}_loop_${ref.watch(loopClosedProvider)}',
-                                  ),
-                                  index: i,
-                                  size: 18.0, // Larger base size for view mode
-                                  isStartPoint: isStartPoint,
-                                  isEndPoint: isEndPoint,
-                                  measureEnabled: false, // View mode
-                                  isEditing: false,
-                                  isLoopClosed: ref.watch(loopClosedProvider),
-                                )
-                              : Container(
-                                  // Simple subtle circle for middle points in measure mode
-                                  width: markerSize,
-                                  height: markerSize,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  ),
-                                ),
-                        ),
-                      );
-                    }(),
-                ].whereType<Marker>().toList(), // Filter out null values
+              RoutePointsLayer(
+                points: _routePoints,
+                measureEnabled: ref.watch(measureModeProvider),
+                editModeEnabled: _editModeEnabled,
+                lastZoom: _lastZoom,
+                isLoopClosed: ref.watch(loopClosedProvider),
+                isEditingIndex: ref.watch(editingIndexProvider),
+                onTapPoint: (i) {
+                  if (_editModeEnabled) {
+                    ref.read(editingIndexProvider.notifier).state = i;
+                  } else {
+                    _showDistanceToPoint(i);
+                  }
+                },
+                onLongPressPoint: (i) {
+                  if (_editModeEnabled) {
+                    _showDeletePointConfirmation(i);
+                  }
+                },
               ),
               // Midpoint markers for adding points between existing points
               if (_editModeEnabled && _routePoints.length >= 2)
-                MarkerLayer(
-                  markers: [
-                    // Add midpoint markers between consecutive points
-                    for (int i = 0; i < _routePoints.length - 1; i++)
-                      () {
-                        final midpoint = LatLng(
-                          (_routePoints[i].latitude +
-                                  _routePoints[i + 1].latitude) /
-                              2,
-                          (_routePoints[i].longitude +
-                                  _routePoints[i + 1].longitude) /
-                              2,
-                        );
-                        return Marker(
-                          point: midpoint,
-                          width: 16,
-                          height: 16,
-                          alignment: Alignment.center,
-                          child: GestureDetector(
-                            onTap: () => _addPointBetween(i, i + 1, midpoint),
-                            child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.secondary.withValues(alpha: 0.8),
-                                border: Border.all(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSecondary,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.add,
-                                size: 10,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSecondary,
-                              ),
-                            ),
-                          ),
-                        );
-                      }(),
-                    // Add midpoint marker for loop closure if loop is closed
-                    if (ref.watch(loopClosedProvider) &&
-                        _routePoints.length >= 3)
-                      () {
-                        final midpoint = LatLng(
-                          (_routePoints.last.latitude +
-                                  _routePoints.first.latitude) /
-                              2,
-                          (_routePoints.last.longitude +
-                                  _routePoints.first.longitude) /
-                              2,
-                        );
-                        return Marker(
-                          point: midpoint,
-                          width: 16,
-                          height: 16,
-                          alignment: Alignment.center,
-                          child: GestureDetector(
-                            onTap: () => _addPointBetween(
-                              _routePoints.length - 1,
-                              0,
-                              midpoint,
-                            ),
-                            child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.secondary.withValues(alpha: 0.8),
-                                border: Border.all(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSecondary,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.add,
-                                size: 10,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSecondary,
-                              ),
-                            ),
-                          ),
-                        );
-                      }(),
-                  ],
+                MidpointAddMarkersLayer(
+                  routePoints: _routePoints,
+                  loopClosed: ref.watch(loopClosedProvider),
+                  onAddBetween: _addPointBetween,
                 ),
               // Distance marker dots - always visible as subtle fallback when text markers are disabled
               if (!ref.watch(distanceMarkersProvider) &&
                   _distanceMarkers.isNotEmpty)
-                MarkerLayer(
-                  markers: _distanceMarkers.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final point = entry.value;
-                    final distanceKm =
-                        (index + 1) *
-                        ref.watch(distanceIntervalProvider) /
-                        1000;
-
-                    return Marker(
-                      point: point,
-                      width: 10.0, // Increased size for better visibility
-                      height: 10.0,
-                      alignment: Alignment.center,
-                      child: GestureDetector(
-                        onTap: () => _showDistanceMarkerInfo(
-                          index,
-                          distanceKm.toDouble(),
-                        ),
-                        child: Container(
-                          width: 10.0,
-                          height: 10.0,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color:
-                                Colors.deepOrange, // More visible orange dots
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 1.0, // Clean white border
-                            ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 2,
-                                offset: Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                DistanceDotsLayer(
+                  markers: _distanceMarkers,
+                  intervalMeters: ref.watch(distanceIntervalProvider),
+                  onTap: (index, km) => _showDistanceMarkerInfo(index, km),
                 ),
               // Distance text markers layer - placed last to appear on top
               if (ref.watch(distanceMarkersProvider) &&
                   _distanceMarkers.isNotEmpty)
-                MarkerLayer(
-                  markers: _distanceMarkers.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final point = entry.value;
-                    final distanceKm =
-                        (index + 1) *
-                        ref.watch(distanceIntervalProvider) /
-                        1000;
-
-                    return Marker(
-                      point: point,
-                      width: 32, // Wider to accommodate decimal text
-                      height: 24,
-                      alignment: Alignment.center,
-                      child: GestureDetector(
-                        onTap: () => _showDistanceMarkerInfo(
-                          index,
-                          distanceKm.toDouble(),
-                        ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              4,
-                            ), // Square with rounded corners
-                            color: Colors.orange,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              distanceKm < 1
-                                  ? '${(distanceKm * 1000).toInt()}m'
-                                        .replaceAll('000m', 'k')
-                                  : distanceKm == distanceKm.toInt()
-                                  ? '${distanceKm.toInt()}k'
-                                  : '${distanceKm}k',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                DistanceTextLayer(
+                  markers: _distanceMarkers,
+                  intervalMeters: ref.watch(distanceIntervalProvider),
+                  onTap: (index, km) => _showDistanceMarkerInfo(index, km),
                 ),
               // Distance marker dots - always visible on polyline
             ],
@@ -2146,7 +797,20 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                   DistancePanel(
                     segmentMeters: _segmentMeters,
                     onUndo: _undoLastEdit,
-                    onSave: _showSaveRouteDialog,
+                    onSave: () async {
+                      if (_routePoints.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Ingen rutt att spara')),
+                        );
+                        return;
+                      }
+                      await SaveRouteDialog.show(
+                        context,
+                        onSave: _saveCurrentRouteInternal,
+                        savedRoutesCount: _savedRoutes.length,
+                        maxSavedRoutes: _maxSavedRoutes,
+                      );
+                    },
                     onClear: _clearRoute,
                     onEditModeChanged: (enabled) => setState(() {
                       _editModeEnabled = enabled;
@@ -2213,6 +877,53 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   void dispose() {
     _moveDebounce?.cancel();
     super.dispose();
+  }
+
+  // Build footer widget used at the bottom of the app drawer
+  Widget _buildDrawerFooter(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainer.withValues(alpha: 0.3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '© Gravel First 2025',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Builder(
+            builder: (context) {
+              final parts = <String>[];
+              if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
+              if (_buildNumber.isNotEmpty) parts.add('#$_buildNumber');
+              final label = parts.join(' ');
+              if (label.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w300,
+                    fontSize: 11,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _saveStateForUndo() {
@@ -2490,48 +1201,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       formattedDistance = '${distanceFromStart.toInt()}m';
     }
 
-    final overlay = Overlay.of(context);
-    final overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        left: 16,
-        top: 80, // Moved from bottom to top-left
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.primary,
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Text(
-              'P${index + 1} $formattedDistance från Start',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ),
-      ),
+    InfoOverlay.show(
+      context,
+      text: 'P${index + 1} $formattedDistance från Start',
+      borderColor: Theme.of(context).colorScheme.primary,
     );
-
-    overlay.insert(overlayEntry);
-
-    // Auto-remove after 2 seconds
-    Timer(const Duration(seconds: 2), () {
-      overlayEntry.remove();
-    });
   }
 
   void _showDistanceMarkerInfo(int markerIndex, double distanceKm) {
@@ -2545,45 +1219,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       );
     }
 
-    final overlay = Overlay.of(context);
-    final overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        left: 16,
-        top: 80, // Moved to top-left to match point distance overlay
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Text(
-              'Avståndsmarkering $formattedDistance från Start',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ),
-      ),
+    InfoOverlay.show(
+      context,
+      text: 'Avståndsmarkering $formattedDistance från Start',
+      borderColor: Colors.orange,
     );
-
-    overlay.insert(overlayEntry);
-
-    // Auto-remove after 2 seconds
-    Timer(const Duration(seconds: 2), () {
-      overlayEntry.remove();
-    });
   }
 
   void _deletePoint(int index) {
@@ -2592,8 +1232,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     setState(() {
       _routePoints.removeAt(index);
       _distanceMarkers.clear(); // Clear distance markers when modifying route
-      if (_routePoints.length < 3)
+      if (_routePoints.length < 3) {
         ref.read(routeNotifierProvider.notifier).setLoopClosed(false);
+      }
       final currentEditingIndex = ref.read(editingIndexProvider);
       if (currentEditingIndex != null) {
         if (_routePoints.isEmpty) {
@@ -2674,197 +1315,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
           margin: const EdgeInsets.all(16),
         ),
       );
-    }
-  }
-
-  // Returns coordinates array of a LineString ([ [lon,lat], ... ]) or null
-  List<dynamic>? _extractFirstLineString(dynamic node) {
-    if (node is Map) {
-      final type = node['type'];
-      if (type == 'FeatureCollection' && node['features'] is List) {
-        for (final f in (node['features'] as List)) {
-          final res = _extractFirstLineString(f);
-          if (res != null) return res;
-        }
-      } else if (type == 'Feature' && node['geometry'] is Map) {
-        return _extractFirstLineString(node['geometry']);
-      } else if (type == 'LineString' && node['coordinates'] is List) {
-        return node['coordinates'] as List;
-      } else if (type == 'MultiLineString' && node['coordinates'] is List) {
-        final lines = node['coordinates'] as List;
-        if (lines.isNotEmpty && lines.first is List) {
-          return lines.first as List; // take the first line by default
-        }
-      }
-    }
-    return null;
-  }
-
-  Future<void> _exportGpxRoute() async {
-    if (_routePoints.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Ingen rutt att exportera')));
-      return;
-    }
-
-    ref.read(isExportingProvider.notifier).state = true;
-
-    try {
-      final builder = xml.XmlBuilder();
-      builder.processing('xml', 'version="1.0" encoding="UTF-8"');
-      builder.element(
-        'gpx',
-        nest: () {
-          builder.attribute('version', '1.1');
-          builder.attribute('creator', 'Gravel First');
-          builder.attribute('xmlns', 'http://www.topografix.com/GPX/1/1');
-          builder.element(
-            'trk',
-            nest: () {
-              builder.element('name', nest: 'Gravel route');
-              builder.element(
-                'trkseg',
-                nest: () {
-                  for (final p in _routePoints) {
-                    builder.element(
-                      'trkpt',
-                      attributes: {
-                        'lat': p.latitude.toStringAsFixed(7),
-                        'lon': p.longitude.toStringAsFixed(7),
-                      },
-                    );
-                  }
-                  if (ref.read(loopClosedProvider) &&
-                      _routePoints.length >= 3) {
-                    final f = _routePoints.first;
-                    builder.element(
-                      'trkpt',
-                      attributes: {
-                        'lat': f.latitude.toStringAsFixed(7),
-                        'lon': f.longitude.toStringAsFixed(7),
-                      },
-                    );
-                  }
-                },
-              );
-            },
-          );
-        },
-      );
-      final gpxString = builder.buildDocument().toXmlString(pretty: true);
-      await FileSaver.instance.saveFile(
-        name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.gpx',
-        bytes: Uint8List.fromList(utf8.encode(gpxString)),
-        ext: 'gpx',
-        mimeType: MimeType.other,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: const Text('Rutt exporterad som GPX')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Export misslyckades: $e')));
-    } finally {
-      if (mounted) {
-        ref.read(isExportingProvider.notifier).state = false;
-      }
-    }
-  }
-
-  Future<void> _importGpxRoute() async {
-    ref.read(isImportingProvider.notifier).state = true;
-
-    try {
-      final res = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['gpx', 'xml'],
-        withData: true,
-      );
-      if (res == null || res.files.isEmpty) return;
-      final file = res.files.first;
-      final data = file.bytes ?? Uint8List(0);
-      if (data.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Selected file is empty')));
-        return;
-      }
-
-      // Parse GPX in background isolate to prevent UI freezing
-      // This handles both UTF-8 decoding and XML parsing in the background
-      final result = await compute(parseGpxPoints, data);
-      final pts = result['points'] as List<LatLng>;
-      final originalCount = result['originalCount'] as int;
-      final decimatedCount = result['decimatedCount'] as int;
-
-      if (pts.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Inga spårpunkter hittades i GPX')),
-        );
-        return;
-      }
-      if (!mounted) return;
-
-      // Clear loading state immediately after background processing
-      ref.read(isImportingProvider.notifier).state = false;
-
-      setState(() {
-        _routePoints
-          ..clear()
-          ..addAll(pts);
-        ref.read(editingIndexProvider.notifier).state = null;
-        // GPX doesn’t encode loop state; infer if first==last
-        final isLoopClosed = pts.length >= 3 && pts.first == pts.last;
-        ref.read(routeNotifierProvider.notifier).setLoopClosed(isLoopClosed);
-        if (isLoopClosed && pts.isNotEmpty && pts.first == pts.last) {
-          // remove duplicated closing point for internal representation
-          _routePoints.removeLast();
-        }
-        // For large routes, clear segments and compute later
-        if (_routePoints.length > 1000) {
-          _segmentMeters.clear();
-        } else {
-          _recomputeSegments();
-        }
-      });
-
-      // Trigger async segment computation for large routes after UI update
-      if (_routePoints.length > 1000) {
-        Future.delayed(
-          const Duration(milliseconds: 100),
-          _recomputeSegmentsAsync,
-        );
-      }
-
-      // Center map on the imported route
-      if (_routePoints.isNotEmpty) {
-        _centerMapOnRoute();
-        _autoGenerateDistanceMarkers(); // Auto-generate distance markers for imported route
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            originalCount != decimatedCount
-                ? 'Importerade ${_routePoints.length} punkter från GPX (optimerad från $originalCount)'
-                : 'Importerade ${_routePoints.length} punkter från GPX',
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      // Clear loading state immediately on error
-      ref.read(isImportingProvider.notifier).state = false;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
     }
   }
 }

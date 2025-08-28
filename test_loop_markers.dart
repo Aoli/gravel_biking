@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gravel_biking/services/measurement_service.dart';
 import 'package:latlong2/latlong.dart';
