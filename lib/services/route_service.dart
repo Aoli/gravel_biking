@@ -11,6 +11,7 @@ class RouteService {
   static const String _boxName = 'saved_routes';
   final Distance _distance = const Distance();
   Box<SavedRoute>? _routeBox;
+  bool _storageDisabled = false; // Track if storage is completely disabled
 
   /// Initialize Hive storage with proper error handling and debugging
   Future<void> initialize() async {
@@ -40,9 +41,14 @@ class RouteService {
       }
 
       _log('Hive box opened successfully (${_routeBox?.length ?? 0} routes)');
+      _storageDisabled = false; // Storage is working
     } catch (e, s) {
       _log('CRITICAL: Hive initialization failed: $e');
       _log('Stack trace: ${s.toString()}');
+
+      // Mark storage as disabled but don't throw - allow graceful degradation
+      _storageDisabled = true;
+      _routeBox = null;
 
       // For web environments, provide more specific error guidance
       if (kIsWeb) {
@@ -50,18 +56,21 @@ class RouteService {
         _log('1. Check if browser storage is enabled');
         _log('2. Check if in incognito/private mode');
         _log('3. Check browser storage quota');
-
-        throw Exception(
-          'Storage initialization failed. This may happen in private browsing mode or when browser storage is disabled. Please try in a regular browser window.',
-        );
+        _log('GRACEFUL DEGRADATION: App will continue without route saving');
+      } else {
+        _log('GRACEFUL DEGRADATION: App will continue without route saving');
       }
 
-      // Re-throw with a user-friendly message
-      throw Exception('Storage initialization failed: ${e.toString()}');
+      // Don't throw - let the app continue with storage disabled
     }
   }
 
   Box<SavedRoute> get _box {
+    if (_storageDisabled) {
+      throw Exception(
+        'Storage unavailable - may be disabled in private browsing mode',
+      );
+    }
     if (_routeBox == null || !_routeBox!.isOpen) {
       throw Exception(
         'RouteService not properly initialized. Hive box is not available.',
@@ -72,6 +81,10 @@ class RouteService {
 
   /// Load all saved routes
   Future<List<SavedRoute>> loadSavedRoutes() async {
+    if (_storageDisabled) {
+      debugPrint('Storage disabled - returning empty route list');
+      return [];
+    }
     try {
       final box = _box;
       return box.values.toList()
@@ -84,6 +97,10 @@ class RouteService {
 
   /// Search routes by name or description
   Future<List<SavedRoute>> searchRoutes(String query) async {
+    if (_storageDisabled) {
+      debugPrint('Storage disabled - returning empty search results');
+      return [];
+    }
     try {
       final box = _box;
       final allRoutes = box.values.toList();
@@ -112,6 +129,12 @@ class RouteService {
     required bool loopClosed,
     String? description,
   }) async {
+    if (_storageDisabled) {
+      throw Exception(
+        'Storage unavailable. Route saving is disabled in private browsing mode or when browser storage is disabled.',
+      );
+    }
+
     if (routePoints.isEmpty) {
       throw Exception('Ingen rutt att spara');
     }
@@ -146,6 +169,10 @@ class RouteService {
 
   /// Delete route by key
   Future<void> deleteRoute(int key) async {
+    if (_storageDisabled) {
+      debugPrint('Storage disabled - cannot delete route');
+      return;
+    }
     try {
       final box = _box;
       await box.delete(key);
@@ -156,6 +183,10 @@ class RouteService {
 
   /// Delete route by SavedRoute object
   Future<void> deleteRouteObject(SavedRoute route) async {
+    if (_storageDisabled) {
+      debugPrint('Storage disabled - cannot delete route');
+      return;
+    }
     try {
       final box = _box;
       final key = route.key;
@@ -169,6 +200,9 @@ class RouteService {
 
   /// Update route (replace existing route with new data)
   Future<void> updateRoute(SavedRoute oldRoute, SavedRoute newRoute) async {
+    if (_storageDisabled) {
+      throw Exception('Storage unavailable - cannot update route');
+    }
     try {
       final box = _box;
 
@@ -187,6 +221,9 @@ class RouteService {
 
   /// Get routes count
   Future<int> getRouteCount() async {
+    if (_storageDisabled) {
+      return 0;
+    }
     try {
       final box = _box;
       return box.length;
@@ -198,6 +235,9 @@ class RouteService {
 
   /// Check if storage is available
   bool isStorageAvailable() {
+    if (_storageDisabled) {
+      return false;
+    }
     final isAvailable = _routeBox != null && _routeBox!.isOpen;
     if (!isAvailable) {
       debugPrint(
@@ -209,7 +249,11 @@ class RouteService {
 
   /// Get diagnostic information about the current storage state
   String getStorageDiagnostics() {
-    return 'RouteService State: box null=${_routeBox == null}, box open=${_routeBox?.isOpen ?? false}, box length=${_routeBox?.length ?? 'N/A'}';
+    return 'RouteService State: '
+        'storage disabled=$_storageDisabled, '
+        'box null=${_routeBox == null}, '
+        'box open=${_routeBox?.isOpen ?? false}, '
+        'box length=${_routeBox?.length ?? 'N/A'}';
   }
 
   /// Calculate segment distances for route points

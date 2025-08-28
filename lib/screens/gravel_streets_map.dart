@@ -239,30 +239,41 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
 
     try {
       // Wait for RouteService to be initialized through the provider
-      final initResult = await ref.read(routeServiceInitializedProvider.future);
+      await ref.read(routeServiceInitializedProvider.future);
 
-      if (!initResult) {
-        throw Exception(
-          'Storage initialization failed. This may happen in private browsing mode or when browser storage is disabled.',
-        );
-      }
-
+      // With graceful degradation, initialization should always succeed
+      // Check actual storage availability instead
       final routeService = ref.read(routeServiceProvider);
+      final storageAvailable = routeService.isStorageAvailable();
 
-      // Validate that initialization actually worked
-      if (!routeService.isStorageAvailable()) {
-        throw Exception(
-          'Storage is not available after initialization. Please check browser settings.',
+      if (storageAvailable) {
+        await _loadSavedRoutes();
+        debugPrint('✅ Storage working - routes loaded successfully');
+      } else {
+        debugPrint(
+          '⚠️ Storage disabled - app continues with limited functionality',
         );
+        // Show a non-intrusive info message instead of error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Route saving disabled (private browsing or storage blocked). App functions normally otherwise.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
 
-      await _loadSavedRoutes();
       final duration = DateTime.now().difference(startTime);
       debugPrint(
-        '✅ [${DateTime.now().toIso8601String()}] Service initialization completed successfully in ${duration.inMilliseconds}ms',
+        '✅ [${DateTime.now().toIso8601String()}] Service initialization completed in ${duration.inMilliseconds}ms (storage: ${storageAvailable ? 'enabled' : 'disabled'})',
       );
       setState(() {
-        _isInitialized = true;
+        _isInitialized =
+            true; // Always set to true - app should work regardless of storage
       });
     } catch (e) {
       final errorTime = DateTime.now();
@@ -277,9 +288,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Fel vid initialisering av routelagring: ${e.toString()}',
-            ),
+            content: Text('Unexpected initialization error: ${e.toString()}'),
             backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 8),
             action: SnackBarAction(
@@ -330,34 +339,33 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
 
     // Check if RouteService is properly initialized
     final routeService = ref.read(routeServiceProvider);
-    if (!_isInitialized || !routeService.isStorageAvailable()) {
-      final initStatus = _isInitialized
-          ? 'initialiserad'
-          : 'inte initialiserad';
-      final storageStatus = routeService.isStorageAvailable()
-          ? 'tillgänglig'
-          : 'inte tillgänglig';
-
-      debugPrint(
-        'RouteService save check failed - Initialisering: $initStatus, Lagring: $storageStatus',
-      );
-
+    if (!_isInitialized) {
+      debugPrint('RouteService not initialized yet');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Routelagring är inte redo ($initStatus, lagring $storageStatus). Försöker initialisera igen...',
+            content: const Text('App is still initializing. Please wait...'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!routeService.isStorageAvailable()) {
+      debugPrint('Storage not available - probably in private browsing mode');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Route saving unavailable. This happens in private browsing mode or when browser storage is disabled.',
             ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            duration: const Duration(seconds: 6),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
             action: SnackBarAction(
-              label: 'Försök igen',
-              onPressed: () async {
-                await _initializeServices();
-                if (_isInitialized) {
-                  _saveCurrentRouteInternal(name);
-                }
-              },
+              label: 'Export instead',
+              onPressed: () => _exportGeoJsonRoute(),
             ),
           ),
         );
@@ -386,10 +394,19 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
         ).showSnackBar(SnackBar(content: Text('Rutt "$name" sparad')));
       }
     } catch (e) {
+      debugPrint('Error saving route: $e');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Fel vid sparande: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving route: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Export instead',
+              onPressed: () => _exportGeoJsonRoute(),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {
