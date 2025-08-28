@@ -22,9 +22,9 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build Web (Wasm)
+      - name: Build Web
         run: |
-          flutter build web --release --wasm \
+          flutter build web --release \
             --dart-define=BUILD_NUMBER=${{ github.run_number }} \
             --dart-define=MAPTILER_KEY=${{ secrets.MAPTILER_KEY }}
 

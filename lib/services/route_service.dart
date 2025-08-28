@@ -12,23 +12,25 @@ class RouteService {
   static const String _boxName = 'saved_routes';
   final Distance _distance = const Distance();
   final StorageService _storageService = StorageService();
-  
+
   Box<SavedRoute>? _routeBox;
   bool _storageDisabled = false;
 
   /// Initialize route storage (opens Hive box)
-  /// 
+  ///
   /// Assumes StorageService has already initialized Hive in main().
   /// This method only opens the specific box needed for routes.
   Future<void> initialize() async {
     _log('Starting initialization...');
-    
+
     // Check if storage service is initialized
     if (!_storageService.isInitialized) {
       _log('Storage service not initialized - attempting late initialization');
       final success = await _storageService.initialize();
       if (!success) {
-        _log('Storage service initialization failed - entering graceful degradation');
+        _log(
+          'Storage service initialization failed - entering graceful degradation',
+        );
         _storageDisabled = true;
         return;
       }
@@ -44,20 +46,24 @@ class RouteService {
         // that throw UnimplementedError for IndexedDB operations.
         try {
           _routeBox = await Hive.openBox<SavedRoute>(_boxName);
-  } catch (openError) {
+        } catch (openError) {
           _log('Open failed on web: ${openError.runtimeType}');
-          
+
           // Some browsers/environments (or restrictive modes) throw
           // UnimplementedError for IndexedDB. In this case, disable storage
           // gracefully without attempting repair or rethrowing.
           if (openError is UnimplementedError) {
-            _log('IndexedDB unavailable (UnimplementedError). Disabling storage gracefully.');
+            _log(
+              'IndexedDB unavailable (UnimplementedError). Disabling storage gracefully.',
+            );
             _storageDisabled = true;
             _routeBox = null;
             return; // Exit initialize() early; app continues without storage
           }
 
-          _log('Attempting automatic storage repair by deleting box and retrying...');
+          _log(
+            'Attempting automatic storage repair by deleting box and retrying...',
+          );
           try {
             await Hive.deleteBoxFromDisk(_boxName);
             _log('Box deleted. Retrying open...');
@@ -79,11 +85,10 @@ class RouteService {
       _log('✅ Hive box opened successfully');
       _log('Box contains ${_routeBox?.length ?? 0} saved routes');
       _storageDisabled = false;
-      
     } catch (e, stackTrace) {
       _log('❌ Box initialization failed: ${e.runtimeType} - $e');
       _log('Stack trace: $stackTrace');
-      
+
       // Mark storage as disabled but don't throw - graceful degradation
       _storageDisabled = true;
       _routeBox = null;
@@ -95,7 +100,7 @@ class RouteService {
         _log('2. Check if in incognito/private mode');
         _log('3. Check browser storage quota');
       }
-      
+
       _log('GRACEFUL DEGRADATION: App will continue without route saving');
     }
   }
