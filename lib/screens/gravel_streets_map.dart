@@ -244,7 +244,24 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       // With graceful degradation, initialization should always succeed
       // Check actual storage availability instead
       final routeService = ref.read(routeServiceProvider);
+      debugPrint(
+        '🔍 [${DateTime.now().toIso8601String()}] Checking storage availability...',
+      );
       final storageAvailable = routeService.isStorageAvailable();
+      debugPrint(
+        '📊 [${DateTime.now().toIso8601String()}] Storage available: $storageAvailable',
+      );
+
+      // Log detailed storage diagnostics
+      final diagnostics = routeService.getStorageDiagnostics();
+      debugPrint(
+        '🔧 [${DateTime.now().toIso8601String()}] Storage diagnostics:',
+      );
+      for (final line in diagnostics.split('\n')) {
+        if (line.trim().isNotEmpty) {
+          debugPrint('   $line');
+        }
+      }
 
       if (storageAvailable) {
         await _loadSavedRoutes();
@@ -354,7 +371,18 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     }
 
     if (!routeService.isStorageAvailable()) {
-      debugPrint('Storage not available - probably in private browsing mode');
+      debugPrint(
+        '❌ [${DateTime.now().toIso8601String()}] Storage not available during save attempt',
+      );
+      debugPrint(
+        '🔍 [${DateTime.now().toIso8601String()}] Storage diagnostics during save:',
+      );
+      final saveDiagnostics = routeService.getStorageDiagnostics();
+      for (final line in saveDiagnostics.split('\n')) {
+        if (line.trim().isNotEmpty) {
+          debugPrint('   $line');
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
