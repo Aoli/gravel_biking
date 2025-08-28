@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:file_picker/file_picker.dart';
@@ -18,9 +19,9 @@ import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
 import '../widgets/point_marker.dart';
 import '../widgets/distance_panel.dart';
-import '../widgets/riverpod_demo_widget.dart';
 import '../screens/saved_routes_page.dart';
 import '../services/route_service.dart';
+import '../providers/ui_providers.dart';
 
 /// Background isolate function for parsing GPX track points
 /// This prevents UI freezing when processing large GPX files with thousands of points
@@ -139,17 +140,16 @@ class _RouteState {
        );
 }
 
-class GravelStreetsMap extends StatefulWidget {
+class GravelStreetsMap extends ConsumerStatefulWidget {
   const GravelStreetsMap({super.key});
   @override
-  State<GravelStreetsMap> createState() => _GravelStreetsMapState();
+  ConsumerState<GravelStreetsMap> createState() => _GravelStreetsMapState();
 }
 
-class _GravelStreetsMapState extends State<GravelStreetsMap> {
+class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   // Data
   List<Polyline> gravelPolylines = [];
-  bool _showGravelOverlay =
-      false; // Default OFF - hide gravel overlay by default
+  // Note: _showGravelOverlay is now managed by gravelOverlayProvider
   final bool _showTrvNvdbOverlay =
       false; // Disabled by default, prepared for future
   bool isLoading = true;
@@ -179,17 +179,17 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
   final Distance _distance = const Distance();
   final List<LatLng> _routePoints = [];
   final List<double> _segmentMeters = [];
-  bool _measureEnabled = false;
+  // Note: _measureEnabled is now managed by measureModeProvider
   bool _loopClosed = false;
   bool _editModeEnabled = false;
   int? _editingIndex;
 
   // Distance markers state
   final List<LatLng> _distanceMarkers = [];
-  bool _showDistanceMarkers = false; // Default OFF - show subtle orange dots
+  // Distance markers visibility managed by distanceMarkersProvider
   bool _showSegmentAnalysis =
       false; // Default OFF - hide segment analysis panel
-  double _distanceInterval = 1.0; // Default 1km intervals
+  // Distance interval managed by distanceIntervalProvider
 
   // Loading states for file operations
   bool _isExporting = false;
@@ -703,23 +703,26 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _measureEnabled
+              color: ref.watch(measureModeProvider)
                   ? Colors.green.shade600
                   : Colors.red.shade600,
               border: Border.all(
-                color: _measureEnabled
+                color: ref.watch(measureModeProvider)
                     ? Colors.green.shade800
                     : Colors.red.shade800,
                 width: 2,
               ),
             ),
             child: IconButton(
-              tooltip: _measureEnabled
+              tooltip: ref.watch(measureModeProvider)
                   ? 'Stäng av mätläge'
                   : 'Aktivera mätläge',
               icon: const Icon(Icons.straighten, color: Colors.white, size: 22),
-              onPressed: () =>
-                  setState(() => _measureEnabled = !_measureEnabled),
+              onPressed: () {
+                // Toggle measure mode using Riverpod provider
+                final currentMode = ref.read(measureModeProvider);
+                ref.read(measureModeProvider.notifier).state = !currentMode;
+              },
             ),
           ),
           Container(
@@ -768,8 +771,6 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         ),
                       ),
                     ),
-                    // TODO: Remove this demo widget after full Riverpod migration
-                    const RiverpodDemoWidget(),
                     ListTile(
                       title: Text(
                         'Import / Export',
@@ -963,8 +964,9 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      value: _showGravelOverlay,
-                      onChanged: (v) => setState(() => _showGravelOverlay = v),
+                      value: ref.watch(gravelOverlayProvider),
+                      onChanged: (v) =>
+                          ref.read(gravelOverlayProvider.notifier).state = v,
                     ),
                     SwitchListTile(
                       secondary: Icon(
@@ -1037,10 +1039,16 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                               : Text(
                                   '${_distanceMarkers.length} markeringar aktiva',
                                 ),
-                          value: _showDistanceMarkers,
+                          value: ref.watch(distanceMarkersProvider),
                           onChanged: _distanceMarkers.isEmpty
                               ? null
-                              : (v) => setState(() => _showDistanceMarkers = v),
+                              : (v) =>
+                                    ref
+                                            .read(
+                                              distanceMarkersProvider.notifier,
+                                            )
+                                            .state =
+                                        v,
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -1048,11 +1056,11 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Intervall: ${_distanceInterval == 0.5
+                                'Intervall: ${ref.watch(distanceIntervalProvider) == 0.5
                                     ? "500m"
-                                    : _distanceInterval == _distanceInterval.toInt()
-                                    ? "${_distanceInterval.toInt()}km"
-                                    : "${_distanceInterval}km"}',
+                                    : ref.watch(distanceIntervalProvider) == ref.watch(distanceIntervalProvider).toInt()
+                                    ? "${ref.watch(distanceIntervalProvider).toInt()}km"
+                                    : "${ref.watch(distanceIntervalProvider)}km"}',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: Theme.of(
@@ -1063,19 +1071,27 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                               ),
                               const SizedBox(height: 8),
                               Slider(
-                                value: _distanceInterval,
+                                value: ref.watch(distanceIntervalProvider),
                                 min: 0.5,
                                 max: 5.0,
                                 divisions:
                                     9, // 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0
                                 onChanged: (value) =>
-                                    setState(() => _distanceInterval = value),
-                                label: _distanceInterval == 0.5
+                                    ref
+                                            .read(
+                                              distanceIntervalProvider.notifier,
+                                            )
+                                            .state =
+                                        value,
+                                label:
+                                    ref.watch(distanceIntervalProvider) == 0.5
                                     ? '500m'
-                                    : _distanceInterval ==
-                                          _distanceInterval.toInt()
-                                    ? '${_distanceInterval.toInt()}km'
-                                    : '${_distanceInterval}km',
+                                    : ref.watch(distanceIntervalProvider) ==
+                                          ref
+                                              .watch(distanceIntervalProvider)
+                                              .toInt()
+                                    ? '${ref.watch(distanceIntervalProvider).toInt()}km'
+                                    : '${ref.watch(distanceIntervalProvider)}km',
                               ),
                               const SizedBox(height: 8),
                               Row(
@@ -1359,7 +1375,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
               initialZoom: 12,
               onMapEvent: _onMapEvent,
               onTap: (tap, latLng) {
-                if (!_measureEnabled) return;
+                if (!ref.read(measureModeProvider)) return;
                 setState(() {
                   if (_editingIndex != null) {
                     // Save state before moving point
@@ -1393,7 +1409,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                 maxZoom: 19,
                 userAgentPackageName: _userAgentPackageName,
               ),
-              if (_showGravelOverlay) PolylineLayer(polylines: gravelPolylines),
+              if (ref.watch(gravelOverlayProvider))
+                PolylineLayer(polylines: gravelPolylines),
               PolylineLayer(
                 polylines: [
                   if (_routePoints.length >= 2)
@@ -1446,7 +1463,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       final isStartOrEnd = isStartPoint || isEndPoint;
 
                       // In non-measurement mode, only show start/end points
-                      if (!_measureEnabled &&
+                      if (!ref.watch(measureModeProvider) &&
                           !isStartOrEnd &&
                           _routePoints.length > 2) {
                         return null; // Hide middle points when measurement mode is off
@@ -1471,7 +1488,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       // At high zoom (≥13), show all decimated points for full detail
 
                       final baseSize = _editModeEnabled ? 16.0 : 2.0;
-                      final markerSize = _measureEnabled
+                      final markerSize = ref.watch(measureModeProvider)
                           ? baseSize
                           : baseSize * 0.8;
 
@@ -1499,7 +1516,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                           child: _editModeEnabled
                               ? PointMarker(
                                   key: ValueKey(
-                                    'point_${i}_measure_${_measureEnabled}_edit_${_editingIndex}_loop_$_loopClosed',
+                                    'point_${i}_measure_${ref.watch(measureModeProvider)}_edit_${_editingIndex}_loop_$_loopClosed',
                                   ),
                                   index: i,
                                   size: 16.0,
@@ -1508,11 +1525,14 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                                   isEndPoint:
                                       i == _routePoints.length - 1 &&
                                       _routePoints.length > 1,
-                                  measureEnabled: _measureEnabled,
+                                  measureEnabled: ref.watch(
+                                    measureModeProvider,
+                                  ),
                                   isEditing: _editingIndex == i,
                                   isLoopClosed: _loopClosed,
                                 )
-                              : (!_measureEnabled && isStartOrEnd)
+                              : (!ref.watch(measureModeProvider) &&
+                                    isStartOrEnd)
                               ? PointMarker(
                                   key: ValueKey(
                                     'view_point_${i}_loop_$_loopClosed',
@@ -1640,12 +1660,14 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                   ],
                 ),
               // Distance marker dots - always visible as subtle fallback when text markers are disabled
-              if (!_showDistanceMarkers && _distanceMarkers.isNotEmpty)
+              if (!ref.watch(distanceMarkersProvider) &&
+                  _distanceMarkers.isNotEmpty)
                 MarkerLayer(
                   markers: _distanceMarkers.asMap().entries.map((entry) {
                     final index = entry.key;
                     final point = entry.value;
-                    final distanceKm = (index + 1) * _distanceInterval;
+                    final distanceKm =
+                        (index + 1) * ref.watch(distanceIntervalProvider);
 
                     return Marker(
                       point: point,
@@ -1653,7 +1675,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       height: 6.0,
                       alignment: Alignment.center,
                       child: GestureDetector(
-                        onTap: () => _showDistanceMarkerInfo(index, distanceKm),
+                        onTap: () => _showDistanceMarkerInfo(
+                          index,
+                          distanceKm.toDouble(),
+                        ),
                         child: Container(
                           width: 6.0,
                           height: 6.0,
@@ -1678,12 +1703,14 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                   }).toList(),
                 ),
               // Distance text markers layer - placed last to appear on top
-              if (_showDistanceMarkers && _distanceMarkers.isNotEmpty)
+              if (ref.watch(distanceMarkersProvider) &&
+                  _distanceMarkers.isNotEmpty)
                 MarkerLayer(
                   markers: _distanceMarkers.asMap().entries.map((entry) {
                     final index = entry.key;
                     final point = entry.value;
-                    final distanceKm = (index + 1) * _distanceInterval;
+                    final distanceKm =
+                        (index + 1) * ref.watch(distanceIntervalProvider);
 
                     return Marker(
                       point: point,
@@ -1691,7 +1718,10 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       height: 24,
                       alignment: Alignment.center,
                       child: GestureDetector(
-                        onTap: () => _showDistanceMarkerInfo(index, distanceKm),
+                        onTap: () => _showDistanceMarkerInfo(
+                          index,
+                          distanceKm.toDouble(),
+                        ),
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(
@@ -1827,14 +1857,15 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                       }
                     }),
                     theme: Theme.of(context),
-                    measureEnabled: _measureEnabled,
+                    measureEnabled: ref.watch(measureModeProvider),
                     loopClosed: _loopClosed,
                     canToggleLoop: _routePoints.length >= 3,
                     onToggleLoop: _toggleLoop,
                     editModeEnabled: _editModeEnabled,
-                    showDistanceMarkers: _showDistanceMarkers,
-                    onDistanceMarkersToggled: (enabled) => setState(() {
-                      _showDistanceMarkers = enabled;
+                    showDistanceMarkers: ref.watch(distanceMarkersProvider),
+                    onDistanceMarkersToggled: (enabled) {
+                      ref.read(distanceMarkersProvider.notifier).state =
+                          enabled;
                       if (enabled &&
                           _routePoints.length >= 2 &&
                           _distanceMarkers.isEmpty) {
@@ -1842,8 +1873,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
                         _generateDistanceMarkers();
                       }
                       // Don't clear markers when disabled - we need them for orange dots
-                    }),
-                    distanceInterval: _distanceInterval,
+                    },
+                    distanceInterval: ref.watch(distanceIntervalProvider),
                     canUndo: _undoHistory.isNotEmpty,
                   ),
                 ],
@@ -1889,7 +1920,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
     final currentState = _RouteState.fromCurrent(
       routePoints: _routePoints,
       loopClosed: _loopClosed,
-      showDistanceMarkers: _showDistanceMarkers,
+      showDistanceMarkers: ref.read(distanceMarkersProvider),
       distanceMarkers: _distanceMarkers,
     );
 
@@ -1910,7 +1941,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
       _routePoints.clear();
       _routePoints.addAll(previousState.routePoints);
       _loopClosed = previousState.loopClosed;
-      _showDistanceMarkers = previousState.showDistanceMarkers;
+      ref.read(distanceMarkersProvider.notifier).state =
+          previousState.showDistanceMarkers;
       _distanceMarkers.clear();
       _distanceMarkers.addAll(previousState.distanceMarkers);
       _editingIndex = null; // Clear any active editing
@@ -2026,7 +2058,8 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
     _saveStateForUndo(); // Save state before generating markers
     _distanceMarkers.clear();
-    final intervalMeters = _distanceInterval * 1000; // Convert km to meters
+    final intervalMeters =
+        ref.read(distanceIntervalProvider) * 1000; // Convert km to meters
 
     double currentDistance = 0.0;
     double nextMarkerDistance = intervalMeters;
@@ -2096,7 +2129,7 @@ class _GravelStreetsMapState extends State<GravelStreetsMap> {
 
   /// Helper method to regenerate distance markers if they were visible
   void _updateDistanceMarkersIfVisible() {
-    if (_showDistanceMarkers && _routePoints.length >= 2) {
+    if (ref.read(distanceMarkersProvider) && _routePoints.length >= 2) {
       _generateDistanceMarkers();
     }
   }

@@ -39,26 +39,70 @@
    - ✅ Basic state management working
    - ✅ No breaking changes to existing functionality
 
-## Next Steps (Phase 2)
+## Phase 2: Measure Mode Toggle ✅ COMPLETED
+
+### What Was Done:
+1. **Class Conversion**:
+   - Converted `GravelStreetsMap` from `StatefulWidget` to `ConsumerStatefulWidget`
+   - Converted `_GravelStreetsMapState` from `State<T>` to `ConsumerState<T>`
+   - Added `flutter_riverpod` import and `ui_providers.dart` import
+
+2. **State Variable Migration**:
+   - Removed local `bool _measureEnabled = false;` variable
+   - All references now use `ref.watch(measureModeProvider)` or `ref.read(measureModeProvider)`
+
+3. **Toggle Button Conversion**:
+   - **Before**: `setState(() => _measureEnabled = !_measureEnabled)`
+   - **After**: Riverpod provider toggle with clean syntax:
+     ```dart
+     onPressed: () {
+       final currentMode = ref.read(measureModeProvider);
+       ref.read(measureModeProvider.notifier).state = !currentMode;
+     },
+     ```
+
+4. **UI Reactive Updates**:
+   - Button decoration colors: `ref.watch(measureModeProvider)` for reactive rebuilds
+   - Button tooltip text: Updates automatically with state changes
+   - All visual elements connected to Riverpod state
+
+5. **Business Logic Integration**:
+   - Map tap handler: Uses `ref.read(measureModeProvider)` for one-time checks
+   - Point marker visibility: Uses `ref.watch(measureModeProvider)` for reactive updates
+   - Route info panel: Connected to Riverpod state
+   - Point marker parameters: Passed from provider state
+
+6. **Testing Results**:
+   - ✅ All 104 tests still passing
+   - ✅ Flutter analyzer clean (no issues)
+   - ✅ No breaking changes to existing functionality
+
+### Benefits Realized:
+1. **Removed setState Call**: One less `setState(() => ...)` call
+2. **Cleaner State Management**: Clear separation between UI and state logic
+3. **Better Performance**: Only specific widgets rebuild when measure mode changes
+4. **Easier Testing**: State can be tested independently from UI
+5. **Consistent State**: No risk of state getting out of sync between components
+
+## Next Steps (Phase 3)
 
 ### Priority Order:
-1. **Convert Measure Mode Toggle** (Easiest win)
-   - Replace `_measureEnabled` with `measureModeProvider`
-   - Update toggle button to use Riverpod state
-   - Remove setState for measure mode
+1. **Remove Demo Widget** (Cleanup)
+   - Remove `RiverpodDemoWidget` from drawer
+   - Clean up temporary imports
 
-2. **Create Route State Model** (Foundation)
-   - Design `RouteState` class with all route data
+2. **Convert Simple UI Toggles** (Quick wins)
+   - Convert `_showGravelOverlay` to use `gravelOverlayProvider`
+   - Convert `_showDistanceMarkers` to use `distanceMarkersProvider`
+   - Convert `_distanceInterval` to use `distanceIntervalProvider`
+
+3. **Create RouteState Model** (Foundation for complex state)
+   - Design `RouteState` class with all route-related data
    - Create `RouteStateNotifier` for business logic
    - Plan migration of complex route operations
 
-3. **Migrate Simple UI Controls** (Quick wins)
-   - Convert gravel overlay toggle
-   - Convert distance markers toggle
-   - Convert distance interval controls
-
 ### Immediate Next Task:
-Convert the measure mode toggle button to use `measureModeProvider` instead of local `_measureEnabled` state.
+Clean up the demo widget and convert the gravel overlay toggle to use `gravelOverlayProvider`.
 
 ## Files Created/Modified:
 
@@ -71,9 +115,14 @@ Convert the measure mode toggle button to use `measureModeProvider` instead of l
 - `/docs/riverpod-implementation-status.md` (this file)
 
 ### Modified Files:
-- `/pubspec.yaml`: Added Riverpod dependencies
-- `/lib/main.dart`: Added ProviderScope wrapper
-- `/lib/screens/gravel_streets_map.dart`: Added demo widget (temporary)
+- `/lib/main.dart`: Added ProviderScope wrapper and Riverpod import
+- `/lib/screens/gravel_streets_map.dart`: **Major conversion to ConsumerStatefulWidget**
+  - Converted from `StatefulWidget` to `ConsumerStatefulWidget`
+  - Converted from `State<T>` to `ConsumerState<T>`
+  - Removed `bool _measureEnabled` variable
+  - Replaced all `_measureEnabled` references with `measureModeProvider`
+  - Updated toggle button to use Riverpod state management
+  - Connected all UI elements to reactive provider state
 
 ## Key Learnings from Phase 1:
 

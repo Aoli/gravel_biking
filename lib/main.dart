@@ -25,9 +25,7 @@ Future<void> main() async {
 
   runApp(
     // ProviderScope enables Riverpod state management throughout the app
-    const ProviderScope(
-      child: MyApp(),
-    ),
+    const ProviderScope(child: MyApp()),
   );
 }
 

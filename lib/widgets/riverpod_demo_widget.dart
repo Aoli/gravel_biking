@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/ui_providers.dart';
 
 /// Demo widget to test Riverpod integration
-/// 
+///
 /// This widget demonstrates basic Riverpod usage by providing
 /// a simple toggle for measure mode.
-/// 
+///
 /// TODO: Remove this widget once full migration is complete.
 class RiverpodDemoWidget extends ConsumerWidget {
   const RiverpodDemoWidget({super.key});
@@ -15,7 +15,7 @@ class RiverpodDemoWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch the measure mode state - widget rebuilds when it changes
     final measureEnabled = ref.watch(measureModeProvider);
-    
+
     return Card(
       margin: const EdgeInsets.all(8.0),
       child: Padding(
