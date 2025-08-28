@@ -36,7 +36,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCZo-2lDAgVxL0FNZ5KAtXcz8SssDD3EjM',
-    appId: 'your-web-app-id-here',
+    appId: '1:249998235285:web:fc11c40dfddc50c22dad9c',
     messagingSenderId: 'your-sender-id-here',
     projectId: 'gravel-biking',
     authDomain: 'your-project-id-here.firebaseapp.com',
