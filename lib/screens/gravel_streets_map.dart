@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -16,6 +15,7 @@ import '../widgets/distance_panel.dart';
 import '../widgets/gravel_app_drawer.dart';
 import '../widgets/gravel_app_bar.dart';
 import '../widgets/save_route_dialog.dart';
+import '../widgets/drawer_footer.dart';
 import '../widgets/layers/start_stop_markers_layer.dart';
 import '../widgets/layers/user_location_layer.dart';
 import '../widgets/layers/distance_markers_layers.dart';
@@ -28,7 +28,12 @@ import '../providers/loading_providers.dart';
 import '../mixins/file_operations_mixin.dart';
 import '../mixins/map_operations_mixin.dart';
 import '../mixins/route_management_mixin.dart';
+import '../mixins/saved_routes_mixin.dart';
+import '../mixins/distance_markers_mixin.dart';
 import '../services/gravel_overpass_service.dart';
+import '../widgets/overlays/file_operation_overlay.dart';
+import '../widgets/overlays/watermark.dart';
+import '../widgets/overlays/bottom_controls_panel.dart';
 
 class GravelStreetsMap extends ConsumerStatefulWidget {
   const GravelStreetsMap({super.key});
@@ -41,7 +46,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         TickerProviderStateMixin,
         FileOperationsMixin,
         MapOperationsMixin,
-        RouteManagementMixin {
+        RouteManagementMixin,
+        SavedRoutesMixin,
+        DistanceMarkersMixin {
   // Data
   List<Polyline> gravelPolylines = [];
   final GravelOverpassService _overpassService = GravelOverpassService();
@@ -96,6 +103,22 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   // Editing index managed by editingIndexProvider
   bool _isInitialized = false; // Track RouteService initialization status
 
+  // Expose storage initialization status to SavedRoutesMixin
+  @override
+  bool get isStorageInitialized => _isInitialized;
+
+  // DistanceMarkersMixin bindings
+  @override
+  List<LatLng> get routePoints => _routePoints;
+  @override
+  List<LatLng> get distanceMarkers => _distanceMarkers;
+  @override
+  Distance get distance => _distance;
+  @override
+  void saveStateForUndo() => _saveStateForUndo();
+  @override
+  void requestRebuild() => setState(() {});
+
   // Global loading overlay for file operations computed from providers
 
   // Undo system for general edit operations
@@ -104,9 +127,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
   // Dynamic point sizing based on route point density
   // This system automatically adjusts marker sizes to prevent visual overlap in dense routes
-  // Saved routes
-  final List<SavedRoute> _savedRoutes = [];
-  static const int _maxSavedRoutes = 50; // Updated from 5 to 50
+  // Saved routes handled by SavedRoutesMixin
 
   @override
   void initState() {
@@ -163,7 +184,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       }
 
       if (storageAvailable) {
-        await _loadSavedRoutes();
+        await loadSavedRoutes();
         debugPrint('✅ Storage working - routes loaded successfully');
       } else {
         debugPrint(
@@ -232,115 +253,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   }
 
   // Saved Routes Management
-  Future<void> _loadSavedRoutes() async {
-    try {
-      final routeService = ref.read(routeServiceProvider);
-      final routes = await routeService.loadSavedRoutes();
-      setState(() {
-        _savedRoutes.clear();
-        _savedRoutes.addAll(routes);
-      });
-    } catch (e) {
-      debugPrint('Error loading saved routes: $e');
-    }
-  }
-
-  Future<void> _saveCurrentRouteInternal(String name) async {
-    if (_routePoints.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Ingen rutt att spara')));
-      return;
-    }
-
-    // Check if RouteService is properly initialized
-    final routeService = ref.read(routeServiceProvider);
-    if (!_isInitialized) {
-      debugPrint('RouteService not initialized yet');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('App is still initializing. Please wait...'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-      return;
-    }
-
-    if (!routeService.isStorageAvailable()) {
-      debugPrint(
-        '❌ [${DateTime.now().toIso8601String()}] Storage not available during save attempt',
-      );
-      debugPrint(
-        '🔍 [${DateTime.now().toIso8601String()}] Storage diagnostics during save:',
-      );
-      final saveDiagnostics = routeService.getStorageDiagnostics();
-      for (final line in saveDiagnostics.split('\n')) {
-        if (line.trim().isNotEmpty) {
-          debugPrint('   $line');
-        }
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Route saving unavailable. This happens in private browsing mode or when browser storage is disabled.',
-            ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Export instead',
-              onPressed: () => exportGeoJsonRoute(_routePoints),
-            ),
-          ),
-        );
-      }
-      return;
-    }
-
-    ref.read(isSavingProvider.notifier).state = true;
-
-    try {
-      // Add a small delay to make loading indicator visible
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      await routeService.saveCurrentRoute(
-        name: name,
-        routePoints: _routePoints,
-        loopClosed: ref.watch(loopClosedProvider),
-        description: null, // Can be enhanced later with description input
-      );
-
-      await _loadSavedRoutes(); // Refresh the local list
-
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Rutt "$name" sparad')));
-      }
-    } catch (e) {
-      debugPrint('Error saving route: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving route: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Export instead',
-              onPressed: () => exportGeoJsonRoute(_routePoints),
-            ),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        ref.read(isSavingProvider.notifier).state = false;
-      }
-    }
-  }
+  // Delegated to SavedRoutesMixin.saveCurrentRoute
 
   /// Load route from SavedRoutesPage - no navigation pops needed
   void _loadRouteFromSavedRoute(SavedRoute savedRoute) {
@@ -367,43 +280,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     // Center map on the loaded route
     if (_routePoints.isNotEmpty) {
       _centerMapOnRoute();
-      _autoGenerateDistanceMarkers(); // Auto-generate distance markers for loaded route
+      autoRecalcDistanceMarkers(); // Auto-generate distance markers for loaded route
     }
   }
 
   // Legacy method removed; use _loadRouteFromSavedRoute for loading routes
 
-  void _centerMapOnRoute() {
-    if (_routePoints.isEmpty) return;
-
-    if (_routePoints.length == 1) {
-      _mapController.move(_routePoints.first, 15);
-    } else {
-      // Calculate bounds of all route points
-      double minLat = _routePoints.first.latitude;
-      double maxLat = _routePoints.first.latitude;
-      double minLng = _routePoints.first.longitude;
-      double maxLng = _routePoints.first.longitude;
-
-      for (final point in _routePoints) {
-        minLat = math.min(minLat, point.latitude);
-        maxLat = math.max(maxLat, point.latitude);
-        minLng = math.min(minLng, point.longitude);
-        maxLng = math.max(maxLng, point.longitude);
-      }
-
-      // Add padding around the route
-      final latPadding = (maxLat - minLat) * 0.1;
-      final lngPadding = (maxLng - minLng) * 0.1;
-
-      final bounds = LatLngBounds(
-        LatLng(minLat - latPadding, minLng - lngPadding),
-        LatLng(maxLat + latPadding, maxLng + lngPadding),
-      );
-
-      _mapController.fitCamera(CameraFit.bounds(bounds: bounds));
-    }
-  }
+  void _centerMapOnRoute() => centerMapOnRoute(_mapController, _routePoints);
 
   // Old inline dialogs removed - use extracted widgets
 
@@ -446,13 +329,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     LatLngBounds a,
     LatLngBounds b, {
     double tol = 0.0005,
-  }) {
-    double d(double x, double y) => (x - y).abs();
-    return d(a.southWest.latitude, b.southWest.latitude) < tol &&
-        d(a.southWest.longitude, b.southWest.longitude) < tol &&
-        d(a.northEast.latitude, b.northEast.latitude) < tol &&
-        d(a.northEast.longitude, b.northEast.longitude) < tol;
-  }
+  }) => boundsAlmostEqual(a, b, tol: tol);
 
   Future<void> _fetchGravelForBounds(LatLngBounds bounds) async {
     final timestamp = DateTime.now();
@@ -517,7 +394,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
             if (_routePoints.isNotEmpty) {
               _centerMapOnRoute();
-              _autoGenerateDistanceMarkers();
+              autoRecalcDistanceMarkers();
             }
           });
         },
@@ -550,17 +427,17 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
             if (_routePoints.isNotEmpty) {
               _centerMapOnRoute();
-              _autoGenerateDistanceMarkers();
+              autoRecalcDistanceMarkers();
             }
           });
         },
         onExportGpx: () async {
           await exportGpxRoute(_routePoints);
         },
-        onSaveRoute: _saveCurrentRouteInternal,
+        onSaveRoute: (name) => saveCurrentRoute(name, _routePoints),
         hasRoute: _routePoints.isNotEmpty,
-        savedRoutesCount: _savedRoutes.length,
-        maxSavedRoutes: _maxSavedRoutes,
+        savedRoutesCount: savedRoutes.length,
+        maxSavedRoutes: maxSavedRoutes,
         distanceMarkers: _distanceMarkers,
         showTrvNvdbOverlay: _showTrvNvdbOverlay,
         // Segment analysis toggle
@@ -572,7 +449,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         onGenerateDistanceMarkers: _routePoints.length < 2
             ? () {}
             : () {
-                _generateDistanceMarkers();
+                recalcDistanceMarkers();
               },
         onClearDistanceMarkers: _distanceMarkers.isEmpty
             ? () {}
@@ -584,12 +461,15 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               builder: (context) => SavedRoutesPage(
                 routeService: ref.read(routeServiceProvider),
                 onLoadRoute: _loadRouteFromSavedRoute,
-                onRoutesChanged: _loadSavedRoutes,
+                onRoutesChanged: loadSavedRoutes,
               ),
             ),
           );
         },
-        footer: _buildDrawerFooter(context),
+        footer: DrawerFooter(
+          appVersion: _appVersion,
+          buildNumber: _buildNumber,
+        ),
       ),
       body: Stack(
         children: [
@@ -612,7 +492,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                     _recomputeSegments();
                     // Always regenerate distance markers when moving a waypoint
                     // to ensure they stay positioned correctly along the updated polyline
-                    _autoGenerateDistanceMarkers();
+                    autoRecalcDistanceMarkers();
                   } else if (!_editModeEnabled) {
                     // Save state before adding new point
                     _saveStateForUndo();
@@ -625,7 +505,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                     }
                     _routePoints.add(latLng);
                     _recomputeSegments();
-                    _autoGenerateDistanceMarkers(); // Always generate distance markers
+                    autoRecalcDistanceMarkers(); // Always generate distance markers
                   }
                   // When edit mode is enabled but no point is selected, do nothing
                   // This prevents accidental point addition during editing
@@ -737,35 +617,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
           ),
           if (isLoading) const Center(child: CircularProgressIndicator()),
           // Global file operation loading overlay
-          if (ref.watch(isImportingProvider) || ref.watch(isExportingProvider))
-            Container(
-              color: Colors.black54,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 60,
-                      height: 60,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 4,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      ref.watch(isImportingProvider)
-                          ? 'Importerar...'
-                          : 'Exporterar...',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          FileOperationOverlay(
+            isImporting: ref.watch(isImportingProvider),
+            isExporting: ref.watch(isExportingProvider),
+          ),
           if (_buildNumber.isNotEmpty)
             Positioned(
               bottom: 10,
@@ -780,94 +635,49 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                 ),
               ),
             ),
-          Align(
-            alignment: Alignment
-                .bottomCenter, // Changed from bottomRight to use full width
-            child: Padding(
-              padding: const EdgeInsets.only(
-                bottom: 12,
-                left: 12,
-                right: 12,
-              ), // More balanced padding
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment:
-                    CrossAxisAlignment.center, // Center alignment
-                children: [
-                  DistancePanel(
-                    segmentMeters: _segmentMeters,
-                    onUndo: _undoLastEdit,
-                    onSave: () async {
-                      if (_routePoints.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Ingen rutt att spara')),
-                        );
-                        return;
-                      }
-                      await SaveRouteDialog.show(
-                        context,
-                        onSave: _saveCurrentRouteInternal,
-                        savedRoutesCount: _savedRoutes.length,
-                        maxSavedRoutes: _maxSavedRoutes,
-                      );
-                    },
-                    onClear: _clearRoute,
-                    onEditModeChanged: (enabled) => setState(() {
-                      _editModeEnabled = enabled;
-                      if (!enabled) {
-                        ref.read(editingIndexProvider.notifier).state =
-                            null; // Clear selection when exiting edit mode
-                      }
-                    }),
-                    theme: Theme.of(context),
-                    measureEnabled: ref.watch(measureModeProvider),
-                    loopClosed: ref.watch(loopClosedProvider),
-                    canToggleLoop: _routePoints.length >= 3,
-                    onToggleLoop: _toggleLoop,
-                    editModeEnabled: _editModeEnabled,
-                    showDistanceMarkers: ref.watch(distanceMarkersProvider),
-                    onDistanceMarkersToggled: (enabled) {
-                      ref.read(distanceMarkersProvider.notifier).state =
-                          enabled;
-                      if (enabled &&
-                          _routePoints.length >= 2 &&
-                          _distanceMarkers.isEmpty) {
-                        // Only generate if we don't have markers yet
-                        _generateDistanceMarkers();
-                      }
-                      // Don't clear markers when disabled - we need them for orange dots
-                    },
-                    distanceInterval: ref.watch(distanceIntervalProvider),
-                    canUndo: _undoHistory.isNotEmpty,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Subtle build/version watermark (e.g., v1.2.3 #27)
-          Builder(
-            builder: (context) {
-              final parts = <String>[];
-              if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
-              if (_buildNumber.isNotEmpty) parts.add('#$_buildNumber');
-              final label = parts.join(' ');
-              if (label.isEmpty) return const SizedBox.shrink();
-              return Positioned(
-                bottom: 12,
-                left: 12,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.4),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
+          BottomControlsPanel(
+            segmentMeters: _segmentMeters,
+            onUndo: _undoLastEdit,
+            onSave: () async {
+              if (_routePoints.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Ingen rutt att spara')),
+                );
+                return;
+              }
+              await SaveRouteDialog.show(
+                context,
+                onSave: (name) => saveCurrentRoute(name, _routePoints),
+                savedRoutesCount: savedRoutes.length,
+                maxSavedRoutes: maxSavedRoutes,
               );
             },
+            onClear: _clearRoute,
+            onEditModeChanged: (enabled) => setState(() {
+              _editModeEnabled = enabled;
+              if (!enabled) {
+                ref.read(editingIndexProvider.notifier).state = null;
+              }
+            }),
+            measureEnabled: ref.watch(measureModeProvider),
+            loopClosed: ref.watch(loopClosedProvider),
+            canToggleLoop: _routePoints.length >= 3,
+            onToggleLoop: _toggleLoop,
+            editModeEnabled: _editModeEnabled,
+            showDistanceMarkers: ref.watch(distanceMarkersProvider),
+            onDistanceMarkersToggled: (enabled) {
+              ref.read(distanceMarkersProvider.notifier).state = enabled;
+              if (enabled &&
+                  _routePoints.length >= 2 &&
+                  _distanceMarkers.isEmpty) {
+                recalcDistanceMarkers();
+              }
+            },
+            distanceInterval: ref.watch(distanceIntervalProvider),
+            canUndo: _undoHistory.isNotEmpty,
           ),
+          // Subtle build/version watermark (e.g., v1.2.3 #27)
+          VersionWatermark(appVersion: _appVersion, buildNumber: _buildNumber),
         ],
       ),
     );
@@ -877,53 +687,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   void dispose() {
     _moveDebounce?.cancel();
     super.dispose();
-  }
-
-  // Build footer widget used at the bottom of the app drawer
-  Widget _buildDrawerFooter(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainer.withValues(alpha: 0.3),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '© Gravel First 2025',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Builder(
-            builder: (context) {
-              final parts = <String>[];
-              if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
-              if (_buildNumber.isNotEmpty) parts.add('#$_buildNumber');
-              final label = parts.join(' ');
-              if (label.isEmpty) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.7),
-                    fontWeight: FontWeight.w300,
-                    fontSize: 11,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
   }
 
   void _saveStateForUndo() {
@@ -986,7 +749,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         _routePoints.insert(afterIndex, midpoint);
       }
       _recomputeSegments();
-      _autoGenerateDistanceMarkers(); // Always regenerate distance markers
+      autoRecalcDistanceMarkers(); // Always regenerate distance markers
       // Keep edit mode active and select the new point
       if (afterIndex == 0 && beforeIndex == _routePoints.length - 2) {
         ref.read(editingIndexProvider.notifier).state =
@@ -1006,7 +769,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       _recomputeSegments();
       // Always regenerate distance markers when toggling loop state
       // This ensures markers are generated for the closing segment
-      _autoGenerateDistanceMarkers();
+      autoRecalcDistanceMarkers();
     });
   }
 
@@ -1070,87 +833,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     return segs;
   }
 
-  void _generateDistanceMarkers() {
-    if (_routePoints.length < 2) return;
-
-    _saveStateForUndo(); // Save state before generating markers
-    _distanceMarkers.clear();
-    final intervalMeters = ref.read(
-      distanceIntervalProvider,
-    ); // Already in meters
-
-    double currentDistance = 0.0;
-    double nextMarkerDistance = intervalMeters;
-
-    for (int i = 1; i < _routePoints.length; i++) {
-      final segmentDistance = _distance.as(
-        LengthUnit.Meter,
-        _routePoints[i - 1],
-        _routePoints[i],
-      );
-      final segmentStart = currentDistance;
-      final segmentEnd = currentDistance + segmentDistance;
-
-      // Check if we need to place marker(s) in this segment
-      while (nextMarkerDistance <= segmentEnd) {
-        // Calculate position along this segment
-        final distanceIntoSegment = nextMarkerDistance - segmentStart;
-        final ratio = distanceIntoSegment / segmentDistance;
-
-        // Interpolate position between the two points
-        final lat =
-            _routePoints[i - 1].latitude +
-            ((_routePoints[i].latitude - _routePoints[i - 1].latitude) * ratio);
-        final lon =
-            _routePoints[i - 1].longitude +
-            ((_routePoints[i].longitude - _routePoints[i - 1].longitude) *
-                ratio);
-
-        _distanceMarkers.add(LatLng(lat, lon));
-        nextMarkerDistance += intervalMeters;
-      }
-
-      currentDistance = segmentEnd;
-    }
-
-    // Handle closed loop - check if we need markers in the closing segment
-    if (ref.read(loopClosedProvider) && _routePoints.length >= 3) {
-      final closingDistance = _distance.as(
-        LengthUnit.Meter,
-        _routePoints.last,
-        _routePoints.first,
-      );
-      final segmentStart = currentDistance;
-      final segmentEnd = currentDistance + closingDistance;
-
-      while (nextMarkerDistance <= segmentEnd) {
-        final distanceIntoSegment = nextMarkerDistance - segmentStart;
-        final ratio = distanceIntoSegment / closingDistance;
-
-        final lat =
-            _routePoints.last.latitude +
-            ((_routePoints.first.latitude - _routePoints.last.latitude) *
-                ratio);
-        final lon =
-            _routePoints.last.longitude +
-            ((_routePoints.first.longitude - _routePoints.last.longitude) *
-                ratio);
-
-        _distanceMarkers.add(LatLng(lat, lon));
-        nextMarkerDistance += intervalMeters;
-      }
-    }
-
-    // Distance markers generated - respect user's display preference
-    setState(() {}); // Just trigger rebuild without forcing markers on
-  }
-
-  /// Auto-generate distance markers whenever route changes
-  void _autoGenerateDistanceMarkers() {
-    if (_routePoints.length >= 2) {
-      _generateDistanceMarkers();
-    }
-  }
+  /// Distance markers are recalculated by DistanceMarkersMixin
 
   void _showDeletePointConfirmation(int index) {
     if (index < 0 || index >= _routePoints.length) return;
@@ -1193,7 +876,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         _routePoints[i + 1],
       );
     }
-
     String formattedDistance;
     if (distanceFromStart >= 1000) {
       formattedDistance = '${(distanceFromStart / 1000).toStringAsFixed(2)}km';
@@ -1247,7 +929,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         }
       }
       _recomputeSegments();
-      _autoGenerateDistanceMarkers(); // Always regenerate distance markers
+      autoRecalcDistanceMarkers(); // Always regenerate distance markers
     });
   }
 

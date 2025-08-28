@@ -206,6 +206,54 @@ out geom;
     _viewportDebounceTimer?.cancel();
     _viewportDebounceTimer = null;
   }
+
+  /// Center and fit the map view around a list of route points.
+  ///
+  /// Adds a small padding (10%) around the route bounds. If only one point is
+  /// provided, move the camera to that point with a reasonable zoom.
+  void centerMapOnRoute(MapController controller, List<LatLng> points) {
+    if (points.isEmpty) return;
+
+    if (points.length == 1) {
+      controller.move(points.first, 15);
+      return;
+    }
+
+    double minLat = points.first.latitude;
+    double maxLat = points.first.latitude;
+    double minLng = points.first.longitude;
+    double maxLng = points.first.longitude;
+
+    for (final p in points) {
+      minLat = math.min(minLat, p.latitude);
+      maxLat = math.max(maxLat, p.latitude);
+      minLng = math.min(minLng, p.longitude);
+      maxLng = math.max(maxLng, p.longitude);
+    }
+
+    final latPadding = (maxLat - minLat) * 0.1;
+    final lngPadding = (maxLng - minLng) * 0.1;
+
+    final bounds = LatLngBounds(
+      LatLng(minLat - latPadding, minLng - lngPadding),
+      LatLng(maxLat + latPadding, maxLng + lngPadding),
+    );
+
+    controller.fitCamera(CameraFit.bounds(bounds: bounds));
+  }
+
+  /// Compare two bounds with a small tolerance to avoid redundant fetches.
+  bool boundsAlmostEqual(
+    LatLngBounds a,
+    LatLngBounds b, {
+    double tol = 0.0005,
+  }) {
+    double d(double x, double y) => (x - y).abs();
+    return d(a.southWest.latitude, b.southWest.latitude) < tol &&
+        d(a.southWest.longitude, b.southWest.longitude) < tol &&
+        d(a.northEast.latitude, b.northEast.latitude) < tol &&
+        d(a.northEast.longitude, b.northEast.longitude) < tol;
+  }
 }
 
 /// Background isolate function for parsing gravel road data
