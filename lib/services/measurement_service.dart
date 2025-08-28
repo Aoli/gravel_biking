@@ -54,7 +54,11 @@ class MeasurementService {
       _routePoints[index] = newPosition;
       _editingIndex = null;
       _recomputeSegments();
-      _updateDistanceMarkersIfVisible();
+      // Always regenerate distance markers when moving a waypoint
+      // to ensure they stay positioned correctly along the updated polyline
+      if (_routePoints.length >= 2) {
+        generateDistanceMarkers();
+      }
     }
   }
 
@@ -88,7 +92,11 @@ class MeasurementService {
       _editingIndex = afterIndex;
     }
     _recomputeSegments();
-    _updateDistanceMarkersIfVisible();
+    // Always regenerate distance markers when adding points between existing ones
+    // since this changes the route shape and marker positions
+    if (_routePoints.length >= 2) {
+      generateDistanceMarkers();
+    }
   }
 
   /// Delete a route point
@@ -107,7 +115,11 @@ class MeasurementService {
       }
     }
     _recomputeSegments();
-    _updateDistanceMarkersIfVisible();
+    // Always regenerate distance markers when deleting points
+    // since this changes the route shape and marker positions
+    if (_routePoints.length >= 2) {
+      generateDistanceMarkers();
+    }
   }
 
   /// Toggle loop closure
@@ -115,7 +127,11 @@ class MeasurementService {
     if (_routePoints.length < 3) return;
     _loopClosed = !_loopClosed;
     _recomputeSegments();
-    _updateDistanceMarkersIfVisible();
+    // Always regenerate distance markers when toggling loop state
+    // This ensures markers are generated for the closing segment
+    if (_routePoints.length >= 2) {
+      generateDistanceMarkers();
+    }
   }
 
   /// Load route points from external source

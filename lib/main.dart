@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gravel_biking/models/saved_route.dart';
 import 'package:gravel_biking/screens/gravel_streets_map.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'dart:html' as html show window;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,20 +27,11 @@ Future<void> main() async {
 
     // Enhanced mobile Chrome debugging
     if (kIsWeb) {
-      debugPrint('🌐 Web environment details:');
-      debugPrint('  - UserAgent: ${html.window.navigator.userAgent}');
-      debugPrint('  - Platform: ${html.window.navigator.platform}');
-      debugPrint('  - Cookie enabled: ${html.window.navigator.cookieEnabled}');
-      debugPrint('  - OnLine: ${html.window.navigator.onLine}');
-
-      // Check for common mobile Chrome issues
-      final userAgent = html.window.navigator.userAgent.toLowerCase();
-      if (userAgent.contains('mobile') || userAgent.contains('android')) {
-        debugPrint('📱 Mobile device detected - additional checks:');
-        debugPrint('  - Check Chrome storage settings');
-        debugPrint('  - Clear browser data if issues persist');
-        debugPrint('  - Try incognito mode for testing');
-      }
+      debugPrint('🌐 Web environment detected');
+      debugPrint('  - Storage initialization failed in web environment');
+      debugPrint('  - Check browser storage permissions');
+      debugPrint('  - Try clearing browser data if issues persist');
+      debugPrint('  - Use incognito mode for testing');
     }
 
     // Continue app startup even if Hive fails - better user experience
