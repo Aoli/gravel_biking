@@ -18,10 +18,10 @@
 Build a cross-platform Flutter application for planning gravel bike routes using interactive maps. Display gravel roads from OpenStreetMap and provide comprehensive tools for measuring custom routes with advanced import/export capabilities.
 
 ### 1.2 Architecture Status
-**Current State**: Successfully refactored from monolithic to modular architecture:
-- **Before**: Single `main.dart` with 1816 lines containing all functionality
-- **After**: Modular architecture with 95% size reduction in `main.dart` (88 lines)
-- **Benefits**: Improved maintainability, clear separation of concerns, enhanced testability
+**Current State**: Successfully refactored from monolithic to modular mixin-based architecture:
+- **Phase 1 Complete**: `main.dart` reduced from 1816 to 88 lines (95% reduction)
+- **Phase 2 Complete**: `gravel_streets_map.dart` refactored to exactly 1000 lines using mixin extraction and overlay widgets
+- **Benefits**: Improved maintainability, clear separation of concerns, enhanced testability, reusable components
 
 ### 1.3 Key Achievements
 - ✅ **General Undo System**: Universal undo functionality with 50-state history management
@@ -93,8 +93,14 @@ Organize the application using this exact layered structure:
 lib/
 ├── main.dart                    # Clean app entry point (88 lines)
 ├── screens/
-│   ├── gravel_streets_map.dart  # Main map screen (3071 lines)
+│   ├── gravel_streets_map.dart  # Main map screen (1000 lines - modular architecture)
 │   └── saved_routes_page.dart   # Enhanced route management (843 lines)
+├── mixins/
+│   ├── file_operations_mixin.dart    # Import/export functionality
+│   ├── map_operations_mixin.dart     # Map interaction utilities
+│   ├── route_management_mixin.dart   # Route manipulation logic
+│   ├── saved_routes_mixin.dart       # Saved route management
+│   └── distance_markers_mixin.dart   # Distance marker generation (extracted 2025-08-28)
 ├── services/
 │   ├── measurement_service.dart # Route measurement logic (348 lines)
 │   ├── route_service.dart       # Hive-based route management (384 lines)
@@ -107,7 +113,11 @@ lib/
 │   └── coordinate_utils.dart    # Coordinate parsing utilities (29 lines)
 ├── widgets/
 │   ├── point_marker.dart        # Route point marker component (172 lines)
-│   └── distance_panel.dart      # Distance measurement panel (644 lines)
+│   ├── distance_panel.dart      # Distance measurement panel (644 lines)
+│   └── overlays/                # Modular overlay components (extracted 2025-08-28)
+│       ├── file_operation_overlay.dart  # Import/export progress overlay
+│       ├── watermark.dart              # Version/build watermark
+│       └── bottom_controls_panel.dart  # Bottom controls wrapper
 └── providers/                   # State management (see state-management.md)
     ├── ui_providers.dart        # UI state providers + RouteState management (220 lines)
     ├── loading_providers.dart   # Loading state management (20 lines)
@@ -180,13 +190,34 @@ class MyApp extends StatelessWidget {
 
 Create the primary map interface with these mandatory responsibilities:
 
-- Contain complete map functionality (2265 lines)
+- Implement modular mixin-based architecture for separation of concerns
+- Maintain exactly 1000 lines of code through strategic component extraction
 - Integrate Overpass API for gravel road data fetching with 500ms debounce
 - Handle all map interactions and comprehensive state management
 - Structure UI layout including AppBar actions and drawer navigation
 - Render map layers: PolylineLayer for roads/routes, MarkerLayer for points
 - Implement advanced editing features with safety-first gesture handling
 - Manage application state using Riverpod providers (see state-management.md)
+
+**Mixin-Based Architecture Pattern:**
+
+```dart
+class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
+    with
+        TickerProviderStateMixin,
+        FileOperationsMixin,        // Import/export functionality
+        MapOperationsMixin,         // Map interaction utilities  
+        RouteManagementMixin,       // Route manipulation logic
+        SavedRoutesMixin,          // Saved route management
+        DistanceMarkersMixin {     // Distance marker generation
+  // Implementation focuses on UI orchestration and state coordination
+}
+```
+
+**Modular Overlay Components:**
+- `FileOperationOverlay`: Progress overlay for import/export operations
+- `VersionWatermark`: Build/version information display
+- `BottomControlsPanel`: Bottom control panel with comprehensive route actions
 
 #### 4.2.2 SavedRoutesPage Screen
 
@@ -587,6 +618,7 @@ void exampleMethod(Type param1, Type param2) {
 
 ### 9.2 Change History
 
+- **2025-08-28**: GravelStreetsMap Modular Refactoring - Achieved exactly 1000 lines through mixin extraction and overlay widgets
 - **2025-01-27**: Comprehensive Point Editing System - Complete editing overhaul with safety-first gestures
 - **2025-08-26**: General Undo System - Universal undo with 50-state history management
 - **2025-08-26**: Comprehensive Testing Implementation - Professional testing framework established
