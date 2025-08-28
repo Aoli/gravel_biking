@@ -2,6 +2,17 @@
 
 This document tracks feature work one by one with clear status and brief notes.
 
+- [x] **Hierarchical Control System**: Master-detail UI pattern with conditional visibility and auto-disable logic.
+  - Status: Done (2025‑08‑28)
+  - What: Implemented sophisticated control hierarchy with segment switch as master control:
+    - **Segment Switch**: Moved measure mode toggle from app bar to control panel as green "Redigera" / red "View mode" states
+    - **Conditional Visibility**: Edit mode toggle only appears when segment switch is in "Redigera" (green) state
+    - **Auto-disable Logic**: Switching to "View mode" automatically disables edit mode and clears any active editing state
+    - **Master-Detail Pattern**: Segment switch acts as master control governing both its own state and edit mode toggle visibility
+    - **Consistent UI Flow**: Prevents inconsistent states where edit mode could be active during View mode
+    - **Clean Implementation**: Uses `if (widget.measureEnabled)` conditional rendering in widget lists for clean toggling
+  - Benefits: Intuitive UX hierarchy, prevents UI inconsistencies, cleaner control flow, professional interaction patterns
+
 - [x] **GravelStreetsMap Modular Refactoring**: Refactored main map screen for maintainability while preserving all functionality.
   - Status: Done (2025‑08‑28)
   - What: Complete modularization of the 1000+ line map screen using mixins and extracted widgets:

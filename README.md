@@ -3,12 +3,10 @@
 Plan gravel rides on an interactive map. See ## Using the app
 
 - **AppBar**
-  - Measure toggle: green when on, red when off. When on, taps add points; when off, taps don't add points.
-  - Delete button: removes the last added route point (safer placement than in-map gestures).
   - Locate me: centers a marker at your current GPS position (after permission).
 
 - **Map Interactions**
-  - Tap to add points (when measurement mode is on). A polyline connects them.
+  - Tap to add points (when measurement mode is enabled via Distance Panel). A polyline connects them.
   - **Visual route indicators**:
     - **Open routes**: Start point (green with play icon), end point (red with stop icon), intermediate points (blue)
     - **Closed loop routes**: Start/end point (orange with refresh icon), intermediate points (blue)
@@ -19,13 +17,15 @@ Plan gravel rides on an interactive map. See ## Using the app
     - **Midpoint insertion**: In edit mode, + markers appear between points - tap to add a new point there.
   - **Distance feedback**: Tap any point (in non-edit mode) to see compact distance overlay "P2 2.79km från Start" in lower left corner.
 
-- **Distance Panel** (Enhanced editing controls)
+- **Distance Panel** (Enhanced editing controls with hierarchical control system)
   - Shows per-segment distances and the total distance.
-  - **Undo**: Remove the last added point.
-  - **Edit**: Enter edit mode for comprehensive point manipulation (position editing, deletion, midpoint insertion).
+  - **Mode Control**: Segment switch with green "Redigera" (enables measurement and editing) / red "View mode" (measurement disabled, editing hidden).
+  - **Edit Toggle**: Appears only in "Redigera" mode - enter edit mode for comprehensive point manipulation.
+  - **Undo**: Remove the last edit operation with universal undo system.
   - **Save**: Save current route with a custom name (diskette icon for clarity).
-  - **Clear**: Remove all points and start over.
+  - **Clear**: Remove all points and start over (with confirmation dialog).
   - **Close/Open loop**: Appears when you have 3+ points - connects last point to first.
+  - **Distance Markers Toggle**: Show/hide distance markers independently of mode.
   - **Edit Instructions**: When in edit mode, displays comprehensive guidance for all editing operations.
 
 - **Drawer** (hamburger menu)

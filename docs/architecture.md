@@ -24,8 +24,9 @@ Build a cross-platform Flutter application for planning gravel bike routes using
 - **Benefits**: Improved maintainability, clear separation of concerns, enhanced testability, reusable components
 
 ### 1.3 Key Achievements
+- ✅ **Hierarchical Control System**: Master-detail UI pattern with conditional visibility and auto-disable logic
 - ✅ **General Undo System**: Universal undo functionality with 50-state history management
-- ✅ **Comprehensive Testing**: Professional testing framework with 97+ passing tests
+- ✅ **Comprehensive Testing**: Professional testing framework with 104+ passing tests
 - ✅ **Enhanced Route Management**: Hive database supporting 50 routes with advanced filtering
 - ✅ **Cross-Platform Compatibility**: iOS, Android, and web deployment ready
 - ✅ **Distance Markers System**: Configurable markers with smart positioning
@@ -401,7 +402,61 @@ Build measurement interface with these features:
 - Support loop closure with additional segment calculation
 - Provide professional editing workflow with clear entry/exit modes
 
-#### 6.1.2 Undo System Implementation
+#### 6.1.2 Hierarchical Control System
+
+Implement master-detail UI pattern for control panels:
+
+- **Segment Switch Master Control**: Green "Redigera" (edit) / Red "View mode" states
+- **Conditional Visibility**: Edit mode toggle visible only when master is in "Redigera" state
+- **Auto-disable Logic**: Switching to View mode automatically disables edit mode and clears editing state
+- **State Synchronization**: Master control manages both its own state and dependent control visibility
+- **Consistent UI Flow**: Prevents inconsistent states where edit mode is active during View mode
+- **Implementation**: Use `if (widget.measureEnabled)` conditional rendering in widget lists
+
+**Implementation Example:**
+
+```dart
+// In DistancePanel widget - conditional edit mode visibility
+Row(
+  children: [
+    // Master control - always visible
+    SegmentedButton<bool>(
+      segments: const [
+        ButtonSegment(value: true, label: Text('Redigera')),
+        ButtonSegment(value: false, label: Text('View mode')),
+      ],
+      selected: {widget.measureEnabled},
+      onSelectionChanged: (selection) => widget.onToggleMeasure(),
+    ),
+    const SizedBox(width: 16),
+    // Dependent control - conditional visibility
+    if (widget.measureEnabled) // Only show when master is enabled
+      Switch.adaptive(
+        value: widget.editModeEnabled,
+        onChanged: widget.onEditModeChanged,
+      ),
+  ],
+),
+```
+
+**Auto-disable Handler:**
+
+```dart
+onToggleMeasure: () {
+  final currentMode = ref.read(measureModeProvider);
+  ref.read(measureModeProvider.notifier).state = !currentMode;
+  
+  // If switching to View mode, auto-disable edit mode
+  if (currentMode) { // Was true, now becoming false
+    setState(() {
+      _editModeEnabled = false;
+      ref.read(editingIndexProvider.notifier).state = null;
+    });
+  }
+},
+```
+
+#### 6.1.3 Undo System Implementation
 
 Implement comprehensive undo functionality:
 
@@ -412,7 +467,7 @@ Implement comprehensive undo functionality:
 - **Memory Management**: FIFO history queue with configurable limits
 - **UI Integration**: Update panels with `canUndo` parameter for conditional button enabling
 
-#### 6.1.3 Distance Markers System
+#### 6.1.4 Distance Markers System
 
 Create configurable distance marker system:
 
@@ -493,7 +548,17 @@ Ensure consistent behavior across platforms:
 
 This architecture document serves as the central hub for technical implementation. Detailed information for specific domains is available in dedicated spoke documents:
 
-### 8.1 State Management (`state-management.md`)
+### 8.1 UI Patterns (`ui-patterns.md`)
+
+**Master-Detail Control Systems and Design Guidelines**
+
+- Hierarchical control implementation patterns
+- Master-detail UI architecture
+- Conditional visibility and auto-disable logic
+- Material Design integration principles  
+- Interaction patterns and accessibility guidelines
+
+### 8.2 State Management (`state-management.md`)
 
 **Comprehensive Riverpod Implementation Guide**
 
