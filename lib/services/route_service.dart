@@ -4,38 +4,49 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/saved_route.dart';
+import 'storage_service.dart';
 
 /// Enhanced service for managing saved routes with Hive storage
 class RouteService {
   static const int maxSavedRoutes = 50;
   static const String _boxName = 'saved_routes';
   final Distance _distance = const Distance();
+  final StorageService _storageService = StorageService();
+  
   Box<SavedRoute>? _routeBox;
-  bool _storageDisabled = false; // Track if storage is completely disabled
+  bool _storageDisabled = false;
 
-  /// Initialize Hive storage with proper error handling and debugging
+  /// Initialize route storage (opens Hive box)
+  /// 
+  /// Assumes StorageService has already initialized Hive in main().
+  /// This method only opens the specific box needed for routes.
   Future<void> initialize() async {
     _log('Starting initialization...');
-    try {
-      // Skip adapter registration - they should already be registered in main()
-      _log('Adapters already registered in main.dart');
+    
+    // Check if storage service is initialized
+    if (!_storageService.isInitialized) {
+      _log('Storage service not initialized - attempting late initialization');
+      final success = await _storageService.initialize();
+      if (!success) {
+        _log('Storage service initialization failed - entering graceful degradation');
+        _storageDisabled = true;
+        return;
+      }
+    }
 
+    try {
       _log('Attempting to open Hive box "$_boxName"...');
 
-      // Enhanced web environment handling for Android Chrome/WebView
       if (kIsWeb) {
         _log('Web runtime detected. Using IndexedDB backend for Hive.');
-        // Open normally without an aggressive timeout. In some browsers a stale
-        // or large IndexedDB can take longer to open and a timeout would cause
-        // false negatives. If opening fails, attempt an automatic repair by
-        // deleting the box and reopening once.
+        
+        // Enhanced web error handling with automatic repair
         try {
           _routeBox = await Hive.openBox<SavedRoute>(_boxName);
         } catch (openError) {
           _log('Open failed on web: $openError');
-          _log(
-            'Attempting automatic storage repair by deleting box and retrying...',
-          );
+          _log('Attempting automatic storage repair by deleting box and retrying...');
+          
           try {
             await Hive.deleteBoxFromDisk(_boxName);
             _log('Box deleted. Retrying open...');
@@ -43,7 +54,7 @@ class RouteService {
           } catch (repairError, repairStack) {
             _log('Automatic repair failed: $repairError');
             _log('Repair stack: $repairStack');
-            rethrow; // Let outer catch mark storage disabled
+            rethrow;
           }
         }
       } else {
@@ -51,28 +62,27 @@ class RouteService {
         _routeBox = await Hive.openBox<SavedRoute>(_boxName);
       }
 
-      _log('Hive box opened successfully (${_routeBox?.length ?? 0} routes)');
-      _storageDisabled = false; // Storage is working
-    } catch (e, s) {
-      _log('CRITICAL: Hive initialization failed: $e');
-      _log('Stack trace: ${s.toString()}');
-
-      // Mark storage as disabled but don't throw - allow graceful degradation
+      _log('✅ Hive box opened successfully');
+      _log('Box contains ${_routeBox?.length ?? 0} saved routes');
+      _storageDisabled = false;
+      
+    } catch (e, stackTrace) {
+      _log('❌ Box initialization failed: ${e.runtimeType} - $e');
+      _log('Stack trace: $stackTrace');
+      
+      // Mark storage as disabled but don't throw - graceful degradation
       _storageDisabled = true;
       _routeBox = null;
 
-      // For web environments, provide more specific error guidance
+      // Web-specific troubleshooting
       if (kIsWeb) {
         _log('Web-specific troubleshooting:');
         _log('1. Check if browser storage is enabled');
         _log('2. Check if in incognito/private mode');
         _log('3. Check browser storage quota');
-        _log('GRACEFUL DEGRADATION: App will continue without route saving');
-      } else {
-        _log('GRACEFUL DEGRADATION: App will continue without route saving');
       }
-
-      // Don't throw - let the app continue with storage disabled
+      
+      _log('GRACEFUL DEGRADATION: App will continue without route saving');
     }
   }
 

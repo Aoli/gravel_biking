@@ -20,48 +20,39 @@ library;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gravel_biking/models/saved_route.dart';
 import 'package:gravel_biking/screens/gravel_streets_map.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:gravel_biking/services/storage_service.dart';
 
-/// Application entry point with database initialization
+/// Application entry point with centralized storage initialization
 ///
-/// Initializes the Flutter framework and sets up Hive database with type adapters
-/// for persistent route storage. Implements graceful degradation if storage fails,
+/// Initializes the Flutter framework and sets up storage using the centralized
+/// StorageService. Implements graceful degradation if storage fails,
 /// particularly important for web environments with restricted storage access.
 ///
-/// The app continues to function even if Hive initialization fails, providing
-/// core functionality without persistent storage.
+/// The app continues to function even if storage initialization fails, providing
+/// core functionality without persistent route storage.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    // Initialize Hive with enhanced error handling for web environments
-    await Hive.initFlutter();
+  // Initialize storage through the centralized service
+  final storageService = StorageService();
+  final storageInitialized = await storageService.initialize();
 
-    // Register adapters AFTER initializing Hive (only once here)
-    if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(SavedRouteAdapter());
+  if (storageInitialized) {
+    debugPrint('✅ Storage initialized successfully in main()');
+  } else {
+    debugPrint(
+      '❌ Storage initialization failed, continuing with graceful degradation',
+    );
+    debugPrint('Error: ${storageService.errorMessage}');
+
+    // Log diagnostics for troubleshooting
+    final diagnostics = storageService.getDiagnostics();
+    for (final line in diagnostics.split('\n')) {
+      if (line.trim().isNotEmpty) {
+        debugPrint('  $line');
+      }
     }
-    if (!Hive.isAdapterRegistered(1)) {
-      Hive.registerAdapter(LatLngDataAdapter());
-    }
-
-    debugPrint('✅ Hive initialized successfully in main()');
-  } catch (e, stackTrace) {
-    debugPrint('❌ CRITICAL: Hive initialization failed in main(): $e');
-    debugPrint('Stack trace: $stackTrace');
-
-    // Enhanced mobile Chrome debugging
-    if (kIsWeb) {
-      debugPrint('🌐 Web environment detected');
-      debugPrint('  - Storage initialization failed in web environment');
-      debugPrint('  - Check browser storage permissions');
-      debugPrint('  - Try clearing browser data if issues persist');
-      debugPrint('  - Use incognito mode for testing');
-    }
-
-    // Continue app startup even if Hive fails - better user experience
   }
 
   runApp(

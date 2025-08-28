@@ -102,6 +102,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
   // Editing index managed by editingIndexProvider
   bool _isInitialized = false; // Track RouteService initialization status
+  bool _isInitialFetchComplete =
+      false; // Prevent duplicate API calls during initialization
 
   // Expose storage initialization status to SavedRoutesMixin
   @override
@@ -148,6 +150,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     );
     _fetchGravelForBounds(
       LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1)),
+      isInitialFetch: true, // Mark as initial fetch to prevent duplicates
     );
   }
 
@@ -315,14 +318,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       );
       return;
     }
-    if (_lastFetchedBounds != null &&
-        _boundsAlmostEqual(_lastFetchedBounds!, bounds)) {
-      debugPrint(
-        '⏭️ [${timestamp.toIso8601String()}] Queue fetch skipped - bounds almost equal to last fetch',
-      );
-      return;
-    }
-    _fetchGravelForBounds(bounds);
+    // Remove the duplicate bounds check here since it's now handled in _fetchGravelForBounds
+    _fetchGravelForBounds(bounds); // This is a non-initial fetch
   }
 
   bool _boundsAlmostEqual(
@@ -331,7 +328,33 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     double tol = 0.0005,
   }) => boundsAlmostEqual(a, b, tol: tol);
 
-  Future<void> _fetchGravelForBounds(LatLngBounds bounds) async {
+  Future<void> _fetchGravelForBounds(
+    LatLngBounds bounds, {
+    bool isInitialFetch = false,
+  }) async {
+    // Prevent duplicate initial fetches
+    if (isInitialFetch) {
+      if (_isInitialFetchComplete) {
+        debugPrint(
+          '⏭️ [${DateTime.now().toIso8601String()}] Skipping duplicate initial fetch',
+        );
+        return;
+      }
+      _isInitialFetchComplete = true;
+    }
+
+    // Prevent duplicate non-initial fetches with bounds comparison
+    if (!isInitialFetch &&
+        _lastFetchedBounds != null &&
+        _boundsAlmostEqual(_lastFetchedBounds!, bounds)) {
+      debugPrint(
+        '⏭️ [${DateTime.now().toIso8601String()}] Queue fetch skipped - bounds almost equal to last fetch',
+      );
+      return;
+    }
+
+    _lastFetchedBounds = bounds;
+
     final timestamp = DateTime.now();
     debugPrint('🌐 [${timestamp.toIso8601String()}] Gravel fetch requested');
     debugPrint(
