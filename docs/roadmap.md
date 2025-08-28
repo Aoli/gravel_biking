@@ -37,6 +37,21 @@ This document tracks feature work one by one with clear status and brief notes.
     - **Context preservation**: Clears active editing state when undoing for clean interaction flow
   - Benefits: Prevents data loss, enables experimentation, professional editing experience, comprehensive operation reversal
 
+- [x] **Firebase Cloud Storage with Authentication**: Automatic authentication and Firestore route storage with public/private visibility.
+  - Status: Done (2025-08-29)
+  - What: Implemented comprehensive Firebase integration for cloud route storage with seamless authentication:
+    - **Automatic Authentication**: Anonymous Firebase authentication that initializes automatically in background
+    - **Network Connectivity**: Intelligent network and Firebase availability checks before authentication attempts
+    - **Firestore Integration**: Complete cloud database service for route storage with CRUD operations
+    - **Public/Private Visibility**: Route visibility controls allowing users to share routes publicly or keep them private
+    - **Hybrid Storage Architecture**: Offline-first approach using local Hive storage with cloud synchronization
+    - **Enhanced SavedRoute Model**: Added fields for `isPublic`, `userId`, `firestoreId`, and `lastSynced` timestamp
+    - **SyncedRouteService**: Unified service combining local and cloud storage with automatic sync for authenticated users
+    - **UI Integration**: Save dialog with visibility radio buttons (🔒 Privat/🌐 Offentlig) for authenticated users
+    - **Seamless UX**: Routes save locally first, then sync to cloud - no waiting, no blocking operations
+    - **Route Sharing**: Public routes appear in all users' saved routes list, private routes only for creator
+  - Benefits: Cloud backup, route sharing, seamless offline/online experience, data persistence across devices
+
 - [x] **Standardize map tiles to OpenStreetMap for both light and dark themes**.
   - Status: Done (2025‑08‑24)
   - Notes: Removed Stadia dark tiles; now using the same OSM tile URL for all themes.

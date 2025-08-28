@@ -13,6 +13,7 @@ This directory contains comprehensive technical documentation for the Gravel Fir
 - [**state-management.md**](state-management.md) - **Riverpod implementation guide** with provider patterns, migration strategies, and testing approaches
 - [**testing.md**](testing.md) - **Professional testing framework** covering TDD, CI/CD, unit/widget/integration testing, and quality gates  
 - [**api.md**](api.md) - **External API documentation** for Overpass API, MapTiler service, compliance, security, and error handling
+- [**firebase-integration.md**](firebase-integration.md) - **Firebase cloud storage** with automatic authentication, Firestore route storage, and public/private visibility controls
 
 ### 🛣️ Development Roadmap
 
@@ -26,12 +27,14 @@ This directory contains comprehensive technical documentation for the Gravel Fir
 3. **Understand state**: [state-management.md](state-management.md) - Riverpod patterns
 4. **Learn testing**: [testing.md](testing.md) - Quality assurance standards
 5. **API integration**: [api.md](api.md) - External service patterns
+6. **Cloud storage**: [firebase-integration.md](firebase-integration.md) - Firebase authentication and Firestore
 
 ### For Specific Tasks
 - **Adding features** → Start with [architecture.md](architecture.md) § Implementation Requirements
 - **State management** → Detailed guidance in [state-management.md](state-management.md)
 - **Writing tests** → Comprehensive framework in [testing.md](testing.md)
 - **API integration** → Security and compliance in [api.md](api.md)
+- **Cloud functionality** → Firebase services in [firebase-integration.md](firebase-integration.md)
 - **Feature planning** → Current status in [roadmap.md](roadmap.md)
 
 ## Documentation Benefits

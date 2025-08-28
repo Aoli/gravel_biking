@@ -59,6 +59,11 @@ path_provider: ^2.1.4        # iOS-compatible file access
 hive: ^2.2.3                 # High-performance database
 hive_flutter: ^1.1.0         # Flutter Hive integration
 
+# Cloud Storage & Authentication
+firebase_core: ^3.3.0        # Firebase initialization
+firebase_auth: ^5.1.4        # Firebase authentication
+cloud_firestore: ^5.2.1      # Cloud Firestore database
+
 # Development Dependencies
 hive_generator: ^2.0.1       # Code generation for adapters
 build_runner: ^2.4.7         # Build system
@@ -358,6 +363,9 @@ Design system with these architectural layers:
 #### 5.1.3 Data Layer
 
 - **Local Storage**: Hive database for route persistence with automatic migration
+- **Cloud Storage**: Firestore database for route synchronization and public sharing
+- **Authentication**: Firebase Anonymous Authentication for seamless user experience
+- **Hybrid Storage**: Offline-first architecture with cloud synchronization for authenticated users
 - **File Operations**: Cross-platform GeoJSON/GPX import/export with iOS compatibility
 - **External APIs**: Overpass API for gravel road data with viewport-based fetching (see api.md)
 
@@ -467,7 +475,102 @@ Implement comprehensive undo functionality:
 - **Memory Management**: FIFO history queue with configurable limits
 - **UI Integration**: Update panels with `canUndo` parameter for conditional button enabling
 
-#### 6.1.4 Distance Markers System
+#### 6.1.4 Cloud Storage and Authentication Implementation
+
+Implement Firebase-based cloud storage with offline-first architecture:
+
+**Authentication Service:**
+```dart
+/// Firebase Authentication Service with automatic initialization
+class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  /// Automatic anonymous sign-in with network connectivity checks
+  Future<UserCredential?> initialize() async {
+    if (!await _checkNetworkAndFirebase()) return null;
+    return await signInAnonymously();
+  }
+  
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  bool get isSignedIn => currentUser != null;
+  String? get userId => currentUser?.uid;
+}
+```
+
+**Firestore Route Service:**
+```dart
+/// Cloud Firestore service for route storage with public/private visibility
+class FirestoreRouteService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  /// Save route with public/private visibility control
+  Future<String> saveRoute(SavedRoute route, String userId) async {
+    final docRef = await _firestore.collection('routes').add({
+      ...route.toFirestore(),
+      'userId': userId,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return docRef.id;
+  }
+  
+  /// Get all accessible routes (user's private + all public)
+  Future<List<SavedRoute>> getAllAccessibleRoutes(String userId) async {
+    final privateQuery = _firestore.collection('routes')
+        .where('userId', isEqualTo: userId)
+        .where('isPublic', isEqualTo: false);
+    
+    final publicQuery = _firestore.collection('routes')
+        .where('isPublic', isEqualTo: true);
+    
+    // Execute both queries and merge results
+  }
+}
+```
+
+**Hybrid Storage Service:**
+```dart
+/// Offline-first service combining local Hive storage with Firestore sync
+class SyncedRouteService {
+  final RouteService _localService;
+  final FirestoreRouteService _cloudService;
+  final AuthService _authService;
+  
+  /// Save route with automatic cloud sync for authenticated users
+  Future<void> saveCurrentRoute(String name, List<LatLng> points, {bool isPublic = false}) async {
+    // Always save locally first (offline-first)
+    final route = SavedRoute(name: name, points: points, isPublic: isPublic);
+    await _localService.saveRoute(route);
+    
+    // Sync to cloud if authenticated
+    if (_authService.isSignedIn) {
+      try {
+        final firestoreId = await _cloudService.saveRoute(route, _authService.userId!);
+        // Update local route with cloud ID
+        final updatedRoute = route.copyWith(firestoreId: firestoreId);
+        await _localService.updateRoute(name, updatedRoute);
+      } catch (e) {
+        // Cloud sync failed - route remains local-only
+        debugPrint('Cloud sync failed: $e');
+      }
+    }
+  }
+}
+```
+
+**Enhanced SavedRoute Model:**
+- Add `isPublic` field for visibility control
+- Add `userId` field to link routes to owners  
+- Add `firestoreId` field for cloud storage reference
+- Add `lastSynced` timestamp for sync status tracking
+- Include Firestore serialization methods: `toFirestore()`, `fromFirestore()`
+
+**Route Visibility Rules:**
+- **Private Routes**: Only visible to the creator (`userId` matches current user)
+- **Public Routes**: Visible to all authenticated users in the saved routes list
+- **Local-only Routes**: Saved locally for unauthenticated users with option to sync after login
+- **Automatic Sync**: Routes sync to cloud when user authenticates
+
+#### 6.1.5 Distance Markers System
 
 Create configurable distance marker system:
 
@@ -670,6 +773,9 @@ void exampleMethod(Type param1, Type param2) {
 
 - `lib/services/measurement_service.dart` - Core methods documented, some getters/setters need docs
 - `lib/services/route_service.dart` - Class documented, some complex methods need enhancement
+- `lib/services/auth_service.dart` - Firebase Authentication service with anonymous sign-in and automatic initialization
+- `lib/services/firestore_route_service.dart` - Cloud Firestore service for route storage with public/private visibility
+- `lib/services/synced_route_service.dart` - Hybrid service combining local Hive storage with Firestore synchronization
 - `lib/services/location_service.dart` - Basic documentation present
 - `lib/services/file_service.dart` - Class documented, method docs could be enhanced
 - `lib/widgets/distance_panel.dart` - Widget documented, internal methods need docs
