@@ -301,31 +301,50 @@ class GravelAppDrawer extends ConsumerWidget {
                     children: [
                       SwitchListTile(
                         secondary: const SizedBox(),
-                        title: const Text('km'),
+                        title: const Text('Visa markeringar'),
                         subtitle: distanceMarkers.isEmpty
-                            ? const Text('Inga markeringar')
+                            ? const Text('Slå på för att visa markeringar')
                             : Text('${distanceMarkers.length} markeringar'),
                         value: ref.watch(distanceMarkersProvider),
-                        onChanged: distanceMarkers.isEmpty
-                            ? null
-                            : (v) => onToggleDistanceMarkers(v),
+                        onChanged: (v) {
+                          if (v && distanceMarkers.isEmpty) {
+                            // Auto-generate markers when enabling if none exist
+                            onGenerateDistanceMarkers();
+                          }
+                          onToggleDistanceMarkers(v);
+                        },
                       ),
+                      // Distance interval slider
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: Row(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ElevatedButton.icon(
-                              onPressed: onGenerateDistanceMarkers,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Generera'),
+                            Text(
+                              'Avståndsintervall: ${(ref.watch(distanceIntervalProvider) / 1000).toStringAsFixed(1)} km',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
                             ),
-                            const SizedBox(width: 12),
-                            OutlinedButton.icon(
-                              onPressed: distanceMarkers.isEmpty
-                                  ? null
-                                  : onClearDistanceMarkers,
-                              icon: const Icon(Icons.clear),
-                              label: const Text('Rensa'),
+                            Slider(
+                              value: ref.watch(distanceIntervalProvider),
+                              min: 250.0, // 250 meters minimum
+                              max: 5000.0, // 5 km maximum
+                              divisions:
+                                  19, // 250m, 500m, 750m, 1km, 1.25km, ... 5km
+                              label:
+                                  '${(ref.watch(distanceIntervalProvider) / 1000).toStringAsFixed(1)} km',
+                              onChanged: (value) {
+                                ref
+                                        .read(distanceIntervalProvider.notifier)
+                                        .state =
+                                    value;
+                                // Automatically regenerate markers when slider changes
+                                onGenerateDistanceMarkers();
+                              },
                             ),
                           ],
                         ),
