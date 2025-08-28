@@ -693,6 +693,15 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
             onToggleMeasure: () {
               final currentMode = ref.read(measureModeProvider);
               ref.read(measureModeProvider.notifier).state = !currentMode;
+
+              // If switching to View mode (measure disabled), turn off edit mode
+              if (currentMode) {
+                // currentMode was true, now becoming false
+                setState(() {
+                  _editModeEnabled = false;
+                  ref.read(editingIndexProvider.notifier).state = null;
+                });
+              }
             },
           ),
           // Subtle build/version watermark (e.g., v1.2.3 #27)

@@ -292,79 +292,81 @@ class _DistancePanelState extends State<DistancePanel>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Control toggles row - now with more space (300px)
+                    // Control toggles row - conditionally show edit mode toggle
                     Row(
                       children: [
-                        // Edit mode toggle - expanded
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: widget.editModeEnabled
-                                  ? widget.theme.colorScheme.tertiaryContainer
-                                        .withValues(alpha: 0.4)
-                                  : widget.theme.colorScheme.surfaceContainer
-                                        .withValues(alpha: 0.3),
-                              border: Border.all(
+                        // Edit mode toggle - only show when measure mode is enabled (green)
+                        if (widget.measureEnabled) ...[
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
                                 color: widget.editModeEnabled
-                                    ? widget.theme.colorScheme.tertiary
+                                    ? widget.theme.colorScheme.tertiaryContainer
                                           .withValues(alpha: 0.4)
-                                    : widget.theme.colorScheme.outline
-                                          .withValues(alpha: 0.2),
-                                width: 1,
-                              ),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.edit,
-                                  size: 16,
+                                    : widget.theme.colorScheme.surfaceContainer
+                                          .withValues(alpha: 0.3),
+                                border: Border.all(
                                   color: widget.editModeEnabled
                                       ? widget.theme.colorScheme.tertiary
-                                      : onSurface.withValues(alpha: 0.6),
+                                            .withValues(alpha: 0.4)
+                                      : widget.theme.colorScheme.outline
+                                            .withValues(alpha: 0.2),
+                                  width: 1,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Icon(
-                                    Icons.edit_location,
-                                    size: 18,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.edit,
+                                    size: 16,
                                     color: widget.editModeEnabled
-                                        ? widget
-                                              .theme
-                                              .colorScheme
-                                              .onTertiaryContainer
-                                        : onSurface.withValues(alpha: 0.8),
+                                        ? widget.theme.colorScheme.tertiary
+                                        : onSurface.withValues(alpha: 0.6),
                                   ),
-                                ),
-                                Switch(
-                                  value: widget.editModeEnabled,
-                                  onChanged: widget.onEditModeChanged,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  activeThumbColor:
-                                      widget.theme.colorScheme.tertiary,
-                                  activeTrackColor: widget
-                                      .theme
-                                      .colorScheme
-                                      .tertiary
-                                      .withValues(alpha: 0.5),
-                                  inactiveThumbColor:
-                                      widget.theme.colorScheme.outline,
-                                  inactiveTrackColor: widget
-                                      .theme
-                                      .colorScheme
-                                      .surfaceContainerHighest,
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Icon(
+                                      Icons.edit_location,
+                                      size: 18,
+                                      color: widget.editModeEnabled
+                                          ? widget
+                                                .theme
+                                                .colorScheme
+                                                .onTertiaryContainer
+                                          : onSurface.withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                  Switch(
+                                    value: widget.editModeEnabled,
+                                    onChanged: widget.onEditModeChanged,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    activeThumbColor:
+                                        widget.theme.colorScheme.tertiary,
+                                    activeTrackColor: widget
+                                        .theme
+                                        .colorScheme
+                                        .tertiary
+                                        .withValues(alpha: 0.5),
+                                    inactiveThumbColor:
+                                        widget.theme.colorScheme.outline,
+                                    inactiveTrackColor: widget
+                                        .theme
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Distance markers toggle - expanded
+                          const SizedBox(width: 12),
+                        ],
+                        // Distance markers toggle - always visible
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
