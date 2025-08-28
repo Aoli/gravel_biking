@@ -83,24 +83,22 @@ class RouteState {
 ///
 /// Manages the complete route state including points, loop status, and distance markers.
 /// This is the central provider for all route-related state.
-final routeStateProvider = StateProvider<RouteState>(
-  (ref) => RouteState.empty(),
-);
+// Removed legacy routeStateProvider in favor of RouteNotifier-based state.
 
-/// Provider for loop closed state (derived from route state)
+/// Provider for loop closed state (derived from RouteNotifier state)
 ///
 /// Controls whether the current route forms a closed loop.
-/// This is a computed provider that reads from routeStateProvider.
+/// This reads from [routeNotifierProvider] so UI reflects toggle/set operations.
 final loopClosedProvider = Provider<bool>((ref) {
-  return ref.watch(routeStateProvider).loopClosed;
+  return ref.watch(routeNotifierProvider).loopClosed;
 });
 
-/// Provider for route points (derived from route state)
+/// Provider for route points (derived from RouteNotifier state)
 ///
 /// Provides access to the current route points list.
-/// This is a computed provider that reads from routeStateProvider.
+/// This reads from [routeNotifierProvider] so mutations are reflected.
 final routePointsProvider = Provider<List<LatLng>>((ref) {
-  return ref.watch(routeStateProvider).routePoints;
+  return ref.watch(routeNotifierProvider).routePoints;
 });
 
 /// RouteNotifier for complex route operations
@@ -181,9 +179,9 @@ final routeNotifierProvider = StateNotifierProvider<RouteNotifier, RouteState>((
 /// Computed provider for total route distance
 ///
 /// Calculates the total distance of the current route in meters.
-/// This is a computed provider that reads from routeStateProvider.
+/// This is a computed provider that reads from routeNotifierProvider.
 final totalDistanceProvider = Provider<double>((ref) {
-  final routeState = ref.watch(routeStateProvider);
+  final routeState = ref.watch(routeNotifierProvider);
   if (routeState.routePoints.length < 2) return 0.0;
 
   // Calculate total distance (simplified - real implementation would use proper distance calculation)

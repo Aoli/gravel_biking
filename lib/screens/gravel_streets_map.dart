@@ -399,7 +399,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
           final currentMode = ref.read(measureModeProvider);
           ref.read(measureModeProvider.notifier).state = !currentMode;
         },
-        onClearRoute: _clearRoute,
       ),
       drawer: GravelAppDrawer(
         onImportGeoJson: () async {
@@ -675,7 +674,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                 maxSavedRoutes: maxSavedRoutes,
               );
             },
-            onClear: _clearRoute,
+            onClear: _showClearRouteConfirmation,
             onEditModeChanged: (enabled) => setState(() {
               _editModeEnabled = enabled;
               if (!enabled) {
@@ -759,6 +758,38 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       ref.read(editingIndexProvider.notifier).state = null;
       // Keep distance markers toggle state (default OFF for subtle orange dots)
     });
+  }
+
+  void _showClearRouteConfirmation() {
+    if (_routePoints.isEmpty && _segmentMeters.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Rensa rutt'),
+          content: const Text(
+            'Är du säker på att du vill rensa hela rutten? Detta går inte att ångra.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Avbryt'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _clearRoute();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('Rensa'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _addPointBetween(int beforeIndex, int afterIndex, LatLng midpoint) {

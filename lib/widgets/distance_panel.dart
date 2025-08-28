@@ -180,7 +180,7 @@ class _DistancePanelState extends State<DistancePanel>
                           ),
                           IconButton(
                             tooltip: 'Rensa rutt',
-                            icon: const Icon(Icons.clear_all, size: 18),
+                            icon: const Icon(Icons.delete, size: 18),
                             color: widget.theme.colorScheme.error,
                             onPressed: widget.segmentMeters.isEmpty
                                 ? null
