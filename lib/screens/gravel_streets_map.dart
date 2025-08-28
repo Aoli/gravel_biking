@@ -16,130 +16,18 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 // Import our components
 import '../models/saved_route.dart';
+import '../models/route_state_snapshot.dart';
 import '../utils/coordinate_utils.dart';
+import '../utils/gpx_utils.dart';
 import '../widgets/point_marker.dart';
 import '../widgets/distance_panel.dart';
 import '../providers/service_providers.dart';
 import '../screens/saved_routes_page.dart';
 import '../providers/ui_providers.dart';
 import '../providers/loading_providers.dart';
-
-/// Background isolate function for parsing GPX track points
-/// This prevents UI freezing when processing large GPX files with thousands of points
-/// Handles both UTF-8 decoding and XML parsing in the background
-/// Includes smart decimation for large routes to improve performance
-Map<String, dynamic> _parseGpxPoints(Uint8List data) {
-  // Decode UTF-8 in background isolate
-  final text = utf8.decode(data);
-
-  // Parse XML in background isolate
-  final doc = xml.XmlDocument.parse(text);
-  final trkpts = doc.findAllElements('trkpt');
-  final allPts = <LatLng>[];
-
-  for (final p in trkpts) {
-    final latStr = p.getAttribute('lat');
-    final lonStr = p.getAttribute('lon');
-    if (latStr != null && lonStr != null) {
-      final lat = double.tryParse(latStr);
-      final lon = double.tryParse(lonStr);
-      if (lat != null && lon != null) allPts.add(LatLng(lat, lon));
-    }
-  }
-
-  // Smart decimation for large routes
-  final decimatedPts = allPts.length > 2000 ? _decimatePoints(allPts) : allPts;
-
-  return {
-    'points': decimatedPts,
-    'originalCount': allPts.length,
-    'decimatedCount': decimatedPts.length,
-  };
-}
-
-/// Distance-based point decimation to improve performance
-/// Distance-based point decimation algorithm for performance optimization
-///
-/// **Algorithm Name:** Distance-Based Point Decimation (not Douglas-Peucker)
-/// **Purpose:** Reduces the number of route points while preserving route accuracy
-/// This is essential for handling large GPX files (5000+ points) that would otherwise
-/// cause performance issues in both web and mobile environments.
-///
-/// **Algorithm:**
-/// - Uses haversine distance calculation for accurate geographic spacing
-/// - Maintains minimum 15-meter spacing between consecutive points
-/// - Always preserves start and end points (critical for route integrity)
-/// - Removes redundant points on straight sections and gentle curves
-/// - Keeps important points at turns and direction changes
-///
-/// **Performance Impact:**
-/// - Reduces marker rendering load by 60-80% typically
-/// - Decreases memory usage proportionally
-/// - Improves map pan/zoom performance significantly
-/// - Reduces distance marker computation time
-///
-/// **Accuracy Trade-off:**
-/// - 15m spacing is imperceptible for route planning and navigation
-/// - Preserves all meaningful route characteristics and turns
-/// - Visual route appearance remains virtually identical
-/// - Distance calculations remain accurate within GPS precision limits
-///
-/// See `/docs/large-gpx-performance.md` for detailed documentation
-List<LatLng> _decimatePoints(List<LatLng> points) {
-  if (points.length <= 2) return points;
-
-  const minDistanceMeters = 15.0; // Keep points at least 15m apart
-  const distance = Distance();
-  final decimated = <LatLng>[points.first]; // Always keep first point
-
-  for (int i = 1; i < points.length - 1; i++) {
-    final distanceToLast = distance.as(
-      LengthUnit.Meter,
-      decimated.last,
-      points[i],
-    );
-
-    // Keep point if it's far enough from the last kept point
-    if (distanceToLast >= minDistanceMeters) {
-      decimated.add(points[i]);
-    }
-  }
-
-  // Always keep last point
-  if (points.length > 1) {
-    decimated.add(points.last);
-  }
-
-  return decimated;
-}
-
-/// Represents a snapshot of the route state for undo functionality
-class _RouteState {
-  final List<LatLng> routePoints;
-  final bool loopClosed;
-  final bool showDistanceMarkers;
-  final List<LatLng> distanceMarkers;
-
-  _RouteState({
-    required this.routePoints,
-    required this.loopClosed,
-    required this.showDistanceMarkers,
-    required this.distanceMarkers,
-  });
-
-  /// Create a copy of the current route state
-  _RouteState.fromCurrent({
-    required List<LatLng> routePoints,
-    required bool loopClosed,
-    required bool showDistanceMarkers,
-    required List<LatLng> distanceMarkers,
-  }) : this(
-         routePoints: List<LatLng>.from(routePoints),
-         loopClosed: loopClosed,
-         showDistanceMarkers: showDistanceMarkers,
-         distanceMarkers: List<LatLng>.from(distanceMarkers),
-       );
-}
+import '../mixins/file_operations_mixin.dart';
+import '../mixins/map_operations_mixin.dart';
+import '../mixins/route_management_mixin.dart';
 
 class GravelStreetsMap extends ConsumerStatefulWidget {
   const GravelStreetsMap({super.key});
@@ -147,7 +35,8 @@ class GravelStreetsMap extends ConsumerStatefulWidget {
   ConsumerState<GravelStreetsMap> createState() => _GravelStreetsMapState();
 }
 
-class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
+class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
+    with TickerProviderStateMixin, FileOperationsMixin, MapOperationsMixin, RouteManagementMixin {
   // Data
   List<Polyline> gravelPolylines = [];
   // Note: _showGravelOverlay is now managed by gravelOverlayProvider
@@ -164,6 +53,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   LatLngBounds? _lastEventBounds;
   // Map control
   final MapController _mapController = MapController();
+  
+  // Implement abstract method from MapOperationsMixin
+  @override
+  LatLngBounds getCurrentBounds() {
+    final camera = _mapController.camera;
+    return camera.visibleBounds;
+  }
   double? _lastZoom;
   // CI/CD build number (provided via --dart-define=BUILD_NUMBER=123), empty locally
   final String _buildNumber = const String.fromEnvironment(
@@ -200,7 +96,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   // Global loading overlay for file operations computed from providers
 
   // Undo system for general edit operations
-  final List<_RouteState> _undoHistory = [];
+  final List<RouteStateSnapshot> _undoHistory = [];
   static const int _maxUndoHistory = 50;
 
   // Dynamic point sizing based on route point density
@@ -393,7 +289,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
               label: 'Export instead',
-              onPressed: () => _exportGeoJsonRoute(),
+              onPressed: () => exportGeoJsonRoute(_routePoints),
             ),
           ),
         );
@@ -431,7 +327,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
               label: 'Export instead',
-              onPressed: () => _exportGeoJsonRoute(),
+              onPressed: () => exportGeoJsonRoute(_routePoints),
             ),
           ),
         );
@@ -1046,7 +942,24 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                             await Future.delayed(
                               const Duration(milliseconds: 100),
                             );
-                            await _importGeoJsonRouteInternal();
+                            await importGeoJsonRoute((points, loopClosed) {
+                              setState(() {
+                                _routePoints
+                                  ..clear()
+                                  ..addAll(points);
+                                ref.read(editingIndexProvider.notifier).state = null;
+                                ref
+                                    .read(routeNotifierProvider.notifier)
+                                    .setLoopClosed(loopClosed && _routePoints.length >= 3);
+                                _recomputeSegments();
+                              });
+
+                              // Center map on the imported route
+                              if (_routePoints.isNotEmpty) {
+                                _centerMapOnRoute();
+                                _autoGenerateDistanceMarkers(); // Auto-generate distance markers for imported route
+                              }
+                            });
                           },
                         ),
                         ListTile(
@@ -1082,7 +995,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                             await Future.delayed(
                               const Duration(milliseconds: 100),
                             );
-                            await _exportGeoJsonRoute();
+                            await exportGeoJsonRoute(_routePoints);
                           },
                         ),
                       ],
@@ -1133,7 +1046,35 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                             await Future.delayed(
                               const Duration(milliseconds: 100),
                             );
-                            await _importGpxRoute();
+                            await importGpxRoute((points, loopClosed) {
+                              setState(() {
+                                _routePoints
+                                  ..clear()
+                                  ..addAll(points);
+                                ref.read(editingIndexProvider.notifier).state = null;
+                                ref.read(routeNotifierProvider.notifier).setLoopClosed(loopClosed);
+                                // For large routes, clear segments and compute later
+                                if (_routePoints.length > 1000) {
+                                  _segmentMeters.clear();
+                                } else {
+                                  _recomputeSegments();
+                                }
+                              });
+
+                              // Trigger async segment computation for large routes after UI update
+                              if (_routePoints.length > 1000) {
+                                Future.delayed(
+                                  const Duration(milliseconds: 100),
+                                  _recomputeSegmentsAsync,
+                                );
+                              }
+
+                              // Center map on the imported route
+                              if (_routePoints.isNotEmpty) {
+                                _centerMapOnRoute();
+                                _autoGenerateDistanceMarkers(); // Auto-generate distance markers for imported route
+                              }
+                            });
                           },
                         ),
                         ListTile(
@@ -2275,7 +2216,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   }
 
   void _saveStateForUndo() {
-    final currentState = _RouteState.fromCurrent(
+    final currentState = RouteStateSnapshot.fromCurrent(
       routePoints: _routePoints,
       loopClosed: ref.read(loopClosedProvider),
       showDistanceMarkers: ref.read(distanceMarkersProvider),
@@ -2736,163 +2677,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     }
   }
 
-  Future<void> _exportGeoJsonRoute() async {
-    if (_routePoints.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Ingen rutt att exportera')));
-      return;
-    }
-
-    ref.read(isExportingProvider.notifier).state = true;
-
-    try {
-      final coords = [
-        for (final p in _routePoints) [p.longitude, p.latitude],
-        if (ref.read(loopClosedProvider) && _routePoints.length >= 3)
-          [_routePoints.first.longitude, _routePoints.first.latitude],
-      ];
-      final feature = {
-        'type': 'Feature',
-        'properties': {
-          'name': 'Gravel route',
-          'loopClosed': ref.read(loopClosedProvider),
-          'exportedAt': DateTime.now().toIso8601String(),
-        },
-        'geometry': {'type': 'LineString', 'coordinates': coords},
-      };
-      final fc = {
-        'type': 'FeatureCollection',
-        'features': [feature],
-      };
-      final content = const JsonEncoder.withIndent('  ').convert(fc);
-      final bytes = Uint8List.fromList(utf8.encode(content));
-
-      await FileSaver.instance.saveFile(
-        name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.geojson',
-        bytes: bytes,
-        ext: 'geojson',
-        mimeType: MimeType.json,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Rutt exporterad som GeoJSON',
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Export misslyckades: $e')));
-    } finally {
-      if (mounted) {
-        ref.read(isExportingProvider.notifier).state = false;
-      }
-    }
-  }
-
-  Future<void> _importGeoJsonRouteInternal() async {
-    try {
-      final res = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['geojson', 'json'],
-        withData: true,
-      );
-      if (res == null || res.files.isEmpty) {
-        return;
-      }
-
-      final file = res.files.first;
-      final data = file.bytes ?? Uint8List(0);
-      if (data.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Selected file is empty')));
-        return;
-      }
-      final text = utf8.decode(data);
-      final decoded = json.decode(text);
-      final extract = _extractFirstLineString(decoded);
-      if (extract == null || extract.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No LineString found in GeoJSON')),
-        );
-        return;
-      }
-      final imported = [
-        for (final c in extract)
-          if (c is List && c.length >= 2)
-            LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()),
-      ];
-      bool loopClosed = false;
-      // Try to read loopClosed from common places
-      try {
-        if (decoded is Map && decoded['type'] == 'FeatureCollection') {
-          final feats = decoded['features'];
-          if (feats is List && feats.isNotEmpty && feats.first is Map) {
-            final props = (feats.first as Map)['properties'];
-            if (props is Map && props['loopClosed'] is bool) {
-              loopClosed = props['loopClosed'] as bool;
-            }
-          }
-        } else if (decoded is Map && decoded['type'] == 'Feature') {
-          final props = decoded['properties'];
-          if (props is Map && props['loopClosed'] is bool) {
-            loopClosed = props['loopClosed'] as bool;
-          }
-        }
-      } catch (_) {}
-
-      if (!mounted) return;
-      setState(() {
-        _routePoints
-          ..clear()
-          ..addAll(imported);
-        ref.read(editingIndexProvider.notifier).state = null;
-        ref
-            .read(routeNotifierProvider.notifier)
-            .setLoopClosed(loopClosed && _routePoints.length >= 3);
-        _recomputeSegments();
-      });
-
-      // Center map on the imported route
-      if (_routePoints.isNotEmpty) {
-        _centerMapOnRoute();
-        _autoGenerateDistanceMarkers(); // Auto-generate distance markers for imported route
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Importerade ${_routePoints.length} punkter',
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
-    } finally {
-      if (mounted) {
-        ref.read(isImportingProvider.notifier).state = false;
-      }
-    }
-  }
-
   // Returns coordinates array of a LineString ([ [lon,lat], ... ]) or null
   List<dynamic>? _extractFirstLineString(dynamic node) {
     if (node is Map) {
@@ -3014,7 +2798,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
 
       // Parse GPX in background isolate to prevent UI freezing
       // This handles both UTF-8 decoding and XML parsing in the background
-      final result = await compute(_parseGpxPoints, data);
+      final result = await compute(parseGpxPoints, data);
       final pts = result['points'] as List<LatLng>;
       final originalCount = result['originalCount'] as int;
       final decimatedCount = result['decimatedCount'] as int;
