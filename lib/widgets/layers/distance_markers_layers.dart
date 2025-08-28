@@ -317,3 +317,108 @@ class HalfDistanceMarkersLayer extends StatelessWidget {
     );
   }
 }
+
+/// Route midpoint marker layer - single prominent marker at half of total distance
+class RouteMidpointMarkerLayer extends StatelessWidget {
+  const RouteMidpointMarkerLayer({
+    super.key,
+    required this.midpointLocation,
+    required this.totalDistanceKm,
+  });
+
+  final LatLng? midpointLocation;
+  final double totalDistanceKm;
+
+  @override
+  Widget build(BuildContext context) {
+    if (midpointLocation == null) return const SizedBox.shrink();
+
+    return MarkerLayer(
+      markers: [
+        Marker(
+          point: midpointLocation!,
+          width: 60.0, // Larger touch area for prominence
+          height: 60.0,
+          alignment: Alignment.center,
+          child: Container(
+            width: 60.0,
+            height: 60.0,
+            color: Colors.transparent, // Transparent background for touch area
+            child: Stack(
+              children: [
+                // Main midpoint marker - larger and more prominent
+                Positioned(
+                  left: 22.0, // Center the 16px marker in 60px container
+                  top: 22.0,
+                  child: Container(
+                    width: 16.0, // Larger than regular markers
+                    height: 16.0,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      // Use purple/magenta to be distinct from orange markers and polyline
+                      color: Colors.purple.shade600,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 2.0,
+                      ), // Thicker white border
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black45,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // "½" symbol inside the marker
+                Positioned(
+                  left: 22.0,
+                  top: 22.0,
+                  child: SizedBox(
+                    width: 16.0,
+                    height: 16.0,
+                    child: const Center(
+                      child: Text(
+                        '½',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Distance label below the marker
+                Positioned(
+                  left: 5.0, // Center the label
+                  top: 42.0, // Position below the marker
+                  child: SizedBox(
+                    width: 50.0,
+                    child: Text(
+                      '${(totalDistanceKm / 2).toStringAsFixed(1)} km',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.purple.shade600,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        shadows: const [
+                          Shadow(
+                            offset: Offset(0, 1),
+                            blurRadius: 2.0,
+                            color: Colors.white,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

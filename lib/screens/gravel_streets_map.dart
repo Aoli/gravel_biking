@@ -95,7 +95,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   bool _editModeEnabled = false;
   // Distance markers state
   final List<LatLng> _distanceMarkers = [];
-  final List<LatLng> _halfDistanceMarkers = [];
+  LatLng? _routeMidpoint; // Single midpoint marker at half total distance
   // Distance markers visibility managed by distanceMarkersProvider
   bool _showSegmentAnalysis =
       false; // Default OFF - hide segment analysis panel
@@ -594,12 +594,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                   onTap: (index, km) => _showDistanceMarkerInfo(index, km),
                 ),
               // Half-distance markers layer - shown with distance markers
-              if (ref.watch(distanceMarkersProvider) &&
-                  _halfDistanceMarkers.isNotEmpty)
-                HalfDistanceMarkersLayer(
-                  markers: _halfDistanceMarkers,
-                  intervalMeters: ref.watch(distanceIntervalProvider) / 2,
-                  onTap: (index, km) {}, // No action for half-distance markers
+              if (ref.watch(distanceMarkersProvider) && _routeMidpoint != null)
+                RouteMidpointMarkerLayer(
+                  midpointLocation: _routeMidpoint,
+                  totalDistanceKm: _formatTotalDistanceKm(),
                 ),
               // Distance marker dots - always visible on polyline
             ],
@@ -1109,21 +1107,41 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     }
   }
 
-  /// Override to generate both full and half distance markers
+  /// Override to generate distance markers and route midpoint
   @override
   void recalcDistanceMarkers() {
     if (_routePoints.length < 2) return;
 
     saveStateForUndo();
     _distanceMarkers.clear();
-    _halfDistanceMarkers.clear();
+    _routeMidpoint = null;
 
     final intervalMeters = ref.read(distanceIntervalProvider); // in meters
-    final halfIntervalMeters = intervalMeters / 2;
+
+    // Calculate total route distance first to find midpoint
+    double totalRouteDistance = 0.0;
+    for (int i = 1; i < _routePoints.length; i++) {
+      totalRouteDistance += _distance.as(
+        LengthUnit.Meter,
+        _routePoints[i - 1],
+        _routePoints[i],
+      );
+    }
+
+    // Add closing segment distance if loop is closed
+    if (ref.read(loopClosedProvider) && _routePoints.length >= 3) {
+      totalRouteDistance += _distance.as(
+        LengthUnit.Meter,
+        _routePoints.last,
+        _routePoints.first,
+      );
+    }
+
+    final halfTotalDistance = totalRouteDistance / 2.0;
 
     double currentDistance = 0.0;
     double nextMainMarkerDistance = intervalMeters;
-    double nextHalfMarkerDistance = halfIntervalMeters;
+    bool midpointFound = false;
 
     for (int i = 1; i < _routePoints.length; i++) {
       final segmentDistance = _distance.as(
@@ -1151,9 +1169,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         nextMainMarkerDistance += intervalMeters;
       }
 
-      // Place half markers within this segment
-      while (nextHalfMarkerDistance <= segmentEnd) {
-        final distanceIntoSegment = nextHalfMarkerDistance - segmentStart;
+      // Check if midpoint falls within this segment
+      if (!midpointFound &&
+          halfTotalDistance >= segmentStart &&
+          halfTotalDistance <= segmentEnd) {
+        final distanceIntoSegment = halfTotalDistance - segmentStart;
         final ratio = distanceIntoSegment / segmentDistance;
 
         final lat =
@@ -1164,9 +1184,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
             ((_routePoints[i].longitude - _routePoints[i - 1].longitude) *
                 ratio);
 
-        _halfDistanceMarkers.add(LatLng(lat, lon));
-        nextHalfMarkerDistance +=
-            intervalMeters; // Jump by full interval to get half points
+        _routeMidpoint = LatLng(lat, lon);
+        midpointFound = true;
       }
 
       currentDistance = segmentEnd;
@@ -1200,9 +1219,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         nextMainMarkerDistance += intervalMeters;
       }
 
-      // Half markers in closing segment
-      while (nextHalfMarkerDistance <= segmentEnd) {
-        final distanceIntoSegment = nextHalfMarkerDistance - segmentStart;
+      // Check if midpoint falls within closing segment
+      if (!midpointFound &&
+          halfTotalDistance >= segmentStart &&
+          halfTotalDistance <= segmentEnd) {
+        final distanceIntoSegment = halfTotalDistance - segmentStart;
         final ratio = distanceIntoSegment / closingDistance;
 
         final lat =
@@ -1214,8 +1235,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
             ((_routePoints.first.longitude - _routePoints.last.longitude) *
                 ratio);
 
-        _halfDistanceMarkers.add(LatLng(lat, lon));
-        nextHalfMarkerDistance += intervalMeters;
+        _routeMidpoint = LatLng(lat, lon);
+        midpointFound = true;
       }
     }
 
@@ -1237,5 +1258,12 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     } else {
       return '${totalKm.round()} km';
     }
+  }
+
+  /// Get total route distance in kilometers (for midpoint marker)
+  double _formatTotalDistanceKm() {
+    if (_segmentMeters.isEmpty) return 0.0;
+    final totalMeters = _segmentMeters.reduce((a, b) => a + b);
+    return totalMeters / 1000.0;
   }
 }
