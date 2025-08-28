@@ -4,7 +4,39 @@ This document tracks feature work one by one with clear status and brief notes.
 
 - [x] **General Undo System**: Universal undo functionality for all edit operations with state history management.
   - Status: Done (2025‑08‑26)
-  - What: Implemented comprehensive undo system replacing simple "Ångra senaste punkt" with full edit history:
+  - What: Implemented comprehensiv- [x] **Standardize map tiles to OpenStreetMap for both light and dark themes**.
+  - Status: Done (2025‑08‑24)
+  - Notes: Removed Stadia dark tiles; now using the same OSM tile URL for all themes.
+
+- [🔄] **Riverpod State Management Migration**: Transition from StatefulWidget to declarative Riverpod state management.
+  - Status: In Progress (2025‑08‑28)  
+  - What: Complete migration to Riverpod for professional state management architecture:
+    - **Phase 1 ✅ Complete**: Basic setup with ProviderScope, provider directory structure, and foundation providers
+    - **Phase 2 ✅ Complete**: Service providers for RouteService and location service management  
+    - **Phase 3 ✅ Complete**: UI state providers for measure mode, gravel overlay, distance markers, and editing state
+    - **Phase 4 🔄 In Progress**: Screen-specific state integration (map screen converted to ConsumerStatefulWidget)
+      - **✅ Loop state migration**: Fully migrated `_loopClosed` to `loopClosedProvider` with reactive updates
+      - **✅ RouteState management**: Created comprehensive RouteNotifier with complex route operations
+      - **📋 Next**: Route points migration from local list to provider-managed state
+    - **Phase 5 📋 Planned**: Complex state interactions, computed providers, and performance optimizations
+    - **Benefits Achieved**: Reactive UI updates, cleaner state architecture, enhanced testability, 89/93 tests passing
+    - **Migration Strategy**: Incremental replacement preserving existing functionality with zero breaking changes
+  - Reference: See `docs/state-management.md` for detailed implementation guide and current status
+  - Benefits: Declarative state management, improved performance, better testability, scalable architecture for future features
+
+- [ ] **Caching and Offline Support**: Enhanced performance with tile caching and offline gravel data persistence.
+  - Status: Planned
+  - What: Implement comprehensive caching for tiles and fetched geometries:
+    - **Tile Caching**: Consider flutter_map_tile_caching for map tiles (evaluate GPLv3/commercial licensing)
+    - **Custom Cache Alternative**: Simple custom tile cache if licensing incompatible
+    - **Gravel Data Persistence**: Cache Overpass results locally (sqflite/hive) keyed by bbox/zoom
+    - **Offline Viewing**: Previously seen areas available without network connection
+    - **Smart Cache Management**: Sensible max-age policies and cache size limits
+  - Benefits: Improved performance, reduced data usage, offline functionality, better user experience
+
+- [ ] Caching and offline support for both tiles and fetched geometries.
+  - Criteria: Tiles cached with sensible max-age; offline viewing of previously seen areas; cached gravel data persistence.
+  - Approach: Consider flutter_map_tile_caching for tiles (note GPLv3/commercial licensing considerations), or a simple custom cache. Persist Overpass results locally (e.g., sqflite/hive) keyed by bbox/zoom.system replacing simple "Ångra senaste punkt" with full edit history:
     - **Universal undo**: Can undo any edit operation (add points, move points, delete points, toggle loop, generate markers)
     - **State history tracking**: Maintains up to 50 route state snapshots in memory with automatic cleanup
     - **Complete state restoration**: Restores all route data including points, loop status, distance markers visibility and positions
@@ -27,6 +59,19 @@ This document tracks feature work one by one with clear status and brief notes.
     - **Quality Gates**: 90% minimum test coverage, zero analysis issues, and automated security scanning
     - **Testing Tools**: Modern testing stack with mocktail, golden_toolkit, patrol, and integration_test frameworks
   - Benefits: Professional development standards, automated quality assurance, continuous feedback, reduced bugs, maintainable codebase
+
+- [🔄] **Riverpod State Management Migration**: Transition from StatefulWidget to declarative Riverpod state management.
+  - Status: In Progress (2025‑08‑28)  
+  - What: Complete migration to Riverpod for professional state management architecture:
+    - **Phase 1 Complete**: Basic setup with ProviderScope, provider directory structure, and foundation providers
+    - **Phase 2 Complete**: Service providers for RouteService and location service management
+    - **Phase 3 Complete**: UI state providers for measure mode, gravel overlay, distance markers, and editing state
+    - **Phase 4 In Progress**: Screen-specific state integration (map screen, saved routes screen)
+    - **Phase 5 Planned**: Complex state interactions, computed providers, and performance optimizations
+    - **Benefits Target**: Reactive UI updates, improved testability, better state isolation, professional architecture
+    - **Migration Strategy**: Incremental replacement preserving existing functionality with zero breaking changes
+  - Reference: See `docs/state-management.md` for detailed implementation guide and current status
+  - Benefits: Declarative state management, improved performance, better testability, scalable architecture for future features
 
 - [x] **Main.dart Architecture Refactoring**: Transform monolithic main file into modular service-oriented architecture.
   - Status: Done (2025‑08‑26)
@@ -265,4 +310,4 @@ This document tracks feature work one by one with clear status and brief notes.
   - Approach: Consider flutter_map_tile_caching for tiles (note GPLv3/commercial licensing considerations), or a simple custom cache. Persist Overpass results locally (e.g., sqflite/hive) keyed by bbox/zoom.
 
 ---
-Last updated: 2025‑08‑26
+Last updated: 2025‑08‑28

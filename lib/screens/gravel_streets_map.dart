@@ -185,7 +185,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   final List<LatLng> _routePoints = [];
   final List<double> _segmentMeters = [];
   // Note: _measureEnabled is now managed by measureModeProvider
-  bool _loopClosed = false;
+  // Note: _loopClosed is now managed by routeNotifierProvider
   bool _editModeEnabled = false;
   // Distance markers state
   final List<LatLng> _distanceMarkers = [];
@@ -410,7 +410,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       await routeService.saveCurrentRoute(
         name: name,
         routePoints: _routePoints,
-        loopClosed: _loopClosed,
+        loopClosed: ref.watch(loopClosedProvider),
         description: null, // Can be enhanced later with description input
       );
 
@@ -451,7 +451,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       _routePoints.addAll(savedRoute.latLngPoints);
       _segmentMeters.clear();
       ref.read(editingIndexProvider.notifier).state = null;
-      _loopClosed = savedRoute.loopClosed; // Properly restore the loop state
+      ref
+          .read(routeNotifierProvider.notifier)
+          .setLoopClosed(
+            savedRoute.loopClosed,
+          ); // Properly restore the loop state
 
       // Recalculate segment distances
       for (int i = 1; i < _routePoints.length; i++) {
@@ -1621,8 +1625,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                     _saveStateForUndo();
                     // Only allow adding new points when edit mode is disabled
                     // This prevents accidentally adding points while trying to edit existing ones
-                    if (_loopClosed) {
-                      _loopClosed = false; // re-open when adding
+                    if (ref.watch(loopClosedProvider)) {
+                      ref
+                          .read(routeNotifierProvider.notifier)
+                          .setLoopClosed(false); // re-open when adding
                     }
                     _routePoints.add(latLng);
                     _recomputeSegments();
@@ -1646,7 +1652,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                 polylines: [
                   if (_routePoints.length >= 2)
                     Polyline(
-                      points: _loopClosed && _routePoints.length >= 3
+                      points:
+                          ref.watch(loopClosedProvider) &&
+                              _routePoints.length >= 3
                           ? [..._routePoints, _routePoints.first]
                           : _routePoints,
                       color: Theme.of(context).colorScheme.primary,
@@ -1685,7 +1693,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                 MarkerLayer(
                   markers: [
                     // Start/Stop markers
-                    if (_loopClosed)
+                    if (ref.watch(loopClosedProvider))
                       // For closed loops, show a combined start/stop marker
                       Marker(
                         point: _routePoints.first,
@@ -1857,7 +1865,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                           child: _editModeEnabled
                               ? PointMarker(
                                   key: ValueKey(
-                                    'point_${i}_measure_${ref.watch(measureModeProvider)}_edit_${ref.watch(editingIndexProvider)}_loop_$_loopClosed',
+                                    'point_${i}_measure_${ref.watch(measureModeProvider)}_edit_${ref.watch(editingIndexProvider)}_loop_${ref.watch(loopClosedProvider)}',
                                   ),
                                   index: i,
                                   size: 16.0,
@@ -1871,13 +1879,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                   ),
                                   isEditing:
                                       ref.watch(editingIndexProvider) == i,
-                                  isLoopClosed: _loopClosed,
+                                  isLoopClosed: ref.watch(loopClosedProvider),
                                 )
                               : (!ref.watch(measureModeProvider) &&
                                     isStartOrEnd)
                               ? PointMarker(
                                   key: ValueKey(
-                                    'view_point_${i}_loop_$_loopClosed',
+                                    'view_point_${i}_loop_${ref.watch(loopClosedProvider)}',
                                   ),
                                   index: i,
                                   size: 18.0, // Larger base size for view mode
@@ -1885,7 +1893,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                   isEndPoint: isEndPoint,
                                   measureEnabled: false, // View mode
                                   isEditing: false,
-                                  isLoopClosed: _loopClosed,
+                                  isLoopClosed: ref.watch(loopClosedProvider),
                                 )
                               : Container(
                                   // Simple subtle circle for middle points in measure mode
@@ -1952,7 +1960,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                         );
                       }(),
                     // Add midpoint marker for loop closure if loop is closed
-                    if (_loopClosed && _routePoints.length >= 3)
+                    if (ref.watch(loopClosedProvider) &&
+                        _routePoints.length >= 3)
                       () {
                         final midpoint = LatLng(
                           (_routePoints.last.latitude +
@@ -2115,7 +2124,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
               right: 0,
               child: RouteSegmentsPanel(
                 segmentMeters: _segmentMeters,
-                loopClosed: _loopClosed,
+                loopClosed: ref.watch(loopClosedProvider),
                 theme: Theme.of(context),
               ),
             ),
@@ -2207,7 +2216,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                     }),
                     theme: Theme.of(context),
                     measureEnabled: ref.watch(measureModeProvider),
-                    loopClosed: _loopClosed,
+                    loopClosed: ref.watch(loopClosedProvider),
                     canToggleLoop: _routePoints.length >= 3,
                     onToggleLoop: _toggleLoop,
                     editModeEnabled: _editModeEnabled,
@@ -2268,7 +2277,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   void _saveStateForUndo() {
     final currentState = _RouteState.fromCurrent(
       routePoints: _routePoints,
-      loopClosed: _loopClosed,
+      loopClosed: ref.read(loopClosedProvider),
       showDistanceMarkers: ref.read(distanceMarkersProvider),
       distanceMarkers: _distanceMarkers,
     );
@@ -2289,7 +2298,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     setState(() {
       _routePoints.clear();
       _routePoints.addAll(previousState.routePoints);
-      _loopClosed = previousState.loopClosed;
+      ref
+          .read(routeNotifierProvider.notifier)
+          .setLoopClosed(previousState.loopClosed);
       ref.read(distanceMarkersProvider.notifier).state =
           previousState.showDistanceMarkers;
       _distanceMarkers.clear();
@@ -2306,7 +2317,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       _routePoints.clear();
       _distanceMarkers.clear(); // Clear distance markers when clearing route
       _segmentMeters.clear();
-      _loopClosed = false;
+      ref.read(routeNotifierProvider.notifier).setLoopClosed(false);
       ref.read(editingIndexProvider.notifier).state = null;
       // Keep distance markers toggle state (default OFF for subtle orange dots)
     });
@@ -2339,7 +2350,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     if (_routePoints.length < 3) return;
     _saveStateForUndo(); // Save state before toggling loop
     setState(() {
-      _loopClosed = !_loopClosed;
+      ref.read(routeNotifierProvider.notifier).toggleLoop();
       _recomputeSegments();
       // Always regenerate distance markers when toggling loop state
       // This ensures markers are generated for the closing segment
@@ -2350,7 +2361,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   void _recomputeSegments() {
     _segmentMeters
       ..clear()
-      ..addAll(_computeSegments(_routePoints, _loopClosed));
+      ..addAll(_computeSegments(_routePoints, ref.read(loopClosedProvider)));
     // Point size calculation is handled in build method via _calculateDynamicPointSize()
   }
 
@@ -2360,7 +2371,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
 
     final segments = <double>[];
     final points = _routePoints;
-    final closed = _loopClosed;
+    final closed = ref.read(loopClosedProvider);
 
     if (points.length < 2) return;
 
@@ -2451,7 +2462,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     }
 
     // Handle closed loop - check if we need markers in the closing segment
-    if (_loopClosed && _routePoints.length >= 3) {
+    if (ref.read(loopClosedProvider) && _routePoints.length >= 3) {
       final closingDistance = _distance.as(
         LengthUnit.Meter,
         _routePoints.last,
@@ -2640,7 +2651,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     setState(() {
       _routePoints.removeAt(index);
       _distanceMarkers.clear(); // Clear distance markers when modifying route
-      if (_routePoints.length < 3) _loopClosed = false;
+      if (_routePoints.length < 3)
+        ref.read(routeNotifierProvider.notifier).setLoopClosed(false);
       final currentEditingIndex = ref.read(editingIndexProvider);
       if (currentEditingIndex != null) {
         if (_routePoints.isEmpty) {
@@ -2737,14 +2749,14 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     try {
       final coords = [
         for (final p in _routePoints) [p.longitude, p.latitude],
-        if (_loopClosed && _routePoints.length >= 3)
+        if (ref.read(loopClosedProvider) && _routePoints.length >= 3)
           [_routePoints.first.longitude, _routePoints.first.latitude],
       ];
       final feature = {
         'type': 'Feature',
         'properties': {
           'name': 'Gravel route',
-          'loopClosed': _loopClosed,
+          'loopClosed': ref.read(loopClosedProvider),
           'exportedAt': DateTime.now().toIso8601String(),
         },
         'geometry': {'type': 'LineString', 'coordinates': coords},
@@ -2846,7 +2858,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
           ..clear()
           ..addAll(imported);
         ref.read(editingIndexProvider.notifier).state = null;
-        _loopClosed = loopClosed && _routePoints.length >= 3;
+        ref
+            .read(routeNotifierProvider.notifier)
+            .setLoopClosed(loopClosed && _routePoints.length >= 3);
         _recomputeSegments();
       });
 
@@ -2938,7 +2952,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                       },
                     );
                   }
-                  if (_loopClosed && _routePoints.length >= 3) {
+                  if (ref.read(loopClosedProvider) &&
+                      _routePoints.length >= 3) {
                     final f = _routePoints.first;
                     builder.element(
                       'trkpt',
@@ -3022,8 +3037,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
           ..addAll(pts);
         ref.read(editingIndexProvider.notifier).state = null;
         // GPX doesn’t encode loop state; infer if first==last
-        _loopClosed = pts.length >= 3 && pts.first == pts.last;
-        if (_loopClosed && pts.isNotEmpty && pts.first == pts.last) {
+        final isLoopClosed = pts.length >= 3 && pts.first == pts.last;
+        ref.read(routeNotifierProvider.notifier).setLoopClosed(isLoopClosed);
+        if (isLoopClosed && pts.isNotEmpty && pts.first == pts.last) {
           // remove duplicated closing point for internal representation
           _routePoints.removeLast();
         }

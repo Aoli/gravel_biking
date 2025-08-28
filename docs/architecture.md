@@ -109,7 +109,7 @@ lib/
 │   ├── point_marker.dart        # Route point marker component (172 lines)
 │   └── distance_panel.dart      # Distance measurement panel (644 lines)
 └── providers/                   # State management (see state-management.md)
-    ├── ui_providers.dart        # UI state providers (27 lines)
+    ├── ui_providers.dart        # UI state providers + RouteState management (220 lines)
     ├── loading_providers.dart   # Loading state management (20 lines)
     └── service_providers.dart   # Service instance providers (42 lines)
 ```
