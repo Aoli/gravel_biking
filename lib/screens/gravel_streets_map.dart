@@ -1676,12 +1676,14 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                     final index = entry.key;
                     final point = entry.value;
                     final distanceKm =
-                        (index + 1) * ref.watch(distanceIntervalProvider);
+                        (index + 1) *
+                        ref.watch(distanceIntervalProvider) /
+                        1000;
 
                     return Marker(
                       point: point,
-                      width: 6.0, // Subtle size for orange dots
-                      height: 6.0,
+                      width: 10.0, // Increased size for better visibility
+                      height: 10.0,
                       alignment: Alignment.center,
                       child: GestureDetector(
                         onTap: () => _showDistanceMarkerInfo(
@@ -1689,11 +1691,12 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                           distanceKm.toDouble(),
                         ),
                         child: Container(
-                          width: 6.0,
-                          height: 6.0,
+                          width: 10.0,
+                          height: 10.0,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.deepOrange, // Subtle orange color
+                            color:
+                                Colors.deepOrange, // More visible orange dots
                             border: Border.all(
                               color: Colors.white,
                               width: 1.0, // Clean white border
@@ -1719,7 +1722,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                     final index = entry.key;
                     final point = entry.value;
                     final distanceKm =
-                        (index + 1) * ref.watch(distanceIntervalProvider);
+                        (index + 1) *
+                        ref.watch(distanceIntervalProvider) /
+                        1000;
 
                     return Marker(
                       point: point,
