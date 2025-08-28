@@ -22,6 +22,7 @@ import '../widgets/distance_panel.dart';
 import '../screens/saved_routes_page.dart';
 import '../services/route_service.dart';
 import '../providers/ui_providers.dart';
+import '../providers/loading_providers.dart';
 
 /// Background isolate function for parsing GPX track points
 /// This prevents UI freezing when processing large GPX files with thousands of points
@@ -182,8 +183,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   // Note: _measureEnabled is now managed by measureModeProvider
   bool _loopClosed = false;
   bool _editModeEnabled = false;
-  int? _editingIndex;
-
   // Distance markers state
   final List<LatLng> _distanceMarkers = [];
   // Distance markers visibility managed by distanceMarkersProvider
@@ -191,14 +190,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       false; // Default OFF - hide segment analysis panel
   // Distance interval managed by distanceIntervalProvider
 
-  // Loading states for file operations
-  bool _isExporting = false;
-  bool _isImporting = false;
-  bool _isSaving = false;
+  // Editing index managed by editingIndexProvider
   bool _isInitialized = false; // Track RouteService initialization status
 
-  // Global loading overlay for file operations
-  bool get _isFileOperationLoading => _isExporting || _isImporting;
+  // Global loading overlay for file operations computed from providers
 
   // Undo system for general edit operations
   final List<_RouteState> _undoHistory = [];
@@ -339,7 +334,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    ref.read(isSavingProvider.notifier).state = true;
 
     try {
       // Add a small delay to make loading indicator visible
@@ -367,7 +362,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       }
     } finally {
       if (mounted) {
-        setState(() => _isSaving = false);
+        ref.read(isSavingProvider.notifier).state = false;
       }
     }
   }
@@ -379,7 +374,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       _distanceMarkers.clear(); // Clear distance markers when loading new route
       _routePoints.addAll(savedRoute.latLngPoints);
       _segmentMeters.clear();
-      _editingIndex = null;
+      ref.read(editingIndexProvider.notifier).state = null;
       _loopClosed = savedRoute.loopClosed; // Properly restore the loop state
 
       // Recalculate segment distances
@@ -796,7 +791,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                       initiallyExpanded: false,
                       children: [
                         ListTile(
-                          leading: _isImporting
+                          leading: ref.watch(isImportingProvider)
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
@@ -811,15 +806,17 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                   ).colorScheme.onSurface,
                                 ),
                           title: Text(
-                            _isImporting
+                            ref.watch(isImportingProvider)
                                 ? 'Importerar GeoJSON...'
                                 : 'Importera GeoJSON',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          enabled: !_isImporting && !_isExporting,
+                          enabled:
+                              !ref.watch(isImportingProvider) &&
+                              !ref.watch(isExportingProvider),
                           onTap: () async {
                             // Set loading state first while drawer is still open
-                            setState(() => _isImporting = true);
+                            ref.read(isImportingProvider.notifier).state = true;
                             Navigator.of(context).pop();
 
                             // Add a small delay to ensure UI is updated
@@ -830,7 +827,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                           },
                         ),
                         ListTile(
-                          leading: _isExporting
+                          leading: ref.watch(isExportingProvider)
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
@@ -845,15 +842,17 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                   ).colorScheme.onSurface,
                                 ),
                           title: Text(
-                            _isExporting
+                            ref.watch(isExportingProvider)
                                 ? 'Exporterar GeoJSON...'
                                 : 'Exportera GeoJSON',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          enabled: !_isImporting && !_isExporting,
+                          enabled:
+                              !ref.watch(isImportingProvider) &&
+                              !ref.watch(isExportingProvider),
                           onTap: () async {
                             // Set loading state first while drawer is still open
-                            setState(() => _isExporting = true);
+                            ref.read(isExportingProvider.notifier).state = true;
                             Navigator.of(context).pop();
 
                             // Add a small delay to ensure UI is updated
@@ -879,7 +878,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                       initiallyExpanded: false,
                       children: [
                         ListTile(
-                          leading: _isImporting
+                          leading: ref.watch(isImportingProvider)
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
@@ -894,15 +893,17 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                   ).colorScheme.onSurface,
                                 ),
                           title: Text(
-                            _isImporting
+                            ref.watch(isImportingProvider)
                                 ? 'Importerar GPX...'
                                 : 'Importera GPX',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          enabled: !_isImporting && !_isExporting,
+                          enabled:
+                              !ref.watch(isImportingProvider) &&
+                              !ref.watch(isExportingProvider),
                           onTap: () async {
                             // Set loading state first while drawer is still open
-                            setState(() => _isImporting = true);
+                            ref.read(isImportingProvider.notifier).state = true;
                             Navigator.of(context).pop();
 
                             // Add a small delay to ensure UI is updated
@@ -913,7 +914,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                           },
                         ),
                         ListTile(
-                          leading: _isExporting
+                          leading: ref.watch(isExportingProvider)
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
@@ -928,15 +929,17 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                   ).colorScheme.onSurface,
                                 ),
                           title: Text(
-                            _isExporting
+                            ref.watch(isExportingProvider)
                                 ? 'Exporterar GPX...'
                                 : 'Exportera GPX',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          enabled: !_isImporting && !_isExporting,
+                          enabled:
+                              !ref.watch(isImportingProvider) &&
+                              !ref.watch(isExportingProvider),
                           onTap: () async {
                             // Set loading state first while drawer is still open
-                            setState(() => _isExporting = true);
+                            ref.read(isExportingProvider.notifier).state = true;
                             Navigator.of(context).pop();
 
                             // Add a small delay to ensure UI is updated
@@ -1056,11 +1059,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Intervall: ${ref.watch(distanceIntervalProvider) == 0.5
+                                'Intervall: ${ref.watch(distanceIntervalProvider) == 500
                                     ? "500m"
                                     : ref.watch(distanceIntervalProvider) == ref.watch(distanceIntervalProvider).toInt()
-                                    ? "${ref.watch(distanceIntervalProvider).toInt()}km"
-                                    : "${ref.watch(distanceIntervalProvider)}km"}',
+                                    ? "${(ref.watch(distanceIntervalProvider) / 1000).toInt()}km"
+                                    : "${ref.watch(distanceIntervalProvider) / 1000}km"}',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: Theme.of(
@@ -1072,10 +1075,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                               const SizedBox(height: 8),
                               Slider(
                                 value: ref.watch(distanceIntervalProvider),
-                                min: 0.5,
-                                max: 5.0,
+                                min: 500.0,
+                                max: 5000.0,
                                 divisions:
-                                    9, // 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0
+                                    9, // 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000
                                 onChanged: (value) =>
                                     ref
                                             .read(
@@ -1084,14 +1087,14 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                             .state =
                                         value,
                                 label:
-                                    ref.watch(distanceIntervalProvider) == 0.5
+                                    ref.watch(distanceIntervalProvider) == 500
                                     ? '500m'
                                     : ref.watch(distanceIntervalProvider) ==
                                           ref
                                               .watch(distanceIntervalProvider)
                                               .toInt()
-                                    ? '${ref.watch(distanceIntervalProvider).toInt()}km'
-                                    : '${ref.watch(distanceIntervalProvider)}km',
+                                    ? '${(ref.watch(distanceIntervalProvider) / 1000).toInt()}km'
+                                    : '${ref.watch(distanceIntervalProvider) / 1000}km',
                               ),
                               const SizedBox(height: 8),
                               Row(
@@ -1229,7 +1232,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                     ),
                     // Save current route button
                     ListTile(
-                      leading: _isSaving
+                      leading: ref.watch(isSavingProvider)
                           ? const SizedBox(
                               width: 24,
                               height: 24,
@@ -1240,10 +1243,14 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                               color: Theme.of(context).colorScheme.primary,
                             ),
                       title: Text(
-                        _isSaving ? 'Sparar rutt...' : 'Spara aktuell rutt',
+                        ref.watch(isSavingProvider)
+                            ? 'Sparar rutt...'
+                            : 'Spara aktuell rutt',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      enabled: _routePoints.isNotEmpty && !_isSaving,
+                      enabled:
+                          _routePoints.isNotEmpty &&
+                          !ref.watch(isSavingProvider),
                       onTap: () {
                         Navigator.of(context).pop();
                         _showSaveRouteDialog();
@@ -1377,12 +1384,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
               onTap: (tap, latLng) {
                 if (!ref.read(measureModeProvider)) return;
                 setState(() {
-                  if (_editingIndex != null) {
+                  final editingIndex = ref.read(editingIndexProvider);
+                  if (editingIndex != null) {
                     // Save state before moving point
                     _saveStateForUndo();
                     // Move selected point to this location
-                    _routePoints[_editingIndex!] = latLng;
-                    _editingIndex = null;
+                    _routePoints[editingIndex] = latLng;
+                    ref.read(editingIndexProvider.notifier).state = null;
                     _recomputeSegments();
                     _updateDistanceMarkersIfVisible(); // Regenerate markers if visible
                   } else if (!_editModeEnabled) {
@@ -1501,7 +1509,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                           onTap: () {
                             if (_editModeEnabled) {
                               // Only allow point selection when in edit mode
-                              setState(() => _editingIndex = i);
+                              ref.read(editingIndexProvider.notifier).state = i;
                             } else {
                               // Show distance from start to this point when not in edit mode
                               _showDistanceToPoint(i);
@@ -1516,7 +1524,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                           child: _editModeEnabled
                               ? PointMarker(
                                   key: ValueKey(
-                                    'point_${i}_measure_${ref.watch(measureModeProvider)}_edit_${_editingIndex}_loop_$_loopClosed',
+                                    'point_${i}_measure_${ref.watch(measureModeProvider)}_edit_${ref.watch(editingIndexProvider)}_loop_$_loopClosed',
                                   ),
                                   index: i,
                                   size: 16.0,
@@ -1528,7 +1536,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                   measureEnabled: ref.watch(
                                     measureModeProvider,
                                   ),
-                                  isEditing: _editingIndex == i,
+                                  isEditing:
+                                      ref.watch(editingIndexProvider) == i,
                                   isLoopClosed: _loopClosed,
                                 )
                               : (!ref.watch(measureModeProvider) &&
@@ -1789,7 +1798,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
           ),
           if (isLoading) const Center(child: CircularProgressIndicator()),
           // Global file operation loading overlay
-          if (_isFileOperationLoading)
+          if (ref.watch(isImportingProvider) || ref.watch(isExportingProvider))
             Container(
               color: Colors.black54,
               child: Center(
@@ -1806,7 +1815,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _isImporting ? 'Importerar...' : 'Exporterar...',
+                      ref.watch(isImportingProvider)
+                          ? 'Importerar...'
+                          : 'Exporterar...',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w500,
@@ -1852,7 +1863,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                     onEditModeChanged: (enabled) => setState(() {
                       _editModeEnabled = enabled;
                       if (!enabled) {
-                        _editingIndex =
+                        ref.read(editingIndexProvider.notifier).state =
                             null; // Clear selection when exiting edit mode
                       }
                     }),
@@ -1945,7 +1956,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
           previousState.showDistanceMarkers;
       _distanceMarkers.clear();
       _distanceMarkers.addAll(previousState.distanceMarkers);
-      _editingIndex = null; // Clear any active editing
+      ref.read(editingIndexProvider.notifier).state =
+          null; // Clear any active editing
       _recomputeSegments();
     });
   }
@@ -1957,7 +1969,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       _distanceMarkers.clear(); // Clear distance markers when clearing route
       _segmentMeters.clear();
       _loopClosed = false;
-      _editingIndex = null;
+      ref.read(editingIndexProvider.notifier).state = null;
       // Keep distance markers toggle state (default OFF for subtle orange dots)
     });
   }
@@ -1976,9 +1988,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       _autoGenerateDistanceMarkers(); // Always regenerate distance markers
       // Keep edit mode active and select the new point
       if (afterIndex == 0 && beforeIndex == _routePoints.length - 2) {
-        _editingIndex = _routePoints.length - 1; // New point at end
+        ref.read(editingIndexProvider.notifier).state =
+            _routePoints.length - 1; // New point at end
       } else {
-        _editingIndex = afterIndex; // New point at insertion position
+        ref.read(editingIndexProvider.notifier).state =
+            afterIndex; // New point at insertion position
       }
     });
   }
@@ -2058,8 +2072,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
 
     _saveStateForUndo(); // Save state before generating markers
     _distanceMarkers.clear();
-    final intervalMeters =
-        ref.read(distanceIntervalProvider) * 1000; // Convert km to meters
+    final intervalMeters = ref.read(
+      distanceIntervalProvider,
+    ); // Already in meters
 
     double currentDistance = 0.0;
     double nextMarkerDistance = intervalMeters;
@@ -2293,13 +2308,15 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       _routePoints.removeAt(index);
       _distanceMarkers.clear(); // Clear distance markers when modifying route
       if (_routePoints.length < 3) _loopClosed = false;
-      if (_editingIndex != null) {
+      final currentEditingIndex = ref.read(editingIndexProvider);
+      if (currentEditingIndex != null) {
         if (_routePoints.isEmpty) {
-          _editingIndex = null;
-        } else if (index == _editingIndex) {
-          _editingIndex = null;
-        } else if (index < _editingIndex!) {
-          _editingIndex = _editingIndex! - 1;
+          ref.read(editingIndexProvider.notifier).state = null;
+        } else if (index == currentEditingIndex) {
+          ref.read(editingIndexProvider.notifier).state = null;
+        } else if (index < currentEditingIndex) {
+          ref.read(editingIndexProvider.notifier).state =
+              currentEditingIndex - 1;
         }
       }
       _recomputeSegments();
@@ -2382,7 +2399,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       return;
     }
 
-    setState(() => _isExporting = true);
+    ref.read(isExportingProvider.notifier).state = true;
 
     try {
       final coords = [
@@ -2433,7 +2450,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       ).showSnackBar(SnackBar(content: Text('Export misslyckades: $e')));
     } finally {
       if (mounted) {
-        setState(() => _isExporting = false);
+        ref.read(isExportingProvider.notifier).state = false;
       }
     }
   }
@@ -2497,7 +2514,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
         _routePoints
           ..clear()
           ..addAll(imported);
-        _editingIndex = null;
+        ref.read(editingIndexProvider.notifier).state = null;
         _loopClosed = loopClosed && _routePoints.length >= 3;
         _recomputeSegments();
       });
@@ -2526,7 +2543,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
     } finally {
       if (mounted) {
-        setState(() => _isImporting = false);
+        ref.read(isImportingProvider.notifier).state = false;
       }
     }
   }
@@ -2563,7 +2580,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       return;
     }
 
-    setState(() => _isExporting = true);
+    ref.read(isExportingProvider.notifier).state = true;
 
     try {
       final builder = xml.XmlBuilder();
@@ -2628,13 +2645,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       ).showSnackBar(SnackBar(content: Text('Export misslyckades: $e')));
     } finally {
       if (mounted) {
-        setState(() => _isExporting = false);
+        ref.read(isExportingProvider.notifier).state = false;
       }
     }
   }
 
   Future<void> _importGpxRoute() async {
-    setState(() => _isImporting = true);
+    ref.read(isImportingProvider.notifier).state = true;
 
     try {
       final res = await FilePicker.platform.pickFiles(
@@ -2670,13 +2687,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       if (!mounted) return;
 
       // Clear loading state immediately after background processing
-      setState(() => _isImporting = false);
+      ref.read(isImportingProvider.notifier).state = false;
 
       setState(() {
         _routePoints
           ..clear()
           ..addAll(pts);
-        _editingIndex = null;
+        ref.read(editingIndexProvider.notifier).state = null;
         // GPX doesn’t encode loop state; infer if first==last
         _loopClosed = pts.length >= 3 && pts.first == pts.last;
         if (_loopClosed && pts.isNotEmpty && pts.first == pts.last) {
@@ -2717,7 +2734,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     } catch (e) {
       if (!mounted) return;
       // Clear loading state immediately on error
-      setState(() => _isImporting = false);
+      ref.read(isImportingProvider.notifier).state = false;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
