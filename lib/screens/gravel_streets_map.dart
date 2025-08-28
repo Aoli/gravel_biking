@@ -1627,11 +1627,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                     ),
                   ],
                 ),
-              // View mode start/stop markers - shown when not in measurement mode
-              if (!ref.watch(measureModeProvider) && _routePoints.length >= 2)
+              // Start/stop markers - shown in both view mode and when creating routes
+              if (_routePoints.length >= 2)
                 MarkerLayer(
                   markers: [
-                    // Start/Stop markers for view mode
+                    // Start/Stop markers
                     if (_loopClosed)
                       // For closed loops, show a combined start/stop marker
                       Marker(
