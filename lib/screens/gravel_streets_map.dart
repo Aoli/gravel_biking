@@ -240,7 +240,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     try {
       // Wait for RouteService to be initialized through the provider
       await ref.read(routeServiceInitializedProvider.future);
-      
+
       final routeService = ref.read(routeServiceProvider);
 
       // Validate that initialization actually worked
@@ -1463,7 +1463,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  ref.watch(routeServiceProvider).getStorageDiagnostics(),
+                                  ref
+                                      .watch(routeServiceProvider)
+                                      .getStorageDiagnostics(),
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(fontFamily: 'monospace'),
                                 ),
