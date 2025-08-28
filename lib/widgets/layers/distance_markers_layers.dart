@@ -36,63 +36,75 @@ class DistanceMarkersLayer extends StatelessWidget {
 
         return Marker(
           point: point,
-          width: 60.0, // Increased width to accommodate dot + text
-          height: 24.0,
+          width: 80.0, // Increased width to accommodate larger touch area
+          height: 40.0, // Increased height for larger touch area
           alignment: Alignment
               .centerLeft, // Align to center-left so dot is centered on route
           child: GestureDetector(
             onTap: () => onTap(index, distanceKm),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Orange dot (positioned on the route line)
-                Container(
-                  width: 10.0,
-                  height: 10.0,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.deepOrange,
-                    border: Border.all(color: Colors.white, width: 1.0),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 2,
-                        offset: Offset(0, 1),
+            child: Container(
+              width: 80.0,
+              height: 40.0,
+              // Transparent background to expand touch area
+              color: Colors.transparent,
+              child: Stack(
+                children: [
+                  // Orange dot positioned precisely on the polyline
+                  Positioned(
+                    left:
+                        0, // Position dot at the exact left edge (on polyline)
+                    top: 15.0, // Center vertically in 40px height container
+                    child: Container(
+                      width: 10.0,
+                      height: 10.0,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.deepOrange,
+                        border: Border.all(color: Colors.white, width: 1.0),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 2,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6), // Small spacing between dot and text
-                // Distance label (positioned to the right of the dot)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.deepOrange.withValues(alpha: 0.9),
-                    border: Border.all(color: Colors.white, width: 1),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 2,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      height: 1.0, // Tight line height
                     ),
                   ),
-                ),
-              ],
+                  // Distance label positioned to the right of the dot
+                  Positioned(
+                    left: 16.0, // Position label 16px from left (dot + spacing)
+                    top: 8.0, // Center the label vertically
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.deepOrange.withValues(alpha: 0.9),
+                        border: Border.all(color: Colors.white, width: 1),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 2,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          height: 1.0, // Tight line height
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -126,25 +138,33 @@ class DistanceDotsLayer extends StatelessWidget {
 
         return Marker(
           point: point,
-          width: 10.0,
-          height: 10.0,
+          width: 30.0, // Increased touch area width
+          height: 30.0, // Increased touch area height
           alignment: Alignment.center,
           child: GestureDetector(
             onTap: () => onTap(index, distanceKm),
             child: Container(
-              width: 10.0,
-              height: 10.0,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.deepOrange,
-                border: Border.all(color: Colors.white, width: 1.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 2,
-                    offset: Offset(0, 1),
+              width: 30.0,
+              height: 30.0,
+              // Transparent background to expand touch area
+              color: Colors.transparent,
+              child: Center(
+                child: Container(
+                  width: 10.0,
+                  height: 10.0,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.deepOrange,
+                    border: Border.all(color: Colors.white, width: 1.0),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 2,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -188,31 +208,41 @@ class DistanceTextLayer extends StatelessWidget {
 
         return Marker(
           point: point,
-          width: 32,
-          height: 24,
+          width: 48, // Increased touch area width
+          height: 40, // Increased touch area height
           alignment: Alignment.center,
           child: GestureDetector(
             onTap: () => onTap(index, distanceKm),
             child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: Colors.orange,
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
+              width: 48,
+              height: 40,
+              // Transparent background to expand touch area
+              color: Colors.transparent,
               child: Center(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
+                child: Container(
+                  width: 32,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.orange,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
