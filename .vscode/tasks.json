@@ -294,6 +294,12 @@
 			"command": "flutter test -r expanded",
 			"isBackground": false,
 			"group": "test"
+		},
+		{
+			"label": "Analyze & Test after view mode markers",
+			"type": "shell",
+			"command": "flutter analyze && flutter test -r expanded",
+			"group": "build"
 		}
 	]
 }

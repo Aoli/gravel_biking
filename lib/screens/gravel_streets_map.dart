@@ -213,6 +213,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   @override
   void initState() {
     super.initState();
+    final initTime = DateTime.now();
+    debugPrint(
+      '🚀 [${initTime.toIso8601String()}] GravelStreetsMap initializing...',
+    );
+
     _routeService = RouteService();
     debugPrint(
       'MapTiler Key: "$_mapTilerKey"',
@@ -220,13 +225,19 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     _loadAppVersion();
     _initializeServices();
     // Initial fetch for a sensible area (Stockholm bbox)
+    debugPrint(
+      '🗺️ [${initTime.toIso8601String()}] Requesting initial gravel data for Stockholm area',
+    );
     _fetchGravelForBounds(
       LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1)),
     );
   }
 
   Future<void> _initializeServices() async {
-    debugPrint('_initializeServices: Starting initialization...');
+    final startTime = DateTime.now();
+    debugPrint(
+      '⚙️ [${startTime.toIso8601String()}] Starting service initialization...',
+    );
 
     try {
       await _routeService.initialize();
@@ -239,12 +250,19 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       }
 
       await _loadSavedRoutes();
+      final duration = DateTime.now().difference(startTime);
+      debugPrint(
+        '✅ [${DateTime.now().toIso8601String()}] Service initialization completed successfully in ${duration.inMilliseconds}ms',
+      );
       setState(() {
         _isInitialized = true;
       });
-      debugPrint('_initializeServices: Initialization completed successfully');
     } catch (e) {
-      debugPrint('_initializeServices: Error initializing services: $e');
+      final errorTime = DateTime.now();
+      final duration = errorTime.difference(startTime);
+      debugPrint(
+        '❌ [${errorTime.toIso8601String()}] Service initialization FAILED after ${duration.inMilliseconds}ms: ${e.runtimeType} - $e',
+      );
       setState(() {
         _isInitialized = false;
       });
@@ -569,6 +587,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     _lastEventBounds = event.camera.visibleBounds;
     _lastZoom = event.camera.zoom;
     _moveDebounce?.cancel();
+    debugPrint(
+      '🔄 [${DateTime.now().toIso8601String()}] Map moved, debouncing for 1000ms (zoom: ${event.camera.zoom.toStringAsFixed(2)})',
+    );
     _moveDebounce = Timer(
       const Duration(
         milliseconds: 1000,
@@ -578,10 +599,19 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   }
 
   void _queueViewportFetch() {
+    final timestamp = DateTime.now();
     final bounds = _lastEventBounds;
-    if (bounds == null) return;
+    if (bounds == null) {
+      debugPrint(
+        '⚠️ [${timestamp.toIso8601String()}] Queue fetch cancelled - no bounds available',
+      );
+      return;
+    }
     if (_lastFetchedBounds != null &&
         _boundsAlmostEqual(_lastFetchedBounds!, bounds)) {
+      debugPrint(
+        '⏭️ [${timestamp.toIso8601String()}] Queue fetch skipped - bounds almost equal to last fetch',
+      );
       return;
     }
     _fetchGravelForBounds(bounds);
@@ -600,18 +630,29 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   }
 
   Future<void> _fetchGravelForBounds(LatLngBounds bounds) async {
+    final timestamp = DateTime.now();
+    debugPrint('🌐 [${timestamp.toIso8601String()}] Gravel fetch requested');
+    debugPrint(
+      '📍 Bounds: ${bounds.southWest.latitude.toStringAsFixed(4)},${bounds.southWest.longitude.toStringAsFixed(4)} to ${bounds.northEast.latitude.toStringAsFixed(4)},${bounds.northEast.longitude.toStringAsFixed(4)}',
+    );
+
     // Check if we're in a rate limit cooldown period
     if (_lastRateLimitError != null) {
       final timeSinceLastError = DateTime.now().difference(
         _lastRateLimitError!,
       );
       if (timeSinceLastError < _rateLimitCooldown) {
+        final remainingSeconds =
+            _rateLimitCooldown.inSeconds - timeSinceLastError.inSeconds;
         debugPrint(
-          'Gravel fetch skipped - in rate limit cooldown (${_rateLimitCooldown.inSeconds - timeSinceLastError.inSeconds}s remaining)',
+          '⏸️  [${timestamp.toIso8601String()}] Gravel fetch SKIPPED - in rate limit cooldown (${remainingSeconds}s remaining of ${_rateLimitCooldown.inSeconds}s)',
         );
         return;
       }
       // Clear the rate limit error after cooldown
+      debugPrint(
+        '✅ [${timestamp.toIso8601String()}] Rate limit cooldown expired, clearing error state',
+      );
       _lastRateLimitError = null;
       _retryAttempts = 0;
     }
@@ -620,6 +661,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   }
 
   Future<void> _fetchGravelWithRetry(LatLngBounds bounds) async {
+    final startTime = DateTime.now();
+    debugPrint(
+      '🚀 [${startTime.toIso8601String()}] Starting API request (attempt ${_retryAttempts + 1}/$_maxRetryAttempts)',
+    );
+
     _lastFetchedBounds = bounds;
     const url = 'https://overpass-api.de/api/interpreter';
     final sw = bounds.southWest;
@@ -635,23 +681,58 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       )
       ..writeln('out geom;');
     final query = sb.toString();
+
+    debugPrint('📝 Query size: ${query.length} characters');
+    debugPrint(
+      '🌍 Area coverage: ~${((ne.latitude - sw.latitude) * (ne.longitude - sw.longitude) * 12100).toStringAsFixed(1)} km²',
+    );
+
     try {
       // Provide a clear and contactable User-Agent as per Overpass/OSM policy
       final ua =
           'Gravel First${_appVersion.isNotEmpty ? '/$_appVersion' : ''} (+https://github.com/Aoli/gravel_biking)';
-      final res = await http.post(
-        Uri.parse(url),
-        body: {'data': query},
-        headers: {'User-Agent': ua},
+
+      debugPrint('📡 Making HTTP POST to $url');
+      final res = await http
+          .post(
+            Uri.parse(url),
+            body: {'data': query},
+            headers: {'User-Agent': ua},
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              debugPrint(
+                '⏰ [${DateTime.now().toIso8601String()}] Request TIMEOUT after 30 seconds',
+              );
+              throw TimeoutException(
+                'Request timeout after 30 seconds',
+                const Duration(seconds: 30),
+              );
+            },
+          );
+
+      final responseTime = DateTime.now().difference(startTime);
+      debugPrint(
+        '📥 [${DateTime.now().toIso8601String()}] Response received: ${res.statusCode} (${responseTime.inMilliseconds}ms)',
       );
 
       if (res.statusCode == 200) {
         // Success - reset retry attempts
         _retryAttempts = 0;
+        debugPrint('✅ Success! Response size: ${res.body.length} bytes');
+        debugPrint('🔄 Processing polylines with compute...');
+
+        final processStart = DateTime.now();
         final lines = await compute(
           CoordinateUtils.extractPolylineCoords,
           res.body,
         );
+        final processTime = DateTime.now().difference(processStart);
+        debugPrint(
+          '🏗️ Processed ${lines.length} polylines in ${processTime.inMilliseconds}ms',
+        );
+
         final polys = <Polyline>[
           for (final pts in lines)
             Polyline(
@@ -660,42 +741,73 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
               strokeWidth: 4,
             ),
         ];
+
+        debugPrint('🎯 Created ${polys.length} polyline objects');
         if (!mounted) return;
         setState(() {
           gravelPolylines = polys;
           isLoading = false;
         });
+        debugPrint(
+          '✨ [${DateTime.now().toIso8601String()}] Gravel data updated successfully',
+        );
       } else if (res.statusCode == 429) {
         // Rate limited - handle specially
         _lastRateLimitError = DateTime.now();
         _retryAttempts++;
         debugPrint(
-          'Rate limited by Overpass API (429) - attempt $_retryAttempts/$_maxRetryAttempts',
+          '🚫 [${DateTime.now().toIso8601String()}] RATE LIMITED (429) - attempt $_retryAttempts/$_maxRetryAttempts after ${responseTime.inMilliseconds}ms',
         );
 
         if (_retryAttempts < _maxRetryAttempts) {
           // Exponential backoff: wait 2^attempt seconds before retry
           final delaySeconds = (1 << _retryAttempts);
-          debugPrint('Retrying in ${delaySeconds}s...');
+          debugPrint(
+            '⏳ [${DateTime.now().toIso8601String()}] Waiting ${delaySeconds}s before retry (exponential backoff)...',
+          );
           await Future.delayed(Duration(seconds: delaySeconds));
           if (mounted) {
+            debugPrint(
+              '🔄 [${DateTime.now().toIso8601String()}] Retry attempt ${_retryAttempts + 1}/$_maxRetryAttempts starting now',
+            );
             await _fetchGravelWithRetry(bounds);
           }
         } else {
           debugPrint(
-            'Max retry attempts reached. Entering cooldown period of ${_rateLimitCooldown.inMinutes} minutes.',
+            '🛑 [${DateTime.now().toIso8601String()}] MAX RETRY ATTEMPTS REACHED! Entering cooldown period of ${_rateLimitCooldown.inMinutes} minutes.',
           );
           if (!mounted) return;
           setState(() => isLoading = false);
         }
       } else {
         // Other HTTP error
-        debugPrint('Failed to load gravel streets: ${res.statusCode}');
+        final errorTime = DateTime.now();
+        debugPrint(
+          '❌ [${errorTime.toIso8601String()}] HTTP ERROR ${res.statusCode} after ${errorTime.difference(startTime).inMilliseconds}ms',
+        );
+        if (res.headers.containsKey('retry-after')) {
+          debugPrint(
+            '🔄 Server suggests retry after: ${res.headers['retry-after']}',
+          );
+        }
+        if (res.body.isNotEmpty && res.body.length < 1000) {
+          debugPrint('📄 Error response body: ${res.body}');
+        }
         if (!mounted) return;
         setState(() => isLoading = false);
       }
     } catch (e) {
-      debugPrint('Error fetching data: $e');
+      final errorTime = DateTime.now();
+      final errorDuration = errorTime.difference(startTime);
+      if (e is TimeoutException) {
+        debugPrint(
+          '⏰ [${errorTime.toIso8601String()}] REQUEST TIMEOUT after ${errorDuration.inMilliseconds}ms: $e',
+        );
+      } else {
+        debugPrint(
+          '💥 [${errorTime.toIso8601String()}] EXCEPTION after ${errorDuration.inMilliseconds}ms: ${e.runtimeType} - $e',
+        );
+      }
       if (!mounted) return;
       setState(() => isLoading = false);
     }
@@ -1508,6 +1620,116 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                         ),
                       ),
                     ),
+                  ],
+                ),
+              // View mode start/stop markers - shown when not in measurement mode
+              if (!ref.watch(measureModeProvider) && _routePoints.length >= 2)
+                MarkerLayer(
+                  markers: [
+                    // Start/Stop markers for view mode
+                    if (_loopClosed)
+                      // For closed loops, show a combined start/stop marker
+                      Marker(
+                        point: _routePoints.first,
+                        width: 24,
+                        height: 16,
+                        alignment: Alignment.center,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 3,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(6),
+                                      bottomLeft: Radius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.only(
+                                      topRight: Radius.circular(6),
+                                      bottomRight: Radius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else ...[
+                      // Separate start and stop markers for non-loop routes
+                      // Start marker (green)
+                      Marker(
+                        point: _routePoints.first,
+                        width: 20,
+                        height: 20,
+                        alignment: Alignment.center,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.green,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 3,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                      // Stop marker (red)
+                      Marker(
+                        point: _routePoints.last,
+                        width: 20,
+                        height: 20,
+                        alignment: Alignment.center,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.red,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 3,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.stop,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               MarkerLayer(

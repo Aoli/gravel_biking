@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gravel_biking/main.dart';
 
 void main() {
   group('MyApp Widget Tests', () {
     testWidgets('should build app with correct configuration', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       // Verify app builds and has basic structure
@@ -19,7 +20,7 @@ void main() {
     });
 
     testWidgets('should display main screen content', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       // Verify main UI elements are present
@@ -27,7 +28,7 @@ void main() {
     });
 
     testWidgets('should handle basic interactions', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       // Verify app responds to basic interactions
@@ -43,7 +44,7 @@ void main() {
     testWidgets('should build within reasonable time', (tester) async {
       final stopwatch = Stopwatch()..start();
 
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       stopwatch.stop();

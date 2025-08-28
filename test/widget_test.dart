@@ -4,12 +4,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gravel_biking/main.dart';
 
 void main() {
   group('Gravel First App Widget Tests', () {
     testWidgets('App builds with map and app bar', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       // App bar title exists
@@ -25,7 +26,7 @@ void main() {
     });
 
     testWidgets('App has proper theme configuration', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       // Verify Material 3 is used
@@ -35,7 +36,7 @@ void main() {
     });
 
     testWidgets('App displays measurement controls', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       // Look for measurement-related UI elements
@@ -44,7 +45,7 @@ void main() {
     });
 
     testWidgets('App handles tap interactions safely', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       // Verify app can handle basic interactions without crashing
@@ -60,7 +61,7 @@ void main() {
     });
 
     testWidgets('App maintains state during interactions', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       // Simulate some basic user interactions
@@ -75,7 +76,7 @@ void main() {
     testWidgets('App builds within reasonable time', (tester) async {
       final stopwatch = Stopwatch()..start();
 
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
       await tester.pumpAndSettle();
 
       stopwatch.stop();
@@ -85,7 +86,7 @@ void main() {
     });
 
     testWidgets('App handles multiple pumps efficiently', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
 
       final stopwatch = Stopwatch()..start();
 
