@@ -19,8 +19,8 @@ import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
 import '../widgets/point_marker.dart';
 import '../widgets/distance_panel.dart';
+import '../providers/service_providers.dart';
 import '../screens/saved_routes_page.dart';
-import '../services/route_service.dart';
 import '../providers/ui_providers.dart';
 import '../providers/loading_providers.dart';
 
@@ -208,7 +208,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   // Saved routes
   final List<SavedRoute> _savedRoutes = [];
   static const int _maxSavedRoutes = 50; // Updated from 5 to 50
-  late final RouteService _routeService;
 
   @override
   void initState() {
@@ -218,7 +217,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       '🚀 [${initTime.toIso8601String()}] GravelStreetsMap initializing...',
     );
 
-    _routeService = RouteService();
     debugPrint(
       'MapTiler Key: "$_mapTilerKey"',
     ); // Debug: Check if key is loaded
@@ -240,10 +238,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     );
 
     try {
-      await _routeService.initialize();
+      // Wait for RouteService to be initialized through the provider
+      await ref.read(routeServiceInitializedProvider.future);
+      
+      final routeService = ref.read(routeServiceProvider);
 
       // Validate that initialization actually worked
-      if (!_routeService.isStorageAvailable()) {
+      if (!routeService.isStorageAvailable()) {
         throw Exception(
           'RouteService initialization appeared successful but storage is not available',
         );
@@ -302,7 +303,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
   // Saved Routes Management
   Future<void> _loadSavedRoutes() async {
     try {
-      final routes = await _routeService.loadSavedRoutes();
+      final routeService = ref.read(routeServiceProvider);
+      final routes = await routeService.loadSavedRoutes();
       setState(() {
         _savedRoutes.clear();
         _savedRoutes.addAll(routes);
@@ -321,11 +323,12 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
     }
 
     // Check if RouteService is properly initialized
-    if (!_isInitialized || !_routeService.isStorageAvailable()) {
+    final routeService = ref.read(routeServiceProvider);
+    if (!_isInitialized || !routeService.isStorageAvailable()) {
       final initStatus = _isInitialized
           ? 'initialiserad'
           : 'inte initialiserad';
-      final storageStatus = _routeService.isStorageAvailable()
+      final storageStatus = routeService.isStorageAvailable()
           ? 'tillgänglig'
           : 'inte tillgänglig';
 
@@ -362,7 +365,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
       // Add a small delay to make loading indicator visible
       await Future.delayed(const Duration(milliseconds: 100));
 
-      await _routeService.saveCurrentRoute(
+      await routeService.saveCurrentRoute(
         name: name,
         routePoints: _routePoints,
         loopClosed: _loopClosed,
@@ -1385,7 +1388,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => SavedRoutesPage(
-                              routeService: _routeService,
+                              routeService: ref.read(routeServiceProvider),
                               onLoadRoute:
                                   _loadRouteFromSavedRoute, // Use new method that preserves loop state
                               onRoutesChanged:
@@ -1455,12 +1458,12 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                                 Text(
-                                  'Lagring tillgänglig: ${_routeService.isStorageAvailable() ? "✓" : "✗"}',
+                                  'Lagring tillgänglig: ${ref.watch(routeServiceProvider).isStorageAvailable() ? "✓" : "✗"}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  _routeService.getStorageDiagnostics(),
+                                  ref.watch(routeServiceProvider).getStorageDiagnostics(),
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(fontFamily: 'monospace'),
                                 ),
