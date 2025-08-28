@@ -18,6 +18,7 @@ class DistancePanel extends StatefulWidget {
   final ValueChanged<bool> onDistanceMarkersToggled;
   final double distanceInterval;
   final bool canUndo;
+  final VoidCallback onToggleMeasure;
 
   const DistancePanel({
     super.key,
@@ -36,6 +37,7 @@ class DistancePanel extends StatefulWidget {
     required this.onDistanceMarkersToggled,
     required this.distanceInterval,
     required this.canUndo,
+    required this.onToggleMeasure,
   });
 
   @override
@@ -201,6 +203,95 @@ class _DistancePanelState extends State<DistancePanel>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const SizedBox(height: 8),
+                    // Measure mode segment switch - above left toggle
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: widget.theme.colorScheme.surfaceContainer
+                            .withValues(alpha: 0.5),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => widget.onToggleMeasure(),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: widget.measureEnabled
+                                        ? Colors.green.shade600
+                                        : Colors.transparent,
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(8),
+                                      bottomLeft: Radius.circular(8),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'Redigera',
+                                      style: widget.theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: widget.measureEnabled
+                                                ? Colors.white
+                                                : widget
+                                                      .theme
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.7),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => widget.onToggleMeasure(),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: !widget.measureEnabled
+                                        ? Colors.red.shade600
+                                        : Colors.transparent,
+                                    borderRadius: const BorderRadius.only(
+                                      topRight: Radius.circular(8),
+                                      bottomRight: Radius.circular(8),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'View mode',
+                                      style: widget.theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: !widget.measureEnabled
+                                                ? Colors.white
+                                                : widget
+                                                      .theme
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.7),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     // Control toggles row - now with more space (300px)
                     Row(
                       children: [

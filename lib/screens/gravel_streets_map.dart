@@ -392,14 +392,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         : '© OpenStreetMap contributors';
 
     return Scaffold(
-      appBar: GravelAppBar(
-        measureEnabled: ref.watch(measureModeProvider),
-        onLocateMe: _locateMe,
-        onToggleMeasure: () {
-          final currentMode = ref.read(measureModeProvider);
-          ref.read(measureModeProvider.notifier).state = !currentMode;
-        },
-      ),
+      appBar: GravelAppBar(onLocateMe: _locateMe),
       drawer: GravelAppDrawer(
         onImportGeoJson: () async {
           await importGeoJsonRoute((points, loopClosed) {
@@ -697,6 +690,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
             },
             distanceInterval: ref.watch(distanceIntervalProvider),
             canUndo: _undoHistory.isNotEmpty,
+            onToggleMeasure: () {
+              final currentMode = ref.read(measureModeProvider);
+              ref.read(measureModeProvider.notifier).state = !currentMode;
+            },
           ),
           // Subtle build/version watermark (e.g., v1.2.3 #27)
           VersionWatermark(appVersion: _appVersion, buildNumber: _buildNumber),

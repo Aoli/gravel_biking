@@ -18,6 +18,7 @@ class BottomControlsPanel extends StatelessWidget {
     required this.onDistanceMarkersToggled,
     required this.distanceInterval,
     required this.canUndo,
+    required this.onToggleMeasure,
   });
 
   final List<double> segmentMeters;
@@ -34,6 +35,7 @@ class BottomControlsPanel extends StatelessWidget {
   final ValueChanged<bool> onDistanceMarkersToggled;
   final double distanceInterval;
   final bool canUndo;
+  final VoidCallback onToggleMeasure;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +63,7 @@ class BottomControlsPanel extends StatelessWidget {
               onDistanceMarkersToggled: onDistanceMarkersToggled,
               distanceInterval: distanceInterval,
               canUndo: canUndo,
+              onToggleMeasure: onToggleMeasure,
             ),
           ],
         ),

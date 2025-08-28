@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// Top AppBar for Gravel First with locate and measure toggle actions.
+/// Top AppBar for Gravel First with locate action.
 class GravelAppBar extends StatelessWidget implements PreferredSizeWidget {
   const GravelAppBar({
     super.key,
     this.title = 'Gravel First',
-    required this.measureEnabled,
     required this.onLocateMe,
-    required this.onToggleMeasure,
   });
 
   final String title;
-  final bool measureEnabled;
   final VoidCallback onLocateMe;
-  final VoidCallback onToggleMeasure;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -51,24 +47,6 @@ class GravelAppBar extends StatelessWidget implements PreferredSizeWidget {
               size: 22,
             ),
             onPressed: onLocateMe,
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: measureEnabled ? Colors.green.shade600 : Colors.red.shade600,
-            border: Border.all(
-              color: measureEnabled
-                  ? Colors.green.shade800
-                  : Colors.red.shade800,
-              width: 2,
-            ),
-          ),
-          child: IconButton(
-            tooltip: measureEnabled ? 'Stäng av mätläge' : 'Aktivera mätläge',
-            icon: const Icon(Icons.straighten, color: Colors.white, size: 22),
-            onPressed: onToggleMeasure,
           ),
         ),
       ],
