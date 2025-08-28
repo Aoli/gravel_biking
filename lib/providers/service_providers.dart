@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gravel_biking/services/route_service.dart';
 
@@ -25,7 +26,13 @@ final routeServiceProvider = Provider<RouteService>((ref) {
 /// Tracks whether the RouteService has been successfully initialized.
 /// Useful for showing loading states during app startup.
 final routeServiceInitializedProvider = FutureProvider<bool>((ref) async {
-  final routeService = ref.read(routeServiceProvider);
-  await routeService.initialize();
-  return true;
+  try {
+    final routeService = ref.read(routeServiceProvider);
+    await routeService.initialize();
+    return true;
+  } catch (e) {
+    // Log the error but don't throw - let UI handle gracefully
+    debugPrint('RouteService initialization failed: $e');
+    return false; // Return false instead of throwing
+  }
 });

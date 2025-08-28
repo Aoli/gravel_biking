@@ -16,33 +16,48 @@ class RouteService {
   Future<void> initialize() async {
     _log('Starting initialization...');
     try {
-      if (!Hive.isAdapterRegistered(0)) {
-        _log('Registering SavedRouteAdapter...');
-        Hive.registerAdapter(SavedRouteAdapter());
-      }
-      if (!Hive.isAdapterRegistered(1)) {
-        _log('Registering LatLngDataAdapter...');
-        Hive.registerAdapter(LatLngDataAdapter());
-      }
+      // Skip adapter registration - they should already be registered in main()
+      _log('Adapters already registered in main.dart');
 
       _log('Attempting to open Hive box "$_boxName"...');
 
-      // On Web (including Android Chrome/WebView), ensure IndexedDB is available.
-      // Some Android Chrome versions/devices may have IDB disabled (incognito, storage off).
+      // Enhanced web environment handling for Android Chrome/WebView
       if (kIsWeb) {
-        // Quick feature-detection hint for logs only (no direct IDB import here).
-        _log('Web runtime detected. Expecting IndexedDB backend for Hive.');
+        _log('Web runtime detected. Using IndexedDB backend for Hive.');
+
+        // Try to open with a timeout for web environments
+        _routeBox = await Hive.openBox<SavedRoute>(_boxName).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            throw Exception(
+              'Hive box opening timed out - possible storage restrictions in browser',
+            );
+          },
+        );
+      } else {
+        // Native platforms
+        _routeBox = await Hive.openBox<SavedRoute>(_boxName);
       }
 
-      _routeBox = await Hive.openBox<SavedRoute>(_boxName);
       _log('Hive box opened successfully (${_routeBox?.length ?? 0} routes)');
     } catch (e, s) {
       _log('CRITICAL: Hive initialization failed: $e');
-      _log(s.toString());
-      // Re-throw the exception to make the failure visible.
-      throw Exception(
-        'CRITICAL: Hive initialization failed. See logs for details.',
-      );
+      _log('Stack trace: ${s.toString()}');
+
+      // For web environments, provide more specific error guidance
+      if (kIsWeb) {
+        _log('Web-specific troubleshooting:');
+        _log('1. Check if browser storage is enabled');
+        _log('2. Check if in incognito/private mode');
+        _log('3. Check browser storage quota');
+
+        throw Exception(
+          'Storage initialization failed. This may happen in private browsing mode or when browser storage is disabled. Please try in a regular browser window.',
+        );
+      }
+
+      // Re-throw with a user-friendly message
+      throw Exception('Storage initialization failed: ${e.toString()}');
     }
   }
 

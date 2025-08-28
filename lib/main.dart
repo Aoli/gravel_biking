@@ -8,20 +8,24 @@ import 'package:hive_flutter/hive_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Explicitly initialize Hive for Web or Native.
-  // This is the definitive fix for the Android WebView issue.
-  if (kIsWeb) {
-    // For ALL web environments (including Android WebView), initialize without a path.
-    // This forces Hive to use IndexedDB and completely avoids path_provider.
+  try {
+    // Initialize Hive with enhanced error handling for web environments
     await Hive.initFlutter();
-  } else {
-    // For native mobile apps (iOS/Android), initialize with a path.
-    await Hive.initFlutter();
-  }
 
-  // Register adapters AFTER initializing Hive.
-  Hive.registerAdapter(SavedRouteAdapter());
-  Hive.registerAdapter(LatLngDataAdapter());
+    // Register adapters AFTER initializing Hive (only once here)
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(SavedRouteAdapter());
+    }
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(LatLngDataAdapter());
+    }
+
+    debugPrint('✅ Hive initialized successfully in main()');
+  } catch (e, stackTrace) {
+    debugPrint('❌ CRITICAL: Hive initialization failed in main(): $e');
+    debugPrint('Stack trace: $stackTrace');
+    // Continue app startup even if Hive fails - better user experience
+  }
 
   runApp(
     // ProviderScope enables Riverpod state management throughout the app

@@ -239,14 +239,20 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap> {
 
     try {
       // Wait for RouteService to be initialized through the provider
-      await ref.read(routeServiceInitializedProvider.future);
+      final initResult = await ref.read(routeServiceInitializedProvider.future);
+
+      if (!initResult) {
+        throw Exception(
+          'Storage initialization failed. This may happen in private browsing mode or when browser storage is disabled.',
+        );
+      }
 
       final routeService = ref.read(routeServiceProvider);
 
       // Validate that initialization actually worked
       if (!routeService.isStorageAvailable()) {
         throw Exception(
-          'RouteService initialization appeared successful but storage is not available',
+          'Storage is not available after initialization. Please check browser settings.',
         );
       }
 
