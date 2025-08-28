@@ -331,10 +331,10 @@ class GravelAppDrawer extends ConsumerWidget {
                             ),
                             Slider(
                               value: ref.watch(distanceIntervalProvider),
-                              min: 250.0, // 250 meters minimum
+                              min: 500.0, // 500 meters minimum (0.5 km)
                               max: 5000.0, // 5 km maximum
                               divisions:
-                                  19, // 250m, 500m, 750m, 1km, 1.25km, ... 5km
+                                  9, // 0.5km, 1km, 1.5km, 2km, 2.5km, 3km, 3.5km, 4km, 4.5km, 5km
                               label:
                                   '${(ref.watch(distanceIntervalProvider) / 1000).toStringAsFixed(1)} km',
                               onChanged: (value) {
