@@ -42,7 +42,11 @@ mixin SavedRoutesMixin<T extends ConsumerStatefulWidget>
   }
 
   /// Save current route points with a name, with validation and feedback.
-  Future<void> saveCurrentRoute(String name, List<LatLng> routePoints) async {
+  Future<void> saveCurrentRoute(
+    String name,
+    List<LatLng> routePoints, {
+    bool isPublic = false,
+  }) async {
     if (routePoints.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -102,19 +106,25 @@ mixin SavedRoutesMixin<T extends ConsumerStatefulWidget>
       // Add a tiny delay so the loading indicator is visible
       await Future.delayed(const Duration(milliseconds: 100));
 
-      await routeService.saveCurrentRoute(
+      // Use SyncedRouteService for cloud sync capability
+      final syncedService = ref.read(syncedRouteServiceProvider);
+      await syncedService.saveCurrentRoute(
         name: name,
         routePoints: routePoints,
         loopClosed: ref.watch(loopClosedProvider),
         description: null,
+        isPublic: isPublic,
       );
 
       await loadSavedRoutes();
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Rutt "$name" sparad')));
+        final syncMessage = ref.watch(isSignedInProvider)
+            ? (isPublic ? ' och synkad som offentlig' : ' och synkad privat')
+            : ' lokalt';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Rutt "$name" sparad$syncMessage')),
+        );
       }
     } catch (e) {
       debugPrint('Error saving route: $e');

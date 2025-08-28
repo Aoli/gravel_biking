@@ -23,13 +23,17 @@ class SavedRouteAdapter extends TypeAdapter<SavedRoute> {
       savedAt: fields[3] as DateTime,
       description: fields[4] as String?,
       distance: fields[5] as double?,
+      isPublic: fields[6] as bool,
+      userId: fields[7] as String?,
+      firestoreId: fields[8] as String?,
+      lastSynced: fields[9] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SavedRoute obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +45,15 @@ class SavedRouteAdapter extends TypeAdapter<SavedRoute> {
       ..writeByte(4)
       ..write(obj.description)
       ..writeByte(5)
-      ..write(obj.distance);
+      ..write(obj.distance)
+      ..writeByte(6)
+      ..write(obj.isPublic)
+      ..writeByte(7)
+      ..write(obj.userId)
+      ..writeByte(8)
+      ..write(obj.firestoreId)
+      ..writeByte(9)
+      ..write(obj.lastSynced);
   }
 
   @override
@@ -65,7 +77,10 @@ class LatLngDataAdapter extends TypeAdapter<LatLngData> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return LatLngData(fields[0] as double, fields[1] as double);
+    return LatLngData(
+      fields[0] as double,
+      fields[1] as double,
+    );
   }
 
   @override

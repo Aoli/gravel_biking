@@ -144,16 +144,83 @@ class AuthService {
   ///
   /// Automatically signs in anonymously if no user is currently signed in.
   /// This provides a seamless experience for users.
+  /// Includes network connectivity check before attempting authentication.
   Future<void> ensureSignedIn() async {
-    if (!isSignedIn) {
-      if (kDebugMode) {
-        print('$_logPrefix No user signed in, performing auto sign-in...');
+    try {
+      if (!isSignedIn) {
+        if (kDebugMode) {
+          print(
+            '$_logPrefix No user signed in, checking network connectivity...',
+          );
+        }
+
+        // Test network connectivity by attempting to reach Firebase
+        await _testFirebaseConnectivity();
+
+        if (kDebugMode) {
+          print('$_logPrefix Network check passed, performing auto sign-in...');
+        }
+
+        await signInAnonymously();
+      } else {
+        if (kDebugMode) {
+          print('$_logPrefix User already signed in: $userId');
+        }
       }
-      await signInAnonymously();
-    } else {
+    } catch (e) {
       if (kDebugMode) {
-        print('$_logPrefix User already signed in: $userId');
+        print('$_logPrefix Auto sign-in failed: $e');
       }
+      // Don't rethrow - app should continue even if auth fails
+    }
+  }
+
+  /// Test Firebase connectivity
+  Future<void> _testFirebaseConnectivity() async {
+    try {
+      // Simple connectivity test by checking if we can access Firebase Auth
+      await _auth.fetchSignInMethodsForEmail('test@example.com');
+    } catch (e) {
+      if (kDebugMode) {
+        print('$_logPrefix Network connectivity check failed: $e');
+      }
+      throw AuthException(
+        'Network connectivity required for authentication',
+        'network-error',
+      );
+    }
+  }
+
+  /// Initialize authentication with automatic sign-in
+  ///
+  /// Call this during app startup to automatically authenticate users.
+  /// This ensures users are authenticated before using Firestore features.
+  Future<void> initialize() async {
+    try {
+      if (kDebugMode) {
+        print('$_logPrefix Initializing authentication...');
+      }
+
+      // Wait for auth state to be determined
+      final user = _auth.currentUser;
+      if (user != null) {
+        if (kDebugMode) {
+          print('$_logPrefix User already authenticated: ${user.uid}');
+        }
+        return;
+      }
+
+      // Auto sign-in if no user is present
+      await ensureSignedIn();
+
+      if (kDebugMode) {
+        print('$_logPrefix ✅ Authentication initialization complete');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('$_logPrefix ❌ Authentication initialization failed: $e');
+      }
+      // Don't rethrow - app should continue with limited functionality
     }
   }
 

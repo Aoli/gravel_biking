@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../providers/loading_providers.dart';
 import '../providers/ui_providers.dart';
+import '../providers/service_providers.dart';
 import 'save_route_dialog.dart';
 
 class GravelAppDrawer extends ConsumerWidget {
@@ -34,7 +35,7 @@ class GravelAppDrawer extends ConsumerWidget {
   final Future<void> Function() onExportGeoJson;
   final Future<void> Function() onImportGpx;
   final Future<void> Function() onExportGpx;
-  final Future<void> Function(String name) onSaveRoute;
+  final Future<void> Function(String name, bool isPublic) onSaveRoute;
   final bool hasRoute;
   final int savedRoutesCount;
   final int maxSavedRoutes;
@@ -468,6 +469,7 @@ class GravelAppDrawer extends ConsumerWidget {
                         onSave: onSaveRoute,
                         savedRoutesCount: savedRoutesCount,
                         maxSavedRoutes: maxSavedRoutes,
+                        isAuthenticated: ref.watch(isSignedInProvider),
                       );
                     },
                   ),

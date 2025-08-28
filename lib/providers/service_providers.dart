@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gravel_biking/services/route_service.dart';
 import 'package:gravel_biking/services/auth_service.dart';
+import 'package:gravel_biking/services/firestore_route_service.dart';
+import 'package:gravel_biking/services/synced_route_service.dart';
+import 'package:gravel_biking/models/saved_route.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Provider for RouteService instance
@@ -59,6 +62,59 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
 });
 
+/// Provider for FirestoreRouteService instance
+///
+/// Creates and manages the FirestoreRouteService instance that handles
+/// route synchronization with Firestore.
+final firestoreRouteServiceProvider = Provider<FirestoreRouteService>((ref) {
+  return FirestoreRouteService();
+});
+
+/// Provider for SyncedRouteService instance
+///
+/// Creates the enhanced route service that syncs between local Hive storage
+/// and Firestore. This service provides offline-first functionality with
+/// cloud synchronization for authenticated users.
+final syncedRouteServiceProvider = Provider<SyncedRouteService>((ref) {
+  final localService = ref.read(routeServiceProvider);
+  final cloudService = ref.read(firestoreRouteServiceProvider);
+  final user = ref.watch(currentUserProvider);
+
+  return SyncedRouteService(
+    localService: localService,
+    cloudService: cloudService,
+    userId: user?.uid,
+  );
+});
+
+/// Provider for all accessible routes using synced service
+///
+/// Returns combined local and cloud routes accessible to the current user.
+/// This replaces the direct Firestore provider for better offline support.
+final allAccessibleRoutesProvider = FutureProvider<List<SavedRoute>>((
+  ref,
+) async {
+  // Ensure authentication is initialized
+  await ref.watch(authInitializationProvider.future);
+
+  final syncedService = ref.read(syncedRouteServiceProvider);
+  try {
+    return await syncedService.loadAllRoutes();
+  } catch (e) {
+    debugPrint('AllAccessibleRoutes: Failed to load routes: $e');
+    return [];
+  }
+});
+
+/// Provider for authentication initialization
+///
+/// Automatically initializes authentication when the app starts.
+/// This ensures users are signed in before using Firestore features.
+final authInitializationProvider = FutureProvider<void>((ref) async {
+  final authService = ref.read(authServiceProvider);
+  await authService.initialize();
+});
+
 /// Provider for current authentication state
 ///
 /// Streams the current Firebase user authentication state.
@@ -93,14 +149,65 @@ final isSignedInProvider = Provider<bool>((ref) {
 ///
 /// Automatically signs in the user anonymously if not already signed in.
 /// This ensures users can use the app immediately without manual sign-in.
+/// Now handled by authInitializationProvider for better control.
 final autoSignInProvider = FutureProvider<void>((ref) async {
-  final authService = ref.read(authServiceProvider);
+  // Watch auth initialization to ensure it completes
+  await ref.watch(authInitializationProvider.future);
+});
 
+/// Provider for Firestore routes (user's accessible routes)
+///
+/// Returns all routes accessible to the current user:
+/// - User's own routes (both public and private)
+/// - Other users' public routes
+final firestoreRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
+  // Ensure authentication is initialized
+  await ref.watch(authInitializationProvider.future);
+
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    debugPrint('FirestoreRoutes: No authenticated user, returning empty list');
+    return [];
+  }
+
+  final firestoreService = ref.read(firestoreRouteServiceProvider);
   try {
-    await authService.ensureSignedIn();
-    debugPrint('AuthService: Auto sign-in completed successfully');
+    return await firestoreService.getAllAccessibleRoutes(user.uid);
   } catch (e) {
-    debugPrint('AuthService: Auto sign-in failed: $e');
-    // Don't rethrow - app should continue even if auth fails
+    debugPrint('FirestoreRoutes: Failed to load routes: $e');
+    return [];
+  }
+});
+
+/// Provider for public routes only
+///
+/// Returns only public routes from Firestore, accessible to all users.
+final publicRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
+  final firestoreService = ref.read(firestoreRouteServiceProvider);
+  try {
+    return await firestoreService.getPublicRoutes();
+  } catch (e) {
+    debugPrint('PublicRoutes: Failed to load public routes: $e');
+    return [];
+  }
+});
+
+/// Provider for user's private routes only
+///
+/// Returns only the current user's private routes from Firestore.
+final userPrivateRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
+  await ref.watch(authInitializationProvider.future);
+
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return [];
+  }
+
+  final firestoreService = ref.read(firestoreRouteServiceProvider);
+  try {
+    return await firestoreService.getUserRoutes(user.uid);
+  } catch (e) {
+    debugPrint('UserPrivateRoutes: Failed to load private routes: $e');
+    return [];
   }
 });

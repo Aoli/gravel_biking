@@ -6,17 +6,20 @@ class SaveRouteDialog extends StatefulWidget {
     required this.onSave,
     required this.savedRoutesCount,
     required this.maxSavedRoutes,
+    required this.isAuthenticated,
   });
 
-  final Future<void> Function(String name) onSave;
+  final Future<void> Function(String name, bool isPublic) onSave;
   final int savedRoutesCount;
   final int maxSavedRoutes;
+  final bool isAuthenticated;
 
   static Future<void> show(
     BuildContext context, {
-    required Future<void> Function(String name) onSave,
+    required Future<void> Function(String name, bool isPublic) onSave,
     required int savedRoutesCount,
     required int maxSavedRoutes,
+    required bool isAuthenticated,
   }) {
     return showDialog<void>(
       context: context,
@@ -25,6 +28,7 @@ class SaveRouteDialog extends StatefulWidget {
         onSave: onSave,
         savedRoutesCount: savedRoutesCount,
         maxSavedRoutes: maxSavedRoutes,
+        isAuthenticated: isAuthenticated,
       ),
     );
   }
@@ -36,6 +40,7 @@ class SaveRouteDialog extends StatefulWidget {
 class _SaveRouteDialogState extends State<SaveRouteDialog> {
   final TextEditingController _nameController = TextEditingController();
   bool _saving = false;
+  bool _isPublic = false;
 
   @override
   void dispose() {
@@ -69,6 +74,91 @@ class _SaveRouteDialogState extends State<SaveRouteDialog> {
             enabled: !_saving,
             onSubmitted: (value) async => _submit(),
           ),
+
+          // Public/Private visibility option (only for authenticated users)
+          if (widget.isAuthenticated) ...[
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Synlighet',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Radio<bool>(
+                          value: false,
+                          groupValue: _isPublic,
+                          onChanged: _saving
+                              ? null
+                              : (value) {
+                                  setState(() => _isPublic = value ?? false);
+                                },
+                        ),
+                        const Text('🔒 Privat'),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Bara du kan se denna rutt',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Radio<bool>(
+                          value: true,
+                          groupValue: _isPublic,
+                          onChanged: _saving
+                              ? null
+                              : (value) {
+                                  setState(() => _isPublic = value ?? false);
+                                },
+                        ),
+                        const Text('🌐 Offentlig'),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Alla användare kan se denna rutt',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                border: Border.all(color: Colors.blue.shade200),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Rutten sparas lokalt på din enhet. Logga in för molnsynkronisering och delning.',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           if (_saving)
             const Padding(
               padding: EdgeInsets.only(top: 16),
@@ -111,7 +201,7 @@ class _SaveRouteDialogState extends State<SaveRouteDialog> {
     if (name.isEmpty) return;
     setState(() => _saving = true);
     try {
-      await widget.onSave(name);
+      await widget.onSave(name, _isPublic);
       if (mounted && context.mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _saving = false);

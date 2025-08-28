@@ -162,6 +162,12 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     );
 
     try {
+      // Initialize authentication first (background, non-blocking)
+      debugPrint(
+        '🔐 [${DateTime.now().toIso8601String()}] Initializing authentication...',
+      );
+      ref.read(authInitializationProvider);
+
       // Wait for RouteService to be initialized through the provider
       await ref.read(routeServiceInitializedProvider.future);
 
@@ -450,7 +456,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         onExportGpx: () async {
           await exportGpxRoute(_routePoints);
         },
-        onSaveRoute: (name) => saveCurrentRoute(name, _routePoints),
+        onSaveRoute: (name, isPublic) =>
+            saveCurrentRoute(name, _routePoints, isPublic: isPublic),
         hasRoute: _routePoints.isNotEmpty,
         savedRoutesCount: savedRoutes.length,
         maxSavedRoutes: maxSavedRoutes,
@@ -709,9 +716,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               }
               await SaveRouteDialog.show(
                 context,
-                onSave: (name) => saveCurrentRoute(name, _routePoints),
+                onSave: (name, isPublic) =>
+                    saveCurrentRoute(name, _routePoints, isPublic: isPublic),
                 savedRoutesCount: savedRoutes.length,
                 maxSavedRoutes: maxSavedRoutes,
+                isAuthenticated: ref.watch(isSignedInProvider),
               );
             },
             onClear: _showClearRouteConfirmation,
