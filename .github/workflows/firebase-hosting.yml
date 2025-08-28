@@ -25,8 +25,6 @@ jobs:
       - name: Build Web
         run: |
           flutter build web --release \
-            --no-wasm \
-            --web-renderer=html \
             --dart-define=BUILD_NUMBER=${{ github.run_number }} \
             --dart-define=MAPTILER_KEY=${{ secrets.MAPTILER_KEY }}
 
