@@ -257,11 +257,29 @@ final streamAllAccessibleRoutesProvider = StreamProvider<List<SavedRoute>>((
 
     void emitCombined() {
       try {
-        final otherUsersPublic = latestPublic
-            .where((r) => r.userId != user.uid)
-            .toList();
-        final all = <SavedRoute>[...latestUser, ...otherUsersPublic];
-        all.sort((a, b) => b.savedAt.compareTo(a.savedAt));
+        // Include ALL public routes for everyone (including current user's),
+        // and only the current user's private/public from user stream.
+        // Deduplicate by firestoreId to avoid duplicates for user's public routes
+        // that appear in both streams.
+        final Map<String, SavedRoute> byId = {};
+
+        String keyFor(SavedRoute r) =>
+            r.firestoreId ??
+            '${r.userId}|${r.savedAt.toIso8601String()}|${r.name}';
+
+        // Add all public routes first
+        for (final r in latestPublic) {
+          byId[keyFor(r)] = r;
+        }
+
+        // Add/override with user's own routes (ensures latest user-side fields win)
+        for (final r in latestUser) {
+          byId[keyFor(r)] = r;
+        }
+
+        final all = byId.values.toList()
+          ..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+
         controller.add(all);
       } catch (e) {
         debugPrint('StreamAllAccessibleRoutes: emit error: $e');

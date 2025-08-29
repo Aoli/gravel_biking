@@ -256,13 +256,13 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
   }
 
   Widget _buildContent(ThemeData theme, List<SavedRoute> allRoutes, User user) {
-    // Separate routes into private (user's own) and public (others' public)
+    // Separate routes into:
+    // - Private: only the current user's private routes
+    // - Public: all public routes (including the current user's)
     final privateRoutes = allRoutes
-        .where((route) => route.userId == user.uid)
+        .where((route) => route.userId == user.uid && !route.isPublic)
         .toList();
-    final publicRoutes = allRoutes
-        .where((route) => route.isPublic && route.userId != user.uid)
-        .toList();
+    final publicRoutes = allRoutes.where((route) => route.isPublic).toList();
 
     return TabBarView(
       controller: _tabController,
