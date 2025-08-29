@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -5,6 +6,7 @@ import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
 import '../providers/service_providers.dart';
 import '../widgets/save_route_dialog.dart';
+import '../services/route_service.dart';
 
 /// Visibility filter options for saved routes
 enum _VisibilityFilter { all, publicOnly, privateOnly }

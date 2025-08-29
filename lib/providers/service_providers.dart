@@ -2,9 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gravel_biking/services/route_service.dart';
 import 'package:gravel_biking/services/auth_service.dart';
+import 'package:gravel_biking/services/file_service.dart';
 import 'package:gravel_biking/services/firestore_route_service.dart';
+import 'package:gravel_biking/services/firestore_user_service.dart';
 import 'package:gravel_biking/services/synced_route_service.dart';
 import 'package:gravel_biking/models/saved_route.dart';
+import 'package:gravel_biking/models/user_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Provider for RouteService instance
@@ -60,6 +63,14 @@ final routeServiceInitializedProvider = FutureProvider<bool>((ref) async {
 /// This is a singleton provider for the auth service.
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
+});
+
+/// Provider for FileService instance
+///
+/// Creates and manages the FileService instance that handles
+/// import/export operations for routes.
+final fileServiceProvider = Provider<FileService>((ref) {
+  return FileService();
 });
 
 /// Provider for FirestoreRouteService instance
@@ -209,5 +220,114 @@ final userPrivateRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
   } catch (e) {
     debugPrint('UserPrivateRoutes: Failed to load private routes: $e');
     return [];
+  }
+});
+
+// =============================================================================
+// STREAMING PROVIDERS - Real-time data updates
+// =============================================================================
+
+/// Provider for FirestoreUserService instance
+final firestoreUserServiceProvider = Provider<FirestoreUserService>((ref) {
+  return FirestoreUserService();
+});
+
+/// Stream provider for all accessible routes (real-time)
+///
+/// Combines user's routes and public routes from other users with real-time updates.
+/// This replaces the static allAccessibleRoutesProvider for live data.
+final streamAllAccessibleRoutesProvider = StreamProvider<List<SavedRoute>>((
+  ref,
+) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return Stream.value([]);
+  }
+
+  final firestoreService = ref.read(firestoreRouteServiceProvider);
+
+  // Combine user routes and public routes streams
+  return firestoreService.streamUserRoutes(user.uid).asyncMap((
+    userRoutes,
+  ) async {
+    try {
+      // Get public routes from other users
+      final publicRoutes = await firestoreService.getPublicRoutes();
+      final otherUsersPublicRoutes = publicRoutes
+          .where((route) => route.userId != user.uid)
+          .toList();
+
+      final allRoutes = [...userRoutes, ...otherUsersPublicRoutes];
+
+      // Sort by save date (newest first)
+      allRoutes.sort((a, b) => b.savedAt.compareTo(a.savedAt));
+
+      return allRoutes;
+    } catch (e) {
+      debugPrint('StreamAllAccessibleRoutes: Error combining routes: $e');
+      return userRoutes; // Return at least user routes if public routes fail
+    }
+  });
+});
+
+/// Stream provider for user's routes (real-time)
+final streamUserRoutesProvider = StreamProvider<List<SavedRoute>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return Stream.value([]);
+  }
+
+  final firestoreService = ref.read(firestoreRouteServiceProvider);
+  return firestoreService.streamUserRoutes(user.uid);
+});
+
+/// Stream provider for public routes (real-time)
+final streamPublicRoutesProvider = StreamProvider<List<SavedRoute>>((ref) {
+  final firestoreService = ref.read(firestoreRouteServiceProvider);
+  return firestoreService.streamPublicRoutes();
+});
+
+/// Stream provider for current user profile
+final streamUserProfileProvider = StreamProvider<UserProfile?>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return Stream.value(null);
+  }
+
+  final userService = ref.read(firestoreUserServiceProvider);
+  return userService.streamUserProfile(user.uid);
+});
+
+/// Provider for local saved routes
+///
+/// This provider loads routes from the local Hive storage.
+/// For pure local storage without cloud sync.
+final localSavedRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
+  final routeService = ref.read(routeServiceProvider);
+  await ref.watch(routeServiceInitializedProvider.future);
+
+  try {
+    return await routeService.loadSavedRoutes();
+  } catch (e) {
+    debugPrint('LocalSavedRoutes: Failed to load routes: $e');
+    return [];
+  }
+});
+
+/// Provider for ensuring user profile exists
+final ensureUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+
+  final userService = ref.read(firestoreUserServiceProvider);
+
+  try {
+    return await userService.createOrUpdateUser(
+      user.uid,
+      isAnonymous: user.isAnonymous,
+    );
+  } catch (e) {
+    debugPrint('EnsureUserProfile: Failed to create/update user profile: $e');
+    return null;
   }
 });

@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'package:latlong2/latlong.dart';
 
 /// Utility functions for coordinate and data processing
 class CoordinateUtils {
+  static const Distance _distance = Distance();
+
   /// Extract polyline coordinates from Overpass API response
   static List<List<List<double>>> extractPolylineCoords(String body) {
     final data = json.decode(body) as Map<String, dynamic>;
@@ -24,6 +27,11 @@ class CoordinateUtils {
     }
 
     return result;
+  }
+
+  /// Calculate distance between two LatLng points in meters
+  static double calculateDistance(LatLng point1, LatLng point2) {
+    return _distance.as(LengthUnit.Meter, point1, point2);
   }
 
   /// Format distance in meters to human readable string
