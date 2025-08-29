@@ -1,9 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/saved_route.dart';
-import '../services/route_service.dart';
 import '../utils/coordinate_utils.dart';
+import '../providers/service_providers.dart';
 
 /// Visibility filter options for saved routes
 enum _VisibilityFilter { all, publicOnly, privateOnly }
@@ -20,24 +21,21 @@ enum _SortOption {
 }
 
 /// Enhanced saved routes management page with search and organization
-class SavedRoutesPage extends StatefulWidget {
-  final RouteService routeService;
-  final Function(SavedRoute)
-  onLoadRoute; // Changed to pass the full SavedRoute object
+class SavedRoutesPage extends ConsumerStatefulWidget {
+  final Function(SavedRoute) onLoadRoute; // Pass the full SavedRoute object
   final VoidCallback? onRoutesChanged; // Callback for when routes are modified
 
   const SavedRoutesPage({
     super.key,
-    required this.routeService,
     required this.onLoadRoute,
     this.onRoutesChanged,
   });
 
   @override
-  State<SavedRoutesPage> createState() => _SavedRoutesPageState();
+  ConsumerState<SavedRoutesPage> createState() => _SavedRoutesPageState();
 }
 
-class _SavedRoutesPageState extends State<SavedRoutesPage> {
+class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   List<SavedRoute> _routes = [];
   List<SavedRoute> _filteredRoutes = [];
   String _searchQuery = '';
@@ -75,7 +73,9 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
   Future<void> _loadRoutes() async {
     setState(() => _isLoading = true);
     try {
-      final routes = await widget.routeService.loadSavedRoutes();
+      // Ensure auth initialized, then load all accessible (local + cloud) routes
+      await ref.read(authInitializationProvider.future);
+      final routes = await ref.read(allAccessibleRoutesProvider.future);
       setState(() {
         _routes = routes;
         _filteredRoutes = routes;
@@ -250,8 +250,22 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         // Create updated route with new name (preserve visibility and metadata)
         final updatedRoute = route.copyWith(name: result);
 
-        // Update route (delete old, add new)
-        await widget.routeService.updateRoute(route, updatedRoute);
+        // Update in Firestore if route is cloud-backed and owned by current user
+        final user = ref.read(currentUserProvider);
+        if (updatedRoute.firestoreId != null &&
+            updatedRoute.userId != null &&
+            user != null &&
+            updatedRoute.userId == user.uid) {
+          final firestore = ref.read(firestoreRouteServiceProvider);
+          await firestore.saveRoute(updatedRoute);
+        }
+
+        // Update locally only if it exists locally (has a Hive key)
+        if (route.key != null) {
+          final localService = ref.read(routeServiceProvider);
+          await localService.updateRoute(route, updatedRoute);
+        }
+
         await _loadRoutes();
 
         // Notify parent widget that routes have changed
@@ -418,7 +432,9 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
 
     if (confirmed == true) {
       try {
-        await widget.routeService.deleteRouteObject(route);
+        // Delete from both local and cloud when possible
+        final synced = ref.read(syncedRouteServiceProvider);
+        await synced.deleteRoute(route);
         await _loadRoutes();
 
         // Notify parent widget that routes have changed

@@ -482,7 +482,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
             context,
             MaterialPageRoute(
               builder: (context) => SavedRoutesPage(
-                routeService: ref.read(routeServiceProvider),
                 onLoadRoute: _loadRouteFromSavedRoute,
                 onRoutesChanged: loadSavedRoutes,
               ),
