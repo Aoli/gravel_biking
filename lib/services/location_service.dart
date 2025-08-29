@@ -35,7 +35,9 @@ class LocationService {
 
       // Get current position
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       final latLng = LatLng(position.latitude, position.longitude);

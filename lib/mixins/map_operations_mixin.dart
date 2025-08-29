@@ -145,6 +145,14 @@ mixin MapOperationsMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
           );
           await Future.delayed(delay);
         } else {
+          // Small debug log with a short preview of error body for troubleshooting (e.g., Overpass syntax errors)
+          if (response.body.isNotEmpty) {
+            const maxPreview = 500;
+            final preview = response.body.length > maxPreview
+                ? '${response.body.substring(0, maxPreview)}…'
+                : response.body;
+            debugPrint('Overpass error ${response.statusCode} body: $preview');
+          }
           throw Exception(
             'HTTP ${response.statusCode}: ${response.reasonPhrase}',
           );

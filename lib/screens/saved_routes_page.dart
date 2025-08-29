@@ -1075,15 +1075,8 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
 
   Future<void> _updateRouteName(SavedRoute route, String newName) async {
     try {
-      final routeService = ref.read(routeServiceProvider);
-
-      // Create updated route with new name
-      final updatedRoute = route.copyWith(name: newName);
-
-      // Use updateRoute method from RouteService
-      await routeService.updateRoute(route, updatedRoute);
-
-      // Stream will automatically update - no manual refresh needed
+      final syncedService = ref.read(syncedRouteServiceProvider);
+      await syncedService.renameRoute(route, newName);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

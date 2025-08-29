@@ -1165,7 +1165,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       }
 
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       final latLng = LatLng(pos.latitude, pos.longitude);
       if (!mounted) return;

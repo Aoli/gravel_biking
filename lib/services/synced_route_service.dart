@@ -463,4 +463,42 @@ class SyncedRouteService {
       rethrow;
     }
   }
+
+  /// Rename a route and propagate changes to local storage and Firestore
+  ///
+  /// - If the route exists locally (has a Hive key), update it in Hive
+  /// - If the route is synced (has firestoreId and user authenticated), update in Firestore
+  /// - Returns the updated route (cloud copy if cloud update succeeded, otherwise local copy)
+  Future<SavedRoute> renameRoute(SavedRoute route, String newName) async {
+    final updated = route.copyWith(name: newName);
+
+    SavedRoute? result;
+
+    // Update locally only if this route exists in local storage (avoid duplicating cloud-only items)
+    try {
+      if (_localService.isStorageAvailable() && route.key != null) {
+        await _localService.updateRoute(route, updated);
+        result = updated;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('$_logPrefix ⚠️ Local rename failed: $e');
+      }
+    }
+
+    // Update in cloud if applicable
+    if (route.firestoreId != null && _userId != null) {
+      try {
+        final cloudUpdated = await _cloudService.saveRoute(updated);
+        result = cloudUpdated;
+      } catch (e) {
+        if (kDebugMode) {
+          print('$_logPrefix ⚠️ Cloud rename failed: $e');
+        }
+      }
+    }
+
+    // If neither local nor cloud updated (e.g., local-only without key), just return updated object
+    return result ?? updated;
+  }
 }

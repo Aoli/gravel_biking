@@ -163,8 +163,13 @@ class GravelOverpassService {
             '🔄 Server suggests retry after: ${res.headers['retry-after']}',
           );
         }
-        if (res.body.isNotEmpty && res.body.length < 1000) {
-          debugPrint('📄 Error response body: ${res.body}');
+        // Print a short preview of error body to help diagnose Overpass errors (syntax, bbox, etc.)
+        if (res.body.isNotEmpty) {
+          const maxPreview = 500;
+          final preview = res.body.length > maxPreview
+              ? '${res.body.substring(0, maxPreview)}…'
+              : res.body;
+          debugPrint('📄 Error response body: $preview');
         }
         return null;
       }

@@ -81,8 +81,9 @@ mixin FileOperationsMixin<T extends ConsumerStatefulWidget>
       await FileSaver.instance.saveFile(
         name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.geojson',
         bytes: bytes,
-        ext: 'geojson',
-        mimeType: MimeType.json,
+        fileExtension: 'geojson',
+        mimeType: MimeType.custom,
+        customMimeType: 'application/geo+json',
       );
 
       if (!mounted) return;
@@ -274,8 +275,9 @@ mixin FileOperationsMixin<T extends ConsumerStatefulWidget>
       await FileSaver.instance.saveFile(
         name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.gpx',
         bytes: bytes,
-        ext: 'gpx',
-        mimeType: MimeType.other,
+        fileExtension: 'gpx',
+        mimeType: MimeType.custom,
+        customMimeType: 'application/gpx+xml',
       );
 
       if (!mounted) return;

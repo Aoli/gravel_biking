@@ -55,8 +55,9 @@ class FileService {
         await FileSaver.instance.saveFile(
           name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.geojson',
           bytes: bytes,
-          ext: 'geojson',
-          mimeType: MimeType.json,
+          fileExtension: 'geojson',
+          mimeType: MimeType.custom,
+          customMimeType: 'application/geo+json',
         );
       } else {
         // For native iOS/Android platforms - use FileSaver directly for better compatibility
@@ -64,8 +65,9 @@ class FileService {
         await FileSaver.instance.saveFile(
           name: 'gravel_route.geojson',
           bytes: bytes,
-          ext: 'geojson',
-          mimeType: MimeType.json,
+          fileExtension: 'geojson',
+          mimeType: MimeType.custom,
+          customMimeType: 'application/geo+json',
         );
       }
 
@@ -241,8 +243,9 @@ class FileService {
         await FileSaver.instance.saveFile(
           name: 'gravel_route_${DateTime.now().millisecondsSinceEpoch}.gpx',
           bytes: bytes,
-          ext: 'gpx',
-          mimeType: MimeType.other,
+          fileExtension: 'gpx',
+          mimeType: MimeType.custom,
+          customMimeType: 'application/gpx+xml',
         );
       } else {
         // For native iOS/Android platforms - use FileSaver directly for better compatibility
@@ -250,8 +253,9 @@ class FileService {
         await FileSaver.instance.saveFile(
           name: 'gravel_route.gpx',
           bytes: bytes,
-          ext: 'gpx',
-          mimeType: MimeType.other,
+          fileExtension: 'gpx',
+          mimeType: MimeType.custom,
+          customMimeType: 'application/gpx+xml',
         );
       }
 

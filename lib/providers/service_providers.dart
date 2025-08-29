@@ -145,7 +145,7 @@ final currentUserProvider = Provider<User?>((ref) {
   return authState.when(
     data: (user) => user,
     loading: () => null,
-    error: (_, __) => null,
+    error: (error, stackTrace) => null,
   );
 });
 
