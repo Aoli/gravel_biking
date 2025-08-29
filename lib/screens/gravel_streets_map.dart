@@ -110,7 +110,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   // Autosave support
   Timer? _autosaveTimer;
   bool _isAutosaving = false;
-  SavedRoute? _autosavedRouteRef; // Track the route created/overwritten by autosave
+  SavedRoute?
+  _autosavedRouteRef; // Track the route created/overwritten by autosave
 
   // Expose storage initialization status to SavedRoutesMixin
   @override
@@ -211,7 +212,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         debugPrint('✅ Autosave: overwritten "${_autosavedRouteRef!.name}"');
       } else {
         // Attempt to find an existing route by the same name to overwrite
-        final existing = await syncedService.findRouteByName(_currentRouteName!);
+        final existing = await syncedService.findRouteByName(
+          _currentRouteName!,
+        );
         if (existing != null) {
           _autosavedRouteRef = await syncedService.overwriteRoute(
             existingRoute: existing,
@@ -629,15 +632,17 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
                     // If this is the first point of a new route, request a name and start autosave
                     if (wasEmpty) {
-                      if (_currentRouteName == null || _currentRouteName!.isEmpty) {
+                      if (_currentRouteName == null ||
+                          _currentRouteName!.isEmpty) {
                         final temp = _makeTempRouteName();
                         _currentRouteName = temp; // Set default immediately
                         // Fire-and-forget a minimal name dialog (private-only)
                         // Use SaveRouteDialog with isAuthenticated=false to hide visibility toggle
                         // If the user cancels, we keep the temporary name
-                        Future.microtask(() async {
-                          if (!mounted) return;
-                          await SaveRouteDialog.show(
+                        Future.microtask(() {
+                          if (!context.mounted) return;
+                          // Fire dialog without awaiting to avoid using context across async gaps
+                          SaveRouteDialog.show(
                             context,
                             onSave: (name, _) async {
                               if (!mounted) return;
@@ -645,7 +650,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                             },
                             savedRoutesCount: savedRoutes.length,
                             maxSavedRoutes: maxSavedRoutes,
-                            isAuthenticated: false, // force private-only for this prompt
+                            isAuthenticated:
+                                false, // force private-only for this prompt
                             initialName: temp,
                           );
                         });
@@ -892,7 +898,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                 );
                 return;
               }
-              await SaveRouteDialog.show(
+              // Trigger the dialog without awaiting to avoid using context across async gaps
+              SaveRouteDialog.show(
                 context,
                 onSave: (name, isPublic) async {
                   await saveCurrentRoute(
@@ -959,7 +966,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   @override
   void dispose() {
     _moveDebounce?.cancel();
-  _stopAutosaveTimer();
+    _stopAutosaveTimer();
     super.dispose();
   }
 
@@ -1012,7 +1019,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       ref.read(editingIndexProvider.notifier).state = null;
       // Keep distance markers toggle state (default OFF for subtle orange dots)
     });
-  _stopAutosaveTimer();
+    _stopAutosaveTimer();
   }
 
   void _showClearRouteConfirmation() {
