@@ -473,6 +473,8 @@ class GravelAppDrawer extends ConsumerWidget {
                         savedRoutesCount: savedRoutesCount,
                         maxSavedRoutes: maxSavedRoutes,
                         isAuthenticated: ref.watch(isSignedInProvider),
+                        // initialName is provided by the parent via onSaveRoute context when available
+                        // initialName: currentRouteName,
                       );
                     },
                   ),

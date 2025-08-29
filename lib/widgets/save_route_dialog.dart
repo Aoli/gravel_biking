@@ -7,12 +7,14 @@ class SaveRouteDialog extends StatefulWidget {
     required this.savedRoutesCount,
     required this.maxSavedRoutes,
     required this.isAuthenticated,
+    this.initialName,
   });
 
   final Future<void> Function(String name, bool isPublic) onSave;
   final int savedRoutesCount;
   final int maxSavedRoutes;
   final bool isAuthenticated;
+  final String? initialName;
 
   static Future<void> show(
     BuildContext context, {
@@ -20,6 +22,7 @@ class SaveRouteDialog extends StatefulWidget {
     required int savedRoutesCount,
     required int maxSavedRoutes,
     required bool isAuthenticated,
+    String? initialName,
   }) {
     return showDialog<void>(
       context: context,
@@ -29,6 +32,7 @@ class SaveRouteDialog extends StatefulWidget {
         savedRoutesCount: savedRoutesCount,
         maxSavedRoutes: maxSavedRoutes,
         isAuthenticated: isAuthenticated,
+        initialName: initialName,
       ),
     );
   }
@@ -41,6 +45,18 @@ class _SaveRouteDialogState extends State<SaveRouteDialog> {
   final TextEditingController _nameController = TextEditingController();
   bool _saving = false;
   bool _isPublic = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialName != null && widget.initialName!.isNotEmpty) {
+      _nameController.text = widget.initialName!;
+      // Place cursor at the end for quick confirmation/edit
+      _nameController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _nameController.text.length),
+      );
+    }
+  }
 
   @override
   void dispose() {

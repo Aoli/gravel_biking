@@ -167,6 +167,7 @@ mixin SavedRoutesMixin<T extends ConsumerStatefulWidget>
               savedRoutesCount: savedRoutes.length,
               maxSavedRoutes: maxSavedRoutes,
               isAuthenticated: ref.watch(isSignedInProvider),
+              initialName: _suggestCopyName(name),
             );
             return;
           }
@@ -216,5 +217,22 @@ mixin SavedRoutesMixin<T extends ConsumerStatefulWidget>
         ref.read(isSavingProvider.notifier).state = false;
       }
     }
+  }
+}
+
+extension on SavedRoutesMixin {
+  // Suggest a non-colliding copy name like "<name> (copy)" or with an incrementing number if needed
+  String _suggestCopyName(String original) {
+    const baseSuffix = ' (copy)';
+    var candidate = '$original$baseSuffix';
+    var counter = 2;
+
+    final existingLower = savedRoutes.map((r) => r.name.toLowerCase()).toSet();
+    while (existingLower.contains(candidate.toLowerCase())) {
+      candidate = '$original$baseSuffix $counter';
+      counter++;
+      if (counter > 1000) break; // safety
+    }
+    return candidate;
   }
 }

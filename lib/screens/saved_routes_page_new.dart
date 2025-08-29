@@ -1132,6 +1132,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
         }
       },
       savedRoutesCount: routeCount,
+      initialName: '', // initialName parameter pass-through
       maxSavedRoutes: 50, // Default max
       isAuthenticated: false, // Local storage doesn't require auth
     );

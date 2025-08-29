@@ -1264,6 +1264,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
       savedRoutesCount: routeCount,
       maxSavedRoutes: 50, // Default max
       isAuthenticated: ref.watch(isSignedInProvider),
+      // initialName: <current route name if available>, // Name source isn't available in this screen
     );
 
     // Stream will automatically update - no manual refresh needed

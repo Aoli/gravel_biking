@@ -791,6 +791,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                 savedRoutesCount: savedRoutes.length,
                 maxSavedRoutes: maxSavedRoutes,
                 isAuthenticated: ref.watch(isSignedInProvider),
+                initialName: _currentRouteName,
               );
             },
             onClear: _showClearRouteConfirmation,
