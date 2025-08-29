@@ -65,18 +65,79 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Watch routes from local storage
-    final routesAsyncValue = ref.watch(localSavedRoutesProvider);
+    // Initialize authentication first
+    final authInitialization = ref.watch(authInitializationProvider);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: _buildAppBar(theme),
-      body: routesAsyncValue.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => _buildErrorWidget(theme, error),
-        data: (routes) => _buildContent(theme, routes),
+      body: authInitialization.when(
+        loading: () => const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Initializing authentication...'),
+            ],
+          ),
+        ),
+        error: (error, stackTrace) =>
+            _buildErrorWidget(theme, 'Authentication failed: $error'),
+        data: (_) => _buildAuthenticatedContent(theme),
       ),
       floatingActionButton: _buildFloatingActionButton(theme),
+    );
+  }
+
+  Widget _buildAuthenticatedContent(ThemeData theme) {
+    // Ensure user profile exists
+    ref.watch(ensureUserProfileProvider);
+
+    // Watch routes with real-time streaming
+    final routesAsyncValue = ref.watch(streamAllAccessibleRoutesProvider);
+    final user = ref.watch(currentUserProvider);
+
+    if (user == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.account_circle_outlined,
+              size: 64,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Authentication required',
+              style: theme.textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait while we sign you in...',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return routesAsyncValue.when(
+      loading: () => const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading routes...'),
+          ],
+        ),
+      ),
+      error: (error, stackTrace) => _buildErrorWidget(theme, error),
+      data: (routes) => _buildContent(theme, routes),
     );
   }
 
@@ -98,7 +159,8 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
         IconButton(
           onPressed: () {
             // Refresh routes
-            ref.invalidate(localSavedRoutesProvider);
+
+            // Stream will automatically update - no manual refresh needed
           },
           icon: Icon(Icons.refresh, color: theme.colorScheme.onSurface),
           tooltip: 'Uppdatera',
@@ -150,7 +212,9 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () => ref.invalidate(localSavedRoutesProvider),
+            onPressed: () {
+              // Streaming provider will automatically refresh
+            },
             child: const Text('Försök igen'),
           ),
         ],
@@ -813,18 +877,16 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
 
   void _copyRoute(SavedRoute originalRoute) async {
     try {
-      final routeService = ref.read(routeServiceProvider);
+      final syncedService = ref.read(syncedRouteServiceProvider);
 
-      // Use saveCurrentRoute method with the existing route data
-      await routeService.saveCurrentRoute(
+      // Use synced service with the existing route data
+      await syncedService.saveCurrentRoute(
         name: '${originalRoute.name} (kopia)',
         routePoints: originalRoute.latLngPoints,
         loopClosed: originalRoute.loopClosed,
         description: originalRoute.description,
+        isPublic: false, // Default to private for copies
       );
-
-      // Refresh the routes list
-      ref.invalidate(localSavedRoutesProvider);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -904,8 +966,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
       // Use updateRoute method from RouteService
       await routeService.updateRoute(route, updatedRoute);
 
-      // Refresh the routes list
-      ref.invalidate(localSavedRoutesProvider);
+      // Stream will automatically update - no manual refresh needed
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -959,11 +1020,10 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
 
   Future<void> _deleteRoute(SavedRoute route) async {
     try {
-      final routeService = ref.read(routeServiceProvider);
-      await routeService.deleteRouteObject(route);
+      final syncedService = ref.read(syncedRouteServiceProvider);
+      await syncedService.deleteRoute(route);
 
-      // Refresh the routes list
-      ref.invalidate(localSavedRoutesProvider);
+      // Stream will automatically update - no manual refresh needed
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -992,18 +1052,18 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
 
   Future<void> _restoreRoute(SavedRoute route) async {
     try {
-      final routeService = ref.read(routeServiceProvider);
+      final syncedService = ref.read(syncedRouteServiceProvider);
 
       // Save the route back using saveCurrentRoute
-      await routeService.saveCurrentRoute(
+      await syncedService.saveCurrentRoute(
         name: route.name,
         routePoints: route.latLngPoints,
         loopClosed: route.loopClosed,
         description: route.description,
+        isPublic: route.isPublic,
       );
 
-      // Refresh the routes list
-      ref.invalidate(localSavedRoutesProvider);
+      // Stream will automatically update - no manual refresh needed
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1048,7 +1108,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   }
 
   void _showSaveCurrentRouteDialog() async {
-    final routesAsyncValue = ref.read(localSavedRoutesProvider);
+    final routesAsyncValue = ref.read(streamAllAccessibleRoutesProvider);
     final routeCount = routesAsyncValue.when(
       data: (routes) => routes.length,
       loading: () => 0,
@@ -1058,20 +1118,21 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
     await SaveRouteDialog.show(
       context,
       onSave: (name, isPublic) async {
-        final routeService = ref.read(routeServiceProvider);
-        // For simple local storage, we need to get current route from somewhere
+        final syncedService = ref.read(syncedRouteServiceProvider);
+        // For streaming storage, we need to get current route from somewhere
         // This needs to be connected to the main app's current route state
         try {
           // This is a placeholder - the actual implementation would need
           // access to the current route being measured
-          await routeService.saveCurrentRoute(
+          await syncedService.saveCurrentRoute(
             name: name,
             routePoints: [], // This should be the current measured route
             loopClosed: false,
             description: '',
+            isPublic: isPublic,
           );
 
-          ref.invalidate(localSavedRoutesProvider);
+          // Stream will automatically update - no manual refresh needed
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1098,8 +1159,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
       isAuthenticated: false, // Local storage doesn't require auth
     );
 
-    // Refresh routes after dialog closes
-    ref.invalidate(localSavedRoutesProvider);
+    // Stream will automatically update - no manual refresh needed
     if (widget.onRoutesChanged != null) {
       widget.onRoutesChanged!();
     }
