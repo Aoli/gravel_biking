@@ -107,6 +107,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       false; // Prevent duplicate API calls during initialization
   // Current route name (shown as floating label on the map)
   String? _currentRouteName;
+  // Autosave support
+  Timer? _autosaveTimer;
+  bool _isAutosaving = false;
+  SavedRoute? _autosavedRouteRef; // Track the route created/overwritten by autosave
 
   // Expose storage initialization status to SavedRoutesMixin
   @override
@@ -155,6 +159,90 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1)),
       isInitialFetch: true, // Mark as initial fetch to prevent duplicates
     );
+  }
+
+  // ---- Autosave helpers ----
+  String _makeTempRouteName() {
+    final now = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final y = now.year;
+    final m = two(now.month);
+    final d = two(now.day);
+    final h = two(now.hour);
+    final min = two(now.minute);
+    return 'Route $y-$m-$d $h:$min';
+  }
+
+  void _startAutosaveTimerIfNeeded() {
+    // Only start if not running, we have at least one point, and we have a name
+    if (_autosaveTimer != null) return;
+    if (_routePoints.isEmpty) return;
+    if (_currentRouteName == null || _currentRouteName!.isEmpty) return;
+    _autosaveTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      _autosaveTick();
+    });
+    debugPrint('🕒 Autosave: started');
+  }
+
+  Future<void> _autosaveTick() async {
+    if (!mounted) return;
+    if (_isAutosaving) return; // Prevent re-entry
+    if (_routePoints.isEmpty) return; // Nothing to save
+    if (_currentRouteName == null || _currentRouteName!.isEmpty) return;
+
+    // Ensure storage is initialized and available
+    final routeService = ref.read(routeServiceProvider);
+    if (!isStorageInitialized || !routeService.isStorageAvailable()) {
+      return; // Silent skip when storage unavailable
+    }
+
+    _isAutosaving = true;
+    try {
+      final syncedService = ref.read(syncedRouteServiceProvider);
+
+      // Overwrite previously autosaved route if available; otherwise create/find by name
+      if (_autosavedRouteRef != null) {
+        _autosavedRouteRef = await syncedService.overwriteRoute(
+          existingRoute: _autosavedRouteRef!,
+          routePoints: _routePoints,
+          loopClosed: ref.read(loopClosedProvider),
+          isPublic: false, // always private for autosave
+        );
+        debugPrint('✅ Autosave: overwritten "${_autosavedRouteRef!.name}"');
+      } else {
+        // Attempt to find an existing route by the same name to overwrite
+        final existing = await syncedService.findRouteByName(_currentRouteName!);
+        if (existing != null) {
+          _autosavedRouteRef = await syncedService.overwriteRoute(
+            existingRoute: existing,
+            routePoints: _routePoints,
+            loopClosed: ref.read(loopClosedProvider),
+            isPublic: false,
+          );
+          debugPrint('✅ Autosave: overwritten existing "${existing.name}"');
+        } else {
+          _autosavedRouteRef = await syncedService.saveCurrentRoute(
+            name: _currentRouteName!,
+            routePoints: _routePoints,
+            loopClosed: ref.read(loopClosedProvider),
+            description: null,
+            isPublic: false,
+          );
+          debugPrint('✅ Autosave: created "${_autosavedRouteRef!.name}"');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Autosave failed: $e');
+    } finally {
+      _isAutosaving = false;
+    }
+  }
+
+  void _stopAutosaveTimer() {
+    _autosaveTimer?.cancel();
+    _autosaveTimer = null;
+    _autosavedRouteRef = null; // Reset reference when clearing route
+    debugPrint('🕒 Autosave: stopped');
   }
 
   Future<void> _initializeServices() async {
@@ -534,9 +622,37 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                           .read(routeNotifierProvider.notifier)
                           .setLoopClosed(false); // re-open when adding
                     }
+                    final wasEmpty = _routePoints.isEmpty;
                     _routePoints.add(latLng);
                     _recomputeSegments();
                     autoRecalcDistanceMarkers(); // Always generate distance markers
+
+                    // If this is the first point of a new route, request a name and start autosave
+                    if (wasEmpty) {
+                      if (_currentRouteName == null || _currentRouteName!.isEmpty) {
+                        final temp = _makeTempRouteName();
+                        _currentRouteName = temp; // Set default immediately
+                        // Fire-and-forget a minimal name dialog (private-only)
+                        // Use SaveRouteDialog with isAuthenticated=false to hide visibility toggle
+                        // If the user cancels, we keep the temporary name
+                        Future.microtask(() async {
+                          if (!mounted) return;
+                          await SaveRouteDialog.show(
+                            context,
+                            onSave: (name, _) async {
+                              if (!mounted) return;
+                              setState(() => _currentRouteName = name.trim());
+                            },
+                            savedRoutesCount: savedRoutes.length,
+                            maxSavedRoutes: maxSavedRoutes,
+                            isAuthenticated: false, // force private-only for this prompt
+                            initialName: temp,
+                          );
+                        });
+                      }
+                      // Ensure autosave starts
+                      _startAutosaveTimerIfNeeded();
+                    }
                   }
                   // When edit mode is enabled but no point is selected, do nothing
                   // This prevents accidental point addition during editing
@@ -843,6 +959,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   @override
   void dispose() {
     _moveDebounce?.cancel();
+  _stopAutosaveTimer();
     super.dispose();
   }
 
@@ -895,6 +1012,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       ref.read(editingIndexProvider.notifier).state = null;
       // Keep distance markers toggle state (default OFF for subtle orange dots)
     });
+  _stopAutosaveTimer();
   }
 
   void _showClearRouteConfirmation() {
