@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
 import '../providers/service_providers.dart';
+import '../providers/ui_providers.dart';
 import '../widgets/save_route_dialog.dart';
 
 /// Visibility filter options for saved routes
@@ -1200,6 +1201,20 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
   }
 
   void _showSaveCurrentRouteDialog() async {
+    // Read current measurement state
+    final currentPoints = ref.read(routePointsProvider);
+    final currentLoopClosed = ref.read(loopClosedProvider);
+
+    // Prevent saving when there's no route
+    if (currentPoints.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Ingen rutt att spara')));
+      }
+      return;
+    }
+
     final routesAsyncValue = ref.read(streamAllAccessibleRoutesProvider);
     final routeCount = routesAsyncValue.when(
       data: (routes) => routes.length,
@@ -1218,8 +1233,8 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
           // access to the current route being measured
           await syncedService.saveCurrentRoute(
             name: name,
-            routePoints: [], // This should be the current measured route
-            loopClosed: false,
+            routePoints: currentPoints,
+            loopClosed: currentLoopClosed,
             description: '',
             isPublic: isPublic,
           );
@@ -1248,7 +1263,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
       },
       savedRoutesCount: routeCount,
       maxSavedRoutes: 50, // Default max
-      isAuthenticated: false, // Local storage doesn't require auth
+      isAuthenticated: ref.watch(isSignedInProvider),
     );
 
     // Stream will automatically update - no manual refresh needed

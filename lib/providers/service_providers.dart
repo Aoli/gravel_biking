@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gravel_biking/services/route_service.dart';
@@ -246,27 +247,50 @@ final streamAllAccessibleRoutesProvider = StreamProvider<List<SavedRoute>>((
 
   final firestoreService = ref.read(firestoreRouteServiceProvider);
 
-  // Combine user routes and public routes streams
-  return firestoreService.streamUserRoutes(user.uid).asyncMap((
-    userRoutes,
-  ) async {
-    try {
-      // Get public routes from other users
-      final publicRoutes = await firestoreService.getPublicRoutes();
-      final otherUsersPublicRoutes = publicRoutes
-          .where((route) => route.userId != user.uid)
-          .toList();
+  final userStream = firestoreService.streamUserRoutes(user.uid);
+  final publicStream = firestoreService.streamPublicRoutes();
 
-      final allRoutes = [...userRoutes, ...otherUsersPublicRoutes];
+  // Manually combine two streams without extra deps
+  return Stream<List<SavedRoute>>.multi((controller) {
+    List<SavedRoute> latestUser = const [];
+    List<SavedRoute> latestPublic = const [];
 
-      // Sort by save date (newest first)
-      allRoutes.sort((a, b) => b.savedAt.compareTo(a.savedAt));
-
-      return allRoutes;
-    } catch (e) {
-      debugPrint('StreamAllAccessibleRoutes: Error combining routes: $e');
-      return userRoutes; // Return at least user routes if public routes fail
+    void emitCombined() {
+      try {
+        final otherUsersPublic = latestPublic
+            .where((r) => r.userId != user.uid)
+            .toList();
+        final all = <SavedRoute>[...latestUser, ...otherUsersPublic];
+        all.sort((a, b) => b.savedAt.compareTo(a.savedAt));
+        controller.add(all);
+      } catch (e) {
+        debugPrint('StreamAllAccessibleRoutes: emit error: $e');
+      }
     }
+
+    final subUser = userStream.listen((data) {
+      latestUser = data;
+      emitCombined();
+    }, onError: controller.addError);
+
+    final subPublic = publicStream.listen((data) {
+      latestPublic = data;
+      emitCombined();
+    }, onError: controller.addError);
+
+    controller
+      ..onPause = () {
+        subUser.pause();
+        subPublic.pause();
+      }
+      ..onResume = () {
+        subUser.resume();
+        subPublic.resume();
+      }
+      ..onCancel = () async {
+        await subUser.cancel();
+        await subPublic.cancel();
+      };
   });
 });
 
