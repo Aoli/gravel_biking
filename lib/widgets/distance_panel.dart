@@ -46,7 +46,7 @@ class DistancePanel extends StatefulWidget {
 
 class _DistancePanelState extends State<DistancePanel>
     with TickerProviderStateMixin {
-  bool _isExpanded = true; // Default to expanded
+  bool _isExpanded = false; // Default to closed
   late AnimationController _controller;
   late Animation<double> _expandAnimation;
 
