@@ -376,4 +376,91 @@ class SyncedRouteService {
         : 'Cloud sync: Not authenticated';
     return '$local\n$cloud';
   }
+
+  /// Find an existing route by name (case-insensitive)
+  ///
+  /// Returns the first route found with matching name, or null if none exists.
+  /// Checks both local and cloud routes.
+  Future<SavedRoute?> findRouteByName(String name) async {
+    try {
+      final allRoutes = await loadAllRoutes();
+      final normalizedName = name.toLowerCase().trim();
+
+      return allRoutes
+          .where((route) => route.name.toLowerCase().trim() == normalizedName)
+          .firstOrNull;
+    } catch (e) {
+      if (kDebugMode) {
+        print('$_logPrefix ❌ Failed to find route by name: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Overwrite an existing route with new data
+  ///
+  /// Updates the existing route while preserving its saved date and ID.
+  /// Works for both local and cloud routes.
+  Future<SavedRoute> overwriteRoute({
+    required SavedRoute existingRoute,
+    required List<LatLng> routePoints,
+    required bool loopClosed,
+    String? description,
+    bool? isPublic,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '$_logPrefix Overwriting route: "${existingRoute.name}" '
+          '(ID: ${existingRoute.firestoreId ?? "local"})',
+        );
+      }
+
+      // Create updated route preserving original metadata
+      final updatedRoute = existingRoute.copyWith(
+        points: routePoints
+            .map((p) => LatLngData(p.latitude, p.longitude))
+            .toList(),
+        loopClosed: loopClosed,
+        description: description,
+        isPublic: isPublic ?? existingRoute.isPublic,
+        // Preserve original savedAt and firestoreId
+      );
+
+      // Update in local storage
+      await _localService.updateRoute(existingRoute, updatedRoute);
+
+      // Update in cloud storage if it's a cloud route
+      if (existingRoute.firestoreId != null && _userId != null) {
+        try {
+          final cloudUpdatedRoute = await _cloudService.saveRoute(updatedRoute);
+
+          if (kDebugMode) {
+            print(
+              '$_logPrefix ✅ Route overwritten in cloud: ${cloudUpdatedRoute.firestoreId}',
+            );
+          }
+
+          return cloudUpdatedRoute;
+        } catch (cloudError) {
+          if (kDebugMode) {
+            print('$_logPrefix ⚠️ Cloud overwrite failed: $cloudError');
+            print('$_logPrefix Route overwritten locally only');
+          }
+          // Return local updated route even if cloud update fails
+          return updatedRoute;
+        }
+      } else {
+        if (kDebugMode) {
+          print('$_logPrefix Route overwritten locally only');
+        }
+        return updatedRoute;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('$_logPrefix ❌ Failed to overwrite route: $e');
+      }
+      rethrow;
+    }
+  }
 }

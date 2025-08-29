@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -6,7 +5,6 @@ import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
 import '../providers/service_providers.dart';
 import '../widgets/save_route_dialog.dart';
-import '../services/route_service.dart';
 
 /// Visibility filter options for saved routes
 enum _VisibilityFilter { all, publicOnly, privateOnly }
@@ -146,7 +144,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
           Text(
             error.toString(),
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -194,20 +192,29 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
       }
 
       // Distance filter
-      if (_minDistance != null && (route.distance ?? 0) < _minDistance!)
+      if (_minDistance != null && (route.distance ?? 0) < _minDistance!) {
         return false;
-      if (_maxDistance != null && (route.distance ?? 0) > _maxDistance!)
+      }
+      if (_maxDistance != null && (route.distance ?? 0) > _maxDistance!) {
         return false;
+      }
 
       // Loop filter
-      if (_showLoopOnly && !route.loopClosed) return false;
-      if (_showLinearOnly && route.loopClosed) return false;
+      if (_showLoopOnly && !route.loopClosed) {
+        return false;
+      }
+      if (_showLinearOnly && route.loopClosed) {
+        return false;
+      }
 
       // Date filter
-      if (_dateFrom != null && route.savedAt.isBefore(_dateFrom!)) return false;
-      if (_dateTo != null &&
-          route.savedAt.isAfter(_dateTo!.add(const Duration(days: 1))))
+      if (_dateFrom != null && route.savedAt.isBefore(_dateFrom!)) {
         return false;
+      }
+      if (_dateTo != null &&
+          route.savedAt.isAfter(_dateTo!.add(const Duration(days: 1)))) {
+        return false;
+      }
 
       // Visibility filter
       switch (_visibilityFilter) {
@@ -230,7 +237,9 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
           _positionFilter!,
           firstPoint,
         );
-        if (distance > _proximityKm! * 1000) return false;
+        if (distance > _proximityKm! * 1000) {
+          return false;
+        }
       }
 
       return true;
@@ -273,13 +282,13 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
           Icon(
             Icons.route_outlined,
             size: 64,
-            color: theme.colorScheme.onSurface.withOpacity(0.5),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           if (message.contains('matchar')) ...[
@@ -302,20 +311,23 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
           Text(
             '$filteredCount av $totalCount rutter',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const Spacer(),
-          if (_searchQuery.isNotEmpty || _showAdvancedFilters)
+          if (_searchQuery.isNotEmpty || _showAdvancedFilters) ...[
             TextButton.icon(
               onPressed: () => _clearAllFilters(),
               icon: const Icon(Icons.clear, size: 16),
               label: const Text('Rensa'),
               style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.onSurface.withOpacity(0.6),
+                foregroundColor: theme.colorScheme.onSurface.withValues(
+                  alpha: 0.6,
+                ),
                 textStyle: theme.textTheme.bodySmall,
               ),
             ),
+          ],
         ],
       ),
     );
@@ -373,7 +385,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
           Icon(
             Icons.lock,
             size: 16,
-            color: theme.colorScheme.onSurface.withOpacity(0.5),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         if (route.loopClosed) ...[
           const SizedBox(width: 4),
@@ -395,39 +407,39 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
         Icon(
           Icons.straighten,
           size: 14,
-          color: theme.colorScheme.onSurface.withOpacity(0.6),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
         ),
         const SizedBox(width: 4),
         Text(
           distanceText,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.8),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(width: 16),
         Icon(
           Icons.access_time,
           size: 14,
-          color: theme.colorScheme.onSurface.withOpacity(0.6),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
         ),
         const SizedBox(width: 4),
         Text(
           timeAgo,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.8),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(width: 16),
         Icon(
           Icons.place,
           size: 14,
-          color: theme.colorScheme.onSurface.withOpacity(0.6),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
         ),
         const SizedBox(width: 4),
         Text(
           '${route.points.length} punkter',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.8),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
       ],
@@ -483,7 +495,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
           ],
           child: Icon(
             Icons.more_vert,
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             size: 20,
           ),
         ),
@@ -498,7 +510,9 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -550,8 +564,9 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
                 onChanged: (value) {
                   setState(() {
                     _minDistance = double.tryParse(value);
-                    if (_minDistance != null)
+                    if (_minDistance != null) {
                       _minDistance = _minDistance! * 1000;
+                    }
                   });
                 },
               ),
@@ -572,8 +587,9 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
                 onChanged: (value) {
                   setState(() {
                     _maxDistance = double.tryParse(value);
-                    if (_maxDistance != null)
+                    if (_maxDistance != null) {
                       _maxDistance = _maxDistance! * 1000;
+                    }
                   });
                 },
               ),
@@ -605,7 +621,9 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
               onSelected: (selected) {
                 setState(() {
                   _showLoopOnly = selected;
-                  if (selected) _showLinearOnly = false;
+                  if (selected) {
+                    _showLinearOnly = false;
+                  }
                 });
               },
             ),
@@ -615,7 +633,9 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
               onSelected: (selected) {
                 setState(() {
                   _showLinearOnly = selected;
-                  if (selected) _showLoopOnly = false;
+                  if (selected) {
+                    _showLoopOnly = false;
+                  }
                 });
               },
             ),
@@ -887,7 +907,8 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
               if (newName.isNotEmpty && newName != route.name) {
                 await _updateRouteName(route, newName);
               }
-              if (mounted) Navigator.of(context).pop();
+              if (!context.mounted) return;
+              Navigator.of(context).pop();
             },
             child: const Text('Spara'),
           ),

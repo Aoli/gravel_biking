@@ -13,6 +13,8 @@ import '../providers/service_providers.dart';
 import '../providers/loading_providers.dart';
 import '../providers/ui_providers.dart';
 import '../mixins/file_operations_mixin.dart';
+import '../widgets/duplicate_route_dialog.dart';
+import '../widgets/save_route_dialog.dart';
 
 mixin SavedRoutesMixin<T extends ConsumerStatefulWidget>
     on ConsumerState<T>, FileOperationsMixin<T> {
@@ -46,6 +48,7 @@ mixin SavedRoutesMixin<T extends ConsumerStatefulWidget>
     String name,
     List<LatLng> routePoints, {
     bool isPublic = false,
+    String? newNameForDuplicate,
   }) async {
     if (routePoints.isEmpty) {
       if (!mounted) return;
@@ -108,8 +111,71 @@ mixin SavedRoutesMixin<T extends ConsumerStatefulWidget>
 
       // Use SyncedRouteService for cloud sync capability
       final syncedService = ref.read(syncedRouteServiceProvider);
+
+      // Check for existing route with same name (but only if we haven't already handled this)
+      if (newNameForDuplicate == null) {
+        final existingRoute = await syncedService.findRouteByName(name);
+
+        if (existingRoute != null) {
+          if (!mounted) return;
+
+          // Show duplicate route dialog
+          final action = await DuplicateRouteDialog.show(
+            context,
+            routeName: name,
+            existingRoute: existingRoute,
+          );
+
+          if (action == DuplicateRouteAction.cancel || action == null) {
+            // User cancelled, stop the saving process
+            return;
+          } else if (action == DuplicateRouteAction.overwrite) {
+            // Overwrite existing route
+            await syncedService.overwriteRoute(
+              existingRoute: existingRoute,
+              routePoints: routePoints,
+              loopClosed: ref.watch(loopClosedProvider),
+              description: null,
+              isPublic: isPublic,
+            );
+
+            await loadSavedRoutes();
+
+            if (mounted) {
+              final syncMessage = ref.watch(isSignedInProvider)
+                  ? (isPublic
+                        ? ' och synkad som offentlig'
+                        : ' och synkad privat')
+                  : ' lokalt';
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Rutt "$name" uppdaterad$syncMessage')),
+              );
+            }
+            return;
+          } else if (action == DuplicateRouteAction.createNew) {
+            // Let user create with a new name
+            // We'll use the SaveRouteDialog again with a pre-filled name suggestion
+            if (!mounted) return;
+            await SaveRouteDialog.show(
+              context,
+              onSave: (newName, newIsPublic) => saveCurrentRoute(
+                newName,
+                routePoints,
+                isPublic: newIsPublic,
+                newNameForDuplicate: newName, // Prevent infinite loop
+              ),
+              savedRoutesCount: savedRoutes.length,
+              maxSavedRoutes: maxSavedRoutes,
+              isAuthenticated: ref.watch(isSignedInProvider),
+            );
+            return;
+          }
+        }
+      }
+
+      // Save the route (either new name or no duplicate found)
       await syncedService.saveCurrentRoute(
-        name: name,
+        name: newNameForDuplicate ?? name,
         routePoints: routePoints,
         loopClosed: ref.watch(loopClosedProvider),
         description: null,
@@ -123,7 +189,11 @@ mixin SavedRoutesMixin<T extends ConsumerStatefulWidget>
             ? (isPublic ? ' och synkad som offentlig' : ' och synkad privat')
             : ' lokalt';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rutt "$name" sparad$syncMessage')),
+          SnackBar(
+            content: Text(
+              'Rutt "${newNameForDuplicate ?? name}" sparad$syncMessage',
+            ),
+          ),
         );
       }
     } catch (e) {
