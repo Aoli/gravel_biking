@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
@@ -35,10 +36,14 @@ class SavedRoutesPage extends ConsumerStatefulWidget {
   ConsumerState<SavedRoutesPage> createState() => _SavedRoutesPageState();
 }
 
-class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
+class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
+    with TickerProviderStateMixin {
   // UI state variables
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+
+  // Tab controller for private/public separation
+  late TabController _tabController;
 
   // Advanced filtering
   double? _minDistance;
@@ -56,9 +61,26 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   double? _proximityKm;
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
+    _tabController.dispose();
     super.dispose();
+  }
+
+  void _handleLoadRoute(SavedRoute route) {
+    // Load the route
+    widget.onLoadRoute(route);
+
+    // Close the saved routes page and return to map
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -137,7 +159,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
         ),
       ),
       error: (error, stackTrace) => _buildErrorWidget(theme, error),
-      data: (routes) => _buildContent(theme, routes),
+      data: (routes) => _buildContent(theme, routes, user),
     );
   }
 
@@ -158,14 +180,22 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
         _buildFilterAction(theme),
         IconButton(
           onPressed: () {
-            // Refresh routes
-
             // Stream will automatically update - no manual refresh needed
           },
           icon: Icon(Icons.refresh, color: theme.colorScheme.onSurface),
           tooltip: 'Uppdatera',
         ),
       ],
+      bottom: TabBar(
+        controller: _tabController,
+        tabs: const [
+          Tab(icon: Icon(Icons.lock), text: 'Mina Rutter'),
+          Tab(icon: Icon(Icons.public), text: 'Offentliga'),
+        ],
+        labelColor: theme.colorScheme.primary,
+        unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
+        indicatorColor: theme.colorScheme.primary,
+      ),
     );
   }
 
@@ -222,12 +252,39 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
     );
   }
 
-  Widget _buildContent(ThemeData theme, List<SavedRoute> allRoutes) {
-    // Apply filters and sorting
-    final filteredRoutes = _applyFiltersAndSorting(allRoutes);
+  Widget _buildContent(ThemeData theme, List<SavedRoute> allRoutes, User user) {
+    // Separate routes into private (user's own) and public (others' public)
+    final privateRoutes = allRoutes
+        .where((route) => route.userId == user.uid)
+        .toList();
+    final publicRoutes = allRoutes
+        .where((route) => route.isPublic && route.userId != user.uid)
+        .toList();
 
-    if (allRoutes.isEmpty) {
-      return _buildEmptyState(theme, 'Inga rutter sparade än');
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        // Tab 1: Private Routes (Mina Rutter)
+        _buildRouteTab(theme, privateRoutes, true),
+        // Tab 2: Public Routes (Offentliga)
+        _buildRouteTab(theme, publicRoutes, false),
+      ],
+    );
+  }
+
+  Widget _buildRouteTab(
+    ThemeData theme,
+    List<SavedRoute> routes,
+    bool isPrivateTab,
+  ) {
+    // Apply filters and sorting only to the specific tab's routes
+    final filteredRoutes = _applyFiltersAndSorting(routes);
+
+    if (routes.isEmpty) {
+      final emptyMessage = isPrivateTab
+          ? 'Inga privata rutter sparade än'
+          : 'Inga offentliga rutter tillgängliga';
+      return _buildEmptyState(theme, emptyMessage);
     }
 
     if (filteredRoutes.isEmpty) {
@@ -237,7 +294,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
     return Column(
       children: [
         if (_showAdvancedFilters) _buildAdvancedFilters(theme),
-        _buildRouteStats(theme, filteredRoutes.length, allRoutes.length),
+        _buildRouteStats(theme, filteredRoutes.length, routes.length),
         Expanded(child: _buildRoutesList(theme, filteredRoutes)),
       ],
     );
@@ -396,7 +453,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
     return Card(
       elevation: 2,
       child: InkWell(
-        onTap: () => widget.onLoadRoute(route),
+        onTap: () => _handleLoadRoute(route),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -500,7 +557,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
     return Row(
       children: [
         TextButton.icon(
-          onPressed: () => widget.onLoadRoute(route),
+          onPressed: () => _handleLoadRoute(route),
           icon: const Icon(Icons.map, size: 16),
           label: const Text('Ladda'),
           style: TextButton.styleFrom(
