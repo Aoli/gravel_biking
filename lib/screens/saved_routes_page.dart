@@ -382,6 +382,51 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
     }
   }
 
+  Future<void> _toggleRouteVisibility(SavedRoute route) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final user = ref.read(currentUserProvider);
+    
+    // Only allow visibility changes for routes owned by current user and synced to Firebase
+    if (user == null || route.firestoreId == null || route.userId != user.uid) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Kan endast ändra synlighet för egna sparade rutter'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final newVisibility = !route.isPublic;
+    final visibilityText = newVisibility ? 'offentlig' : 'privat';
+
+    try {
+      final syncedService = ref.read(syncedRouteServiceProvider);
+      await syncedService.updateRouteVisibility(route, newVisibility);
+      
+      // Reload routes to get updated data
+      await _loadRoutes();
+      
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Rutten "${route.name}" är nu $visibilityText'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Fel vid ändring av synlighet: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showAdvancedFiltersDialog() async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -710,6 +755,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
                           onLoad: () => _loadRoute(route),
                           onDelete: () => _deleteRoute(route),
                           onEdit: () => _editRouteName(route),
+                          onToggleVisibility: () => _toggleRouteVisibility(route),
                           canEdit: isOwned,
                           canDelete: isOwned,
                           onSaveAsNew: isOwned
@@ -770,6 +816,7 @@ class _RouteCard extends StatelessWidget {
   final VoidCallback onLoad;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+  final VoidCallback? onToggleVisibility;
   final VoidCallback? onSaveAsNew;
   final bool canEdit;
   final bool canDelete;
@@ -779,6 +826,7 @@ class _RouteCard extends StatelessWidget {
     required this.onLoad,
     required this.onDelete,
     required this.onEdit,
+    this.onToggleVisibility,
     this.onSaveAsNew,
     this.canEdit = true,
     this.canDelete = true,
@@ -846,18 +894,49 @@ class _RouteCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Chip(
-                label: Text(route.isPublic ? 'Offentlig' : 'Privat'),
-                avatar: Icon(
-                  route.isPublic ? Icons.public : Icons.lock,
-                  size: 16,
+            Row(
+              children: [
+                Chip(
+                  label: Text(route.isPublic ? 'Offentlig' : 'Privat'),
+                  avatar: Icon(
+                    route.isPublic ? Icons.public : Icons.lock,
+                    size: 16,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
+                if (!canEdit && route.isPublic) ...[
+                  const SizedBox(width: 8),
+                  Chip(
+                    label: const Text('Delad rutt'),
+                    avatar: Icon(
+                      Icons.people,
+                      size: 16,
+                      color: theme.colorScheme.secondary,
+                    ),
+                    backgroundColor: theme.colorScheme.secondaryContainer,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
+                if (route.firestoreId != null) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.cloud_done,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                ] else ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.phonelink,
+                    size: 16,
+                    color: theme.colorScheme.outline,
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -869,6 +948,9 @@ class _RouteCard extends StatelessWidget {
                 break;
               case 'edit':
                 if (canEdit) onEdit();
+                break;
+              case 'toggleVisibility':
+                if (canEdit) onToggleVisibility?.call();
                 break;
               case 'delete':
                 if (canDelete) onDelete();
@@ -900,6 +982,19 @@ class _RouteCard extends StatelessWidget {
                 ],
               ),
             ),
+            if (canEdit)
+              PopupMenuItem<String>(
+                value: 'toggleVisibility',
+                child: Row(
+                  children: [
+                    Icon(route.isPublic ? Icons.lock : Icons.public),
+                    const SizedBox(width: 8),
+                    Text(route.isPublic 
+                        ? 'Gör privat' 
+                        : 'Gör offentlig'),
+                  ],
+                ),
+              ),
             if (onSaveAsNew != null)
               const PopupMenuItem<String>(
                 value: 'saveAsNew',
