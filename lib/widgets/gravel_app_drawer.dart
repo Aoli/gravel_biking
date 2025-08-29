@@ -386,8 +386,7 @@ class GravelAppDrawer extends ConsumerWidget {
                       Icons.bookmark,
                       color: Theme.of(context).colorScheme.onSurface,
                     ),
-                    title: const Text('Sparade rutter'),
-                    subtitle: Text('$savedRoutesCount/$maxSavedRoutes rutter'),
+                    title: const Text('Rutter'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

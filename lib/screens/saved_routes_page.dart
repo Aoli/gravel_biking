@@ -165,7 +165,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
   PreferredSizeWidget _buildAppBar(ThemeData theme) {
     return AppBar(
       title: Text(
-        'Sparade Rutter',
+        'Rutter',
         style: theme.textTheme.headlineSmall?.copyWith(
           fontWeight: FontWeight.w500,
           color: theme.colorScheme.onSurface,
@@ -511,6 +511,9 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
           ),
         ),
         const SizedBox(width: 8),
+        // Developer/testing visibility badge (can be removed later)
+        _buildVisibilityBadge(theme, route.isPublic),
+        const SizedBox(width: 8),
         if (route.isPublic)
           Icon(Icons.public, size: 16, color: theme.colorScheme.primary)
         else
@@ -524,6 +527,36 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
           Icon(Icons.loop, size: 16, color: theme.colorScheme.secondary),
         ],
       ],
+    );
+  }
+
+  // Small pill badge indicating route visibility (Offentlig/Privat)
+  Widget _buildVisibilityBadge(ThemeData theme, bool isPublic) {
+    final bgColor = isPublic
+        ? theme.colorScheme.primaryContainer
+        : theme.colorScheme.surfaceContainerHigh;
+    final fgColor = isPublic
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurface;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(999),
+        border: isPublic
+            ? null
+            : Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.6),
+              ),
+      ),
+      child: Text(
+        isPublic ? 'Offentlig' : 'Privat',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: fgColor,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
