@@ -5,6 +5,20 @@ import '../models/saved_route.dart';
 import '../services/route_service.dart';
 import '../utils/coordinate_utils.dart';
 
+/// Visibility filter options for saved routes
+enum _VisibilityFilter { all, publicOnly, privateOnly }
+
+/// Sorting options for saved routes
+enum _SortOption {
+  newest,
+  oldest,
+  distanceAsc,
+  distanceDesc,
+  nameAZ,
+  nameZA,
+  publicFirst,
+}
+
 /// Enhanced saved routes management page with search and organization
 class SavedRoutesPage extends StatefulWidget {
   final RouteService routeService;
@@ -39,6 +53,10 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
   DateTime? _dateTo;
   LatLng? _currentPosition;
   double? _maxDistanceFromPosition;
+
+  // Visibility and sorting
+  _VisibilityFilter _visibilityFilter = _VisibilityFilter.all;
+  _SortOption _sortOption = _SortOption.newest;
 
   @override
   void initState() {
@@ -104,6 +122,18 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         if (_showLoopOnly && !route.loopClosed) return false;
         if (_showLinearOnly && route.loopClosed) return false;
 
+        // Visibility filter
+        switch (_visibilityFilter) {
+          case _VisibilityFilter.publicOnly:
+            if (!route.isPublic) return false;
+            break;
+          case _VisibilityFilter.privateOnly:
+            if (route.isPublic) return false;
+            break;
+          case _VisibilityFilter.all:
+            break;
+        }
+
         // Date range filter
         if (_dateFrom != null && route.savedAt.isBefore(_dateFrom!)) {
           return false;
@@ -124,6 +154,32 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
 
         return true;
       }).toList();
+
+      // Sorting
+      _filteredRoutes.sort((a, b) {
+        switch (_sortOption) {
+          case _SortOption.newest:
+            return b.savedAt.compareTo(a.savedAt);
+          case _SortOption.oldest:
+            return a.savedAt.compareTo(b.savedAt);
+          case _SortOption.distanceAsc:
+            final da = a.distance ?? double.infinity;
+            final db = b.distance ?? double.infinity;
+            return da.compareTo(db);
+          case _SortOption.distanceDesc:
+            final da = a.distance ?? -1.0;
+            final db = b.distance ?? -1.0;
+            return db.compareTo(da);
+          case _SortOption.nameAZ:
+            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          case _SortOption.nameZA:
+            return b.name.toLowerCase().compareTo(a.name.toLowerCase());
+          case _SortOption.publicFirst:
+            final vp = (b.isPublic ? 1 : 0) - (a.isPublic ? 1 : 0);
+            if (vp != 0) return vp;
+            return b.savedAt.compareTo(a.savedAt);
+        }
+      });
     });
   }
 
@@ -191,15 +247,8 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
 
     if (result != null && result.isNotEmpty && result != route.name) {
       try {
-        // Create updated route with new name
-        final updatedRoute = SavedRoute.fromLatLng(
-          name: result,
-          latLngPoints: route.latLngPoints,
-          loopClosed: route.loopClosed,
-          savedAt: route.savedAt,
-          description: route.description,
-          distance: route.distance,
-        );
+        // Create updated route with new name (preserve visibility and metadata)
+        final updatedRoute = route.copyWith(name: result);
 
         // Update route (delete old, add new)
         await widget.routeService.updateRoute(route, updatedRoute);
@@ -235,6 +284,8 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         dateTo: _dateTo,
         maxDistanceFromPosition: _maxDistanceFromPosition,
         currentPosition: _currentPosition,
+        visibilityFilter: _visibilityFilter,
+        sortOption: _sortOption,
       ),
     );
 
@@ -247,6 +298,10 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         _dateFrom = result['dateFrom'];
         _dateTo = result['dateTo'];
         _maxDistanceFromPosition = result['maxDistanceFromPosition'];
+        _visibilityFilter =
+            (result['visibilityFilter'] as _VisibilityFilter?) ??
+            _visibilityFilter;
+        _sortOption = (result['sortOption'] as _SortOption?) ?? _sortOption;
       });
       _applyFilters();
     }
@@ -262,6 +317,8 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
       _dateFrom = null;
       _dateTo = null;
       _maxDistanceFromPosition = null;
+      _visibilityFilter = _VisibilityFilter.all;
+      _sortOption = _SortOption.newest;
     });
     _applyFilters();
   }
@@ -273,7 +330,9 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
         _showLinearOnly ||
         _dateFrom != null ||
         _dateTo != null ||
-        _maxDistanceFromPosition != null;
+        _maxDistanceFromPosition != null ||
+        _visibilityFilter != _VisibilityFilter.all ||
+        _sortOption != _SortOption.newest;
   }
 
   String _getFilterSummary() {
@@ -295,6 +354,45 @@ class _SavedRoutesPageState extends State<SavedRoutesPage> {
     if (_showLinearOnly) filters.add('Endast linjära');
     if (_dateFrom != null || _dateTo != null) filters.add('Datum');
     if (_maxDistanceFromPosition != null) filters.add('Närhet');
+
+    // Visibility summary
+    switch (_visibilityFilter) {
+      case _VisibilityFilter.publicOnly:
+        filters.add('Offentliga');
+        break;
+      case _VisibilityFilter.privateOnly:
+        filters.add('Privata');
+        break;
+      case _VisibilityFilter.all:
+        break;
+    }
+
+    // Sorting summary (omit default)
+    String? sortLabel;
+    switch (_sortOption) {
+      case _SortOption.newest:
+        sortLabel = null;
+        break;
+      case _SortOption.oldest:
+        sortLabel = 'Sort: Äldst först';
+        break;
+      case _SortOption.distanceAsc:
+        sortLabel = 'Sort: Kortast först';
+        break;
+      case _SortOption.distanceDesc:
+        sortLabel = 'Sort: Längst först';
+        break;
+      case _SortOption.nameAZ:
+        sortLabel = 'Sort: Namn A–Ö';
+        break;
+      case _SortOption.nameZA:
+        sortLabel = 'Sort: Namn Ö–A';
+        break;
+      case _SortOption.publicFirst:
+        sortLabel = 'Sort: Offentliga först';
+        break;
+    }
+    if (sortLabel != null) filters.add(sortLabel);
 
     return filters.join(', ');
   }
@@ -564,6 +662,20 @@ class _RouteCard extends StatelessWidget {
                 ],
               ],
             ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Chip(
+                label: Text(route.isPublic ? 'Offentlig' : 'Privat'),
+                avatar: Icon(
+                  route.isPublic ? Icons.public : Icons.lock,
+                  size: 16,
+                ),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
           ],
         ),
         trailing: PopupMenuButton<String>(
@@ -644,6 +756,8 @@ class _AdvancedFiltersDialog extends StatefulWidget {
   final DateTime? dateTo;
   final double? maxDistanceFromPosition;
   final LatLng? currentPosition;
+  final _VisibilityFilter visibilityFilter;
+  final _SortOption sortOption;
 
   const _AdvancedFiltersDialog({
     this.minDistance,
@@ -654,6 +768,8 @@ class _AdvancedFiltersDialog extends StatefulWidget {
     this.dateTo,
     this.maxDistanceFromPosition,
     this.currentPosition,
+    this.visibilityFilter = _VisibilityFilter.all,
+    this.sortOption = _SortOption.newest,
   });
 
   @override
@@ -668,6 +784,8 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
   late DateTime? _dateFrom = widget.dateFrom;
   late DateTime? _dateTo = widget.dateTo;
   late final double? _maxDistanceFromPosition = widget.maxDistanceFromPosition;
+  late _VisibilityFilter _visibilityFilter = widget.visibilityFilter;
+  late _SortOption _sortOption = widget.sortOption;
 
   @override
   Widget build(BuildContext context) {
@@ -813,6 +931,78 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
                   ],
                 ),
               ],
+
+              const SizedBox(height: 16),
+              Text('Synlighet', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Alla'),
+                    selected: _visibilityFilter == _VisibilityFilter.all,
+                    onSelected: (_) => setState(() {
+                      _visibilityFilter = _VisibilityFilter.all;
+                    }),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Offentliga'),
+                    selected: _visibilityFilter == _VisibilityFilter.publicOnly,
+                    onSelected: (_) => setState(() {
+                      _visibilityFilter = _VisibilityFilter.publicOnly;
+                    }),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Privata'),
+                    selected:
+                        _visibilityFilter == _VisibilityFilter.privateOnly,
+                    onSelected: (_) => setState(() {
+                      _visibilityFilter = _VisibilityFilter.privateOnly;
+                    }),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+              Text('Sortera', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              DropdownButton<_SortOption>(
+                value: _sortOption,
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(
+                    value: _SortOption.newest,
+                    child: Text('Nyast först'),
+                  ),
+                  DropdownMenuItem(
+                    value: _SortOption.oldest,
+                    child: Text('Äldst först'),
+                  ),
+                  DropdownMenuItem(
+                    value: _SortOption.distanceAsc,
+                    child: Text('Kortast först'),
+                  ),
+                  DropdownMenuItem(
+                    value: _SortOption.distanceDesc,
+                    child: Text('Längst först'),
+                  ),
+                  DropdownMenuItem(
+                    value: _SortOption.nameAZ,
+                    child: Text('Namn A–Ö'),
+                  ),
+                  DropdownMenuItem(
+                    value: _SortOption.nameZA,
+                    child: Text('Namn Ö–A'),
+                  ),
+                  DropdownMenuItem(
+                    value: _SortOption.publicFirst,
+                    child: Text('Offentliga först'),
+                  ),
+                ],
+                onChanged: (value) => setState(() {
+                  if (value != null) _sortOption = value;
+                }),
+              ),
             ],
           ),
         ),
@@ -832,6 +1022,8 @@ class _AdvancedFiltersDialogState extends State<_AdvancedFiltersDialog> {
               'dateFrom': _dateFrom,
               'dateTo': _dateTo,
               'maxDistanceFromPosition': _maxDistanceFromPosition,
+              'visibilityFilter': _visibilityFilter,
+              'sortOption': _sortOption,
             });
           },
           child: const Text('Tillämpa'),

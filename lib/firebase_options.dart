@@ -39,8 +39,8 @@ class DefaultFirebaseOptions {
     appId: '1:249998235285:web:fc11c40dfddc50c22dad9c',
     messagingSenderId: 'your-sender-id-here',
     projectId: 'gravel-biking',
-    authDomain: 'your-project-id-here.firebaseapp.com',
-    storageBucket: 'your-project-id-here.firebasestorage.app',
+    authDomain: 'gravel-biking.firebaseapp.com',
+    storageBucket: 'gravel-biking.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
