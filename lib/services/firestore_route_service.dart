@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/saved_route.dart';
+import 'route_cloud_service.dart';
 
 /// Firestore service for syncing routes to the cloud
 ///
 /// Handles saving and retrieving routes from Firestore with public/private visibility.
 /// Public routes are visible to all users, private routes only to the owner.
-class FirestoreRouteService {
+class FirestoreRouteService implements RouteCloudService {
   static const String _logPrefix = 'FirestoreRouteService:';
   static const String _collectionName = 'routes';
 
@@ -20,6 +21,7 @@ class FirestoreRouteService {
   ///
   /// Creates a new document if firestoreId is null, updates existing otherwise.
   /// Returns the updated SavedRoute with Firestore ID and sync timestamp.
+  @override
   Future<SavedRoute> saveRoute(SavedRoute route) async {
     try {
       if (kDebugMode) {
@@ -60,6 +62,7 @@ class FirestoreRouteService {
   }
 
   /// Get user's private routes from Firestore
+  @override
   Future<List<SavedRoute>> getUserRoutes(String userId) async {
     try {
       if (kDebugMode) {
@@ -90,6 +93,7 @@ class FirestoreRouteService {
   }
 
   /// Get public routes from Firestore
+  @override
   Future<List<SavedRoute>> getPublicRoutes({int limit = 50}) async {
     try {
       if (kDebugMode) {
@@ -120,6 +124,7 @@ class FirestoreRouteService {
   }
 
   /// Get all routes accessible to user (user's private + all public)
+  @override
   Future<List<SavedRoute>> getAllAccessibleRoutes(String userId) async {
     try {
       if (kDebugMode) {
@@ -168,6 +173,7 @@ class FirestoreRouteService {
   }
 
   /// Delete route from Firestore
+  @override
   Future<void> deleteRoute(String firestoreId) async {
     try {
       if (kDebugMode) {
@@ -188,6 +194,7 @@ class FirestoreRouteService {
   }
 
   /// Search public routes by name or description
+  @override
   Future<List<SavedRoute>> searchPublicRoutes(String query) async {
     try {
       if (kDebugMode) {
@@ -230,6 +237,7 @@ class FirestoreRouteService {
   }
 
   /// Update route visibility (public/private)
+  @override
   Future<void> updateRouteVisibility(String firestoreId, bool isPublic) async {
     try {
       if (kDebugMode) {
@@ -255,6 +263,7 @@ class FirestoreRouteService {
   }
 
   /// Stream user's routes in real-time
+  @override
   Stream<List<SavedRoute>> streamUserRoutes(String userId) {
     return _routesCollection
         .where('userId', isEqualTo: userId)
@@ -268,6 +277,7 @@ class FirestoreRouteService {
   }
 
   /// Stream public routes in real-time
+  @override
   Stream<List<SavedRoute>> streamPublicRoutes({int limit = 50}) {
     return _routesCollection
         .where('isPublic', isEqualTo: true)

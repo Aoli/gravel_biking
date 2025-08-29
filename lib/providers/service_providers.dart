@@ -5,6 +5,7 @@ import 'package:gravel_biking/services/route_service.dart';
 import 'package:gravel_biking/services/auth_service.dart';
 import 'package:gravel_biking/services/file_service.dart';
 import 'package:gravel_biking/services/firestore_route_service.dart';
+import 'package:gravel_biking/services/route_cloud_service.dart';
 import 'package:gravel_biking/services/firestore_user_service.dart';
 import 'package:gravel_biking/services/synced_route_service.dart';
 import 'package:gravel_biking/models/saved_route.dart';
@@ -78,7 +79,7 @@ final fileServiceProvider = Provider<FileService>((ref) {
 ///
 /// Creates and manages the FirestoreRouteService instance that handles
 /// route synchronization with Firestore.
-final firestoreRouteServiceProvider = Provider<FirestoreRouteService>((ref) {
+final firestoreRouteServiceProvider = Provider<RouteCloudService>((ref) {
   return FirestoreRouteService();
 });
 

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/saved_route.dart';
 import 'route_service.dart';
-import 'firestore_route_service.dart';
+import 'route_cloud_service.dart';
 
 /// Enhanced route service that syncs between local Hive storage and Firestore
 ///
@@ -15,12 +15,12 @@ class SyncedRouteService {
   static const String _logPrefix = 'SyncedRouteService:';
 
   final RouteService _localService;
-  final FirestoreRouteService _cloudService;
+  final RouteCloudService _cloudService;
   final String? _userId;
 
   SyncedRouteService({
     required RouteService localService,
-    required FirestoreRouteService cloudService,
+    required RouteCloudService cloudService,
     required String? userId,
   }) : _localService = localService,
        _cloudService = cloudService,
