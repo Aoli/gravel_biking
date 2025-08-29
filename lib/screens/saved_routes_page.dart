@@ -5,6 +5,8 @@ import 'package:latlong2/latlong.dart';
 import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
 import '../providers/service_providers.dart';
+import '../widgets/save_route_dialog.dart';
+import '../services/route_service.dart';
 
 /// Visibility filter options for saved routes
 enum _VisibilityFilter { all, publicOnly, privateOnly }
@@ -588,11 +590,61 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
                       itemCount: _filteredRoutes.length,
                       itemBuilder: (context, index) {
                         final route = _filteredRoutes[index];
+                        final user = ref.watch(currentUserProvider);
+                        final isOwned =
+                            (route.firestoreId == null &&
+                                route.userId == null) ||
+                            (user != null && route.userId == user.uid);
                         return _RouteCard(
                           route: route,
                           onLoad: () => _loadRoute(route),
                           onDelete: () => _deleteRoute(route),
                           onEdit: () => _editRouteName(route),
+                          canEdit: isOwned,
+                          canDelete: isOwned,
+                          onSaveAsNew: isOwned
+                              ? null
+                              : () async {
+                                  // Save someone else's public route as a new one
+                                  final localService = ref.read(
+                                    routeServiceProvider,
+                                  );
+                                  final savedCount = await localService
+                                      .getRouteCount();
+                                  await SaveRouteDialog.show(
+                                    context,
+                                    onSave: (name, isPublic) async {
+                                      final synced = ref.read(
+                                        syncedRouteServiceProvider,
+                                      );
+                                      await synced.saveCurrentRoute(
+                                        name: name,
+                                        routePoints: route.latLngPoints,
+                                        loopClosed: route.loopClosed,
+                                        description: route.description,
+                                        isPublic: isPublic,
+                                      );
+                                      await _loadRoutes();
+                                      widget.onRoutesChanged?.call();
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Rutt sparad som "$name"',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    savedRoutesCount: savedCount,
+                                    maxSavedRoutes: RouteService.maxSavedRoutes,
+                                    isAuthenticated: ref.watch(
+                                      isSignedInProvider,
+                                    ),
+                                  );
+                                },
                         );
                       },
                     ),
@@ -609,12 +661,18 @@ class _RouteCard extends StatelessWidget {
   final VoidCallback onLoad;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+  final VoidCallback? onSaveAsNew;
+  final bool canEdit;
+  final bool canDelete;
 
   const _RouteCard({
     required this.route,
     required this.onLoad,
     required this.onDelete,
     required this.onEdit,
+    this.onSaveAsNew,
+    this.canEdit = true,
+    this.canDelete = true,
   });
 
   @override
@@ -701,10 +759,13 @@ class _RouteCard extends StatelessWidget {
                 onLoad();
                 break;
               case 'edit':
-                onEdit();
+                if (canEdit) onEdit();
                 break;
               case 'delete':
-                onDelete();
+                if (canDelete) onDelete();
+                break;
+              case 'saveAsNew':
+                onSaveAsNew?.call();
                 break;
             }
           },
@@ -719,9 +780,10 @@ class _RouteCard extends StatelessWidget {
                 ],
               ),
             ),
-            const PopupMenuItem<String>(
+            PopupMenuItem<String>(
               value: 'edit',
-              child: Row(
+              enabled: canEdit,
+              child: const Row(
                 children: [
                   Icon(Icons.edit),
                   SizedBox(width: 8),
@@ -729,9 +791,21 @@ class _RouteCard extends StatelessWidget {
                 ],
               ),
             ),
-            const PopupMenuItem<String>(
+            if (onSaveAsNew != null)
+              const PopupMenuItem<String>(
+                value: 'saveAsNew',
+                child: Row(
+                  children: [
+                    Icon(Icons.save_alt),
+                    SizedBox(width: 8),
+                    Text('Spara som ny…'),
+                  ],
+                ),
+              ),
+            PopupMenuItem<String>(
               value: 'delete',
-              child: Row(
+              enabled: canDelete,
+              child: const Row(
                 children: [
                   Icon(Icons.delete, color: Colors.red),
                   SizedBox(width: 8),

@@ -105,6 +105,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   bool _isInitialized = false; // Track RouteService initialization status
   bool _isInitialFetchComplete =
       false; // Prevent duplicate API calls during initialization
+  // Current route name (shown as floating label on the map)
+  String? _currentRouteName;
 
   // Expose storage initialization status to SavedRoutesMixin
   @override
@@ -272,6 +274,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       _distanceMarkers.clear(); // Clear distance markers when loading new route
       _routePoints.addAll(savedRoute.latLngPoints);
       _segmentMeters.clear();
+      _currentRouteName = savedRoute.name;
       ref.read(editingIndexProvider.notifier).state = null;
       ref
           .read(routeNotifierProvider.notifier)
@@ -407,6 +410,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               _routePoints
                 ..clear()
                 ..addAll(points);
+              _currentRouteName = null; // Unknown name after import
               ref.read(editingIndexProvider.notifier).state = null;
               ref
                   .read(routeNotifierProvider.notifier)
@@ -429,6 +433,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               _routePoints
                 ..clear()
                 ..addAll(points);
+              _currentRouteName = null; // Unknown name after import
               ref.read(editingIndexProvider.notifier).state = null;
               ref
                   .read(routeNotifierProvider.notifier)
@@ -457,7 +462,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
           await exportGpxRoute(_routePoints);
         },
         onSaveRoute: (name, isPublic) =>
-            saveCurrentRoute(name, _routePoints, isPublic: isPublic),
+            saveCurrentRoute(name, _routePoints, isPublic: isPublic).then((_) {
+              if (mounted) {
+                setState(() => _currentRouteName = name);
+              }
+            }),
         hasRoute: _routePoints.isNotEmpty,
         savedRoutesCount: savedRoutes.length,
         maxSavedRoutes: maxSavedRoutes,
@@ -620,6 +629,60 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                 theme: Theme.of(context),
               ),
             ),
+          // Floating current route name chip (top-left)
+          if (_currentRouteName != null && _currentRouteName!.isNotEmpty)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              left: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.3),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.route,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.5,
+                      ),
+                      child: Text(
+                        _currentRouteName!,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Total distance display in top right corner
           if (_routePoints.length >= 2 && _segmentMeters.isNotEmpty)
             Positioned(
@@ -715,8 +778,16 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               }
               await SaveRouteDialog.show(
                 context,
-                onSave: (name, isPublic) =>
-                    saveCurrentRoute(name, _routePoints, isPublic: isPublic),
+                onSave: (name, isPublic) async {
+                  await saveCurrentRoute(
+                    name,
+                    _routePoints,
+                    isPublic: isPublic,
+                  );
+                  if (mounted) {
+                    setState(() => _currentRouteName = name);
+                  }
+                },
                 savedRoutesCount: savedRoutes.length,
                 maxSavedRoutes: maxSavedRoutes,
                 isAuthenticated: ref.watch(isSignedInProvider),
@@ -761,6 +832,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
           ),
           // Subtle build/version watermark (e.g., v1.2.3 #27)
           VersionWatermark(appVersion: _appVersion, buildNumber: _buildNumber),
+          // Floating route name chip (top-left)
+          // (optional enhancement can be added later if desired)
         ],
       ),
     );
@@ -815,6 +888,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       _routePoints.clear();
       _distanceMarkers.clear(); // Clear distance markers when clearing route
       _segmentMeters.clear();
+      _currentRouteName =
+          null; // Clear current route name when route is cleared
       ref.read(routeNotifierProvider.notifier).setLoopClosed(false);
       ref.read(editingIndexProvider.notifier).state = null;
       // Keep distance markers toggle state (default OFF for subtle orange dots)
@@ -1261,11 +1336,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
     if (totalKm < 1.0) {
       return '${totalMeters.round()} m';
-    } else if (totalKm < 10.0) {
-      return '${totalKm.toStringAsFixed(1)} km';
-    } else {
-      return '${totalKm.round()} km';
     }
+    // Always show one decimal for kilometer values
+    return '${totalKm.toStringAsFixed(1)} km';
   }
 
   /// Get total route distance in kilometers (for midpoint marker)
