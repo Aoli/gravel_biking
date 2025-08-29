@@ -73,6 +73,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   }
 
   Future<void> _loadRoutes() async {
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoading = true);
     try {
       // Ensure auth initialized, then load all accessible (local + cloud) routes
@@ -86,7 +87,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Fel vid inläsning av rutter: $e')),
         );
       }
@@ -217,6 +218,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   }
 
   Future<void> _editRouteName(SavedRoute route) async {
+    final messenger = ScaffoldMessenger.of(context);
     final TextEditingController controller = TextEditingController(
       text: route.name,
     );
@@ -274,15 +276,15 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
         widget.onRoutesChanged?.call();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(content: Text('Ruttnamn ändrat till "$result"')),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Fel vid namnändring: $e')));
+          messenger.showSnackBar(
+            SnackBar(content: Text('Fel vid namnändring: $e')),
+          );
         }
       }
     }
@@ -414,6 +416,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   }
 
   Future<void> _deleteRoute(SavedRoute route) async {
+    final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -443,15 +446,15 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
         widget.onRoutesChanged?.call();
 
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Rutt borttagen')));
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Rutt borttagen')),
+          );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Fel vid borttagning: $e')));
+          messenger.showSnackBar(
+            SnackBar(content: Text('Fel vid borttagning: $e')),
+          );
         }
       }
     }
@@ -595,6 +598,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
                             (route.firestoreId == null &&
                                 route.userId == null) ||
                             (user != null && route.userId == user.uid);
+                        final messenger = ScaffoldMessenger.of(context);
                         return _RouteCard(
                           route: route,
                           onLoad: () => _loadRoute(route),
@@ -611,6 +615,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
                                   );
                                   final savedCount = await localService
                                       .getRouteCount();
+                                  if (!context.mounted) return;
                                   await SaveRouteDialog.show(
                                     context,
                                     onSave: (name, isPublic) async {
@@ -627,9 +632,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
                                       await _loadRoutes();
                                       widget.onRoutesChanged?.call();
                                       if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
+                                        messenger.showSnackBar(
                                           SnackBar(
                                             content: Text(
                                               'Rutt sparad som "$name"',

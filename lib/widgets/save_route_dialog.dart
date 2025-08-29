@@ -89,47 +89,34 @@ class _SaveRouteDialogState extends State<SaveRouteDialog> {
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Radio<bool>(
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment<bool>(
                           value: false,
-                          groupValue: _isPublic,
-                          onChanged: _saving
-                              ? null
-                              : (value) {
-                                  setState(() => _isPublic = value ?? false);
-                                },
+                          label: Text('Privat'),
+                          icon: Icon(Icons.lock),
                         ),
-                        const Text('🔒 Privat'),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Bara du kan se denna rutt',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Radio<bool>(
+                        ButtonSegment<bool>(
                           value: true,
-                          groupValue: _isPublic,
-                          onChanged: _saving
-                              ? null
-                              : (value) {
-                                  setState(() => _isPublic = value ?? false);
-                                },
-                        ),
-                        const Text('🌐 Offentlig'),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Alla användare kan se denna rutt',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
+                          label: Text('Offentlig'),
+                          icon: Icon(Icons.public),
                         ),
                       ],
+                      selected: {_isPublic},
+                      onSelectionChanged: _saving
+                          ? null
+                          : (selection) {
+                              if (selection.isNotEmpty) {
+                                setState(() => _isPublic = selection.first);
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isPublic
+                          ? 'Alla användare kan se denna rutt'
+                          : 'Bara du kan se denna rutt',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),

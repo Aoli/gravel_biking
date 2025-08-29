@@ -149,18 +149,8 @@ class AuthService {
     try {
       if (!isSignedIn) {
         if (kDebugMode) {
-          print(
-            '$_logPrefix No user signed in, checking network connectivity...',
-          );
+          print('$_logPrefix No user signed in, performing auto sign-in...');
         }
-
-        // Test network connectivity by attempting to reach Firebase
-        await _testFirebaseConnectivity();
-
-        if (kDebugMode) {
-          print('$_logPrefix Network check passed, performing auto sign-in...');
-        }
-
         await signInAnonymously();
       } else {
         if (kDebugMode) {
@@ -172,22 +162,6 @@ class AuthService {
         print('$_logPrefix Auto sign-in failed: $e');
       }
       // Don't rethrow - app should continue even if auth fails
-    }
-  }
-
-  /// Test Firebase connectivity
-  Future<void> _testFirebaseConnectivity() async {
-    try {
-      // Simple connectivity test by checking if we can access Firebase Auth
-      await _auth.fetchSignInMethodsForEmail('test@example.com');
-    } catch (e) {
-      if (kDebugMode) {
-        print('$_logPrefix Network connectivity check failed: $e');
-      }
-      throw AuthException(
-        'Network connectivity required for authentication',
-        'network-error',
-      );
     }
   }
 
