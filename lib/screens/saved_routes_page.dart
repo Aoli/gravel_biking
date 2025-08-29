@@ -5,8 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../models/saved_route.dart';
 import '../utils/coordinate_utils.dart';
 import '../providers/service_providers.dart';
-import '../providers/ui_providers.dart';
-import '../widgets/save_route_dialog.dart';
+// Removed unused imports related to saving current route from this page
 
 /// Visibility filter options for saved routes
 enum _VisibilityFilter { all, publicOnly, privateOnly }
@@ -109,7 +108,6 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
             _buildErrorWidget(theme, 'Authentication failed: $error'),
         data: (_) => _buildAuthenticatedContent(theme),
       ),
-      floatingActionButton: _buildFloatingActionButton(theme),
     );
   }
 
@@ -627,10 +625,11 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
               ),
             ),
           ],
-          child: Icon(
+          tooltip: 'Fler åtgärder',
+          icon: Icon(
             Icons.more_vert,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            size: 20,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+            size: 24,
           ),
         ),
       ],
@@ -888,14 +887,6 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
           },
         ),
       ],
-    );
-  }
-
-  Widget _buildFloatingActionButton(ThemeData theme) {
-    return FloatingActionButton(
-      onPressed: () => _showSaveCurrentRouteDialog(),
-      tooltip: 'Spara aktuell rutt',
-      child: const Icon(Icons.add),
     );
   }
 
@@ -1197,79 +1188,6 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage>
           _dateTo = date;
         }
       });
-    }
-  }
-
-  void _showSaveCurrentRouteDialog() async {
-    // Read current measurement state
-    final currentPoints = ref.read(routePointsProvider);
-    final currentLoopClosed = ref.read(loopClosedProvider);
-
-    // Prevent saving when there's no route
-    if (currentPoints.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Ingen rutt att spara')));
-      }
-      return;
-    }
-
-    final routesAsyncValue = ref.read(streamAllAccessibleRoutesProvider);
-    final routeCount = routesAsyncValue.when(
-      data: (routes) => routes.length,
-      loading: () => 0,
-      error: (_, __) => 0,
-    );
-
-    await SaveRouteDialog.show(
-      context,
-      onSave: (name, isPublic) async {
-        final syncedService = ref.read(syncedRouteServiceProvider);
-        // For streaming storage, we need to get current route from somewhere
-        // This needs to be connected to the main app's current route state
-        try {
-          // This is a placeholder - the actual implementation would need
-          // access to the current route being measured
-          await syncedService.saveCurrentRoute(
-            name: name,
-            routePoints: currentPoints,
-            loopClosed: currentLoopClosed,
-            description: '',
-            isPublic: isPublic,
-          );
-
-          // Stream will automatically update - no manual refresh needed
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Rutt "$name" sparad'),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Kunde inte spara rutt: $e'),
-                backgroundColor: Theme.of(context).colorScheme.error,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        }
-      },
-      savedRoutesCount: routeCount,
-      maxSavedRoutes: 50, // Default max
-      isAuthenticated: ref.watch(isSignedInProvider),
-      // initialName: <current route name if available>, // Name source isn't available in this screen
-    );
-
-    // Stream will automatically update - no manual refresh needed
-    if (widget.onRoutesChanged != null) {
-      widget.onRoutesChanged!();
     }
   }
 }
