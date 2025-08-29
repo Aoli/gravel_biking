@@ -38,6 +38,7 @@ class SavedRoutesPage extends ConsumerStatefulWidget {
 }
 
 class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
+  // State variables
   List<SavedRoute> _routes = [];
   List<SavedRoute> _filteredRoutes = [];
   String _searchQuery = '';
@@ -75,20 +76,111 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   Future<void> _loadRoutes() async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoading = true);
+
     try {
-      // Ensure auth initialized, then load all accessible (local + cloud) routes
-      await ref.read(authInitializationProvider.future);
-      final routes = await ref.read(allAccessibleRoutesProvider.future);
+      // Debug logging (only in debug mode)
+      assert(() {
+        debugPrint('🔄 SavedRoutesPage: Starting route loading...');
+        return true;
+      }());
+
+      // First try to load local routes immediately
+      final localService = ref.read(routeServiceProvider);
+      final localRoutes = await localService.loadSavedRoutes();
+      assert(() {
+        debugPrint(
+          '✅ SavedRoutesPage: Loaded ${localRoutes.length} local routes',
+        );
+        return true;
+      }());
+
+      // Show local routes immediately
       setState(() {
-        _routes = routes;
-        _filteredRoutes = routes;
-        _isLoading = false;
+        _routes = localRoutes;
+        _filteredRoutes = localRoutes;
       });
+
+      // Then try to add Firebase routes
+      try {
+        assert(() {
+          debugPrint('🔐 SavedRoutesPage: Attempting Firebase auth...');
+          return true;
+        }());
+        await ref
+            .read(authInitializationProvider.future)
+            .timeout(const Duration(seconds: 5));
+        assert(() {
+          debugPrint('✅ SavedRoutesPage: Firebase auth successful');
+          return true;
+        }());
+
+        assert(() {
+          debugPrint('☁️ SavedRoutesPage: Loading Firebase routes...');
+          return true;
+        }());
+        final allRoutes = await ref
+            .read(allAccessibleRoutesProvider.future)
+            .timeout(const Duration(seconds: 10));
+        assert(() {
+          debugPrint(
+            '✅ SavedRoutesPage: Loaded ${allRoutes.length} total routes',
+          );
+          return true;
+        }());
+
+        // Debug: Show route sources
+        assert(() {
+          final cloudRoutes = allRoutes
+              .where((r) => r.firestoreId != null)
+              .length;
+          debugPrint(
+            '📊 SavedRoutesPage: ${localRoutes.length} local, $cloudRoutes cloud routes',
+          );
+          return true;
+        }());
+
+        setState(() {
+          _routes = allRoutes;
+          _filteredRoutes = allRoutes;
+          _isLoading = false;
+        });
+      } catch (firebaseError) {
+        assert(() {
+          debugPrint(
+            '⚠️ SavedRoutesPage: Firebase failed, using local only: $firebaseError',
+          );
+          return true;
+        }());
+        setState(() => _isLoading = false);
+
+        if (mounted && localRoutes.isNotEmpty) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                'Firebase otillgängligt - visar ${localRoutes.length} lokala rutter',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
     } catch (e) {
+      assert(() {
+        debugPrint('❌ SavedRoutesPage: Complete failure: $e');
+        return true;
+      }());
       setState(() => _isLoading = false);
+
       if (mounted) {
         messenger.showSnackBar(
-          SnackBar(content: Text('Fel vid inläsning av rutter: $e')),
+          SnackBar(
+            content: Text('Fel vid inläsning av rutter: $e'),
+            action: SnackBarAction(
+              label: 'Försök igen',
+              onPressed: _loadRoutes,
+            ),
+          ),
         );
       }
     }
@@ -562,7 +654,21 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
           // Routes list
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Laddar lokala rutter...'),
+                        SizedBox(height: 8),
+                        Text(
+                          'Ansluter till Firebase...',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
                 : _filteredRoutes.isEmpty
                 ? Center(
                     child: Column(

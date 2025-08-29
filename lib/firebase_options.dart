@@ -37,44 +37,47 @@ class DefaultFirebaseOptions {
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCZo-2lDAgVxL0FNZ5KAtXcz8SssDD3EjM',
     appId: '1:249998235285:web:fc11c40dfddc50c22dad9c',
-    messagingSenderId: 'your-sender-id-here',
+    messagingSenderId: '249998235285',
     projectId: 'gravel-biking',
     authDomain: 'gravel-biking.firebaseapp.com',
     storageBucket: 'gravel-biking.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'your-android-api-key-here',
-    appId: 'your-android-app-id-here',
-    messagingSenderId: 'your-sender-id-here',
-    projectId: 'your-project-id-here',
-    storageBucket: 'your-project-id-here.firebasestorage.app',
+    apiKey: 'AIzaSyCZo-2lDAgVxL0FNZ5KAtXcz8SssDD3EjM',
+    appId: '1:249998235285:web:fc11c40dfddc50c22dad9c',
+    messagingSenderId: '249998235285',
+    projectId: 'gravel-biking',
+    authDomain: 'gravel-biking.firebaseapp.com',
+    storageBucket: 'gravel-biking.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'your-ios-api-key-here',
-    appId: 'your-ios-app-id-here',
-    messagingSenderId: 'your-sender-id-here',
-    projectId: 'your-project-id-here',
-    storageBucket: 'your-project-id-here.firebasestorage.app',
-    iosBundleId: 'com.example.gravel_biking',
+    apiKey: 'AIzaSyCZo-2lDAgVxL0FNZ5KAtXcz8SssDD3EjM',
+    appId: '1:249998235285:web:fc11c40dfddc50c22dad9c',
+    messagingSenderId: '249998235285',
+    projectId: 'gravel-biking',
+    authDomain: 'gravel-biking.firebaseapp.com',
+    storageBucket: 'gravel-biking.firebasestorage.app',
+    iosBundleId: 'com.aoli.gravel_biking',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'your-ios-api-key-here',
-    appId: 'your-ios-app-id-here',
-    messagingSenderId: 'your-sender-id-here',
-    projectId: 'your-project-id-here',
-    storageBucket: 'your-project-id-here.firebasestorage.app',
-    iosBundleId: 'com.example.gravel_biking',
+    apiKey: 'AIzaSyCZo-2lDAgVxL0FNZ5KAtXcz8SssDD3EjM',
+    appId: '1:249998235285:web:fc11c40dfddc50c22dad9c',
+    messagingSenderId: '249998235285',
+    projectId: 'gravel-biking',
+    authDomain: 'gravel-biking.firebaseapp.com',
+    storageBucket: 'gravel-biking.firebasestorage.app',
+    iosBundleId: 'com.aoli.gravel_biking',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'your-web-api-key-here',
-    appId: 'your-windows-app-id-here',
-    messagingSenderId: 'your-sender-id-here',
-    projectId: 'your-project-id-here',
-    authDomain: 'your-project-id-here.firebaseapp.com',
-    storageBucket: 'your-project-id-here.firebasestorage.app',
+    apiKey: 'AIzaSyCZo-2lDAgVxL0FNZ5KAtXcz8SssDD3EjM',
+    appId: '1:249998235285:web:fc11c40dfddc50c22dad9c',
+    messagingSenderId: '249998235285',
+    projectId: 'gravel-biking',
+    authDomain: 'gravel-biking.firebaseapp.com',
+    storageBucket: 'gravel-biking.firebasestorage.app',
   );
 }
