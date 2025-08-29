@@ -385,7 +385,7 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
   Future<void> _toggleRouteVisibility(SavedRoute route) async {
     final messenger = ScaffoldMessenger.of(context);
     final user = ref.read(currentUserProvider);
-    
+
     // Only allow visibility changes for routes owned by current user and synced to Firebase
     if (user == null || route.firestoreId == null || route.userId != user.uid) {
       messenger.showSnackBar(
@@ -403,10 +403,14 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
     try {
       final syncedService = ref.read(syncedRouteServiceProvider);
       await syncedService.updateRouteVisibility(route, newVisibility);
-      
+
+      // Invalidate providers to clear cache and force refresh
+      ref.invalidate(allAccessibleRoutesProvider);
+      ref.invalidate(firestoreRoutesProvider);
+
       // Reload routes to get updated data
       await _loadRoutes();
-      
+
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
@@ -577,6 +581,11 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
         // Delete from both local and cloud when possible
         final synced = ref.read(syncedRouteServiceProvider);
         await synced.deleteRoute(route);
+
+        // Invalidate providers to clear cache and force refresh
+        ref.invalidate(allAccessibleRoutesProvider);
+        ref.invalidate(firestoreRoutesProvider);
+
         await _loadRoutes();
 
         // Notify parent widget that routes have changed
@@ -755,7 +764,8 @@ class _SavedRoutesPageState extends ConsumerState<SavedRoutesPage> {
                           onLoad: () => _loadRoute(route),
                           onDelete: () => _deleteRoute(route),
                           onEdit: () => _editRouteName(route),
-                          onToggleVisibility: () => _toggleRouteVisibility(route),
+                          onToggleVisibility: () =>
+                              _toggleRouteVisibility(route),
                           canEdit: isOwned,
                           canDelete: isOwned,
                           onSaveAsNew: isOwned
@@ -989,9 +999,7 @@ class _RouteCard extends StatelessWidget {
                   children: [
                     Icon(route.isPublic ? Icons.lock : Icons.public),
                     const SizedBox(width: 8),
-                    Text(route.isPublic 
-                        ? 'Gör privat' 
-                        : 'Gör offentlig'),
+                    Text(route.isPublic ? 'Gör privat' : 'Gör offentlig'),
                   ],
                 ),
               ),
