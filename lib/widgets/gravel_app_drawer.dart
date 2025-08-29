@@ -422,8 +422,11 @@ class GravelAppDrawer extends ConsumerWidget {
                                   ],
                                 ),
                                 content: const Text(
-                                  'Sparade rutter lagras endast lokalt på din enhet och försvinner om appen avinstalleras eller enhetens data rensas.\n\n'
-                                  'För mer varaktig lagring eller för att flytta rutter till andra tjänster som Strava, Garmin Connect eller andra appar, använd Import/Export funktionerna för att spara som GeoJSON eller GPX-filer.',
+                                  'När du är inloggad sparas rutter till ditt konto och synkas via molnet. De blir tillgängliga på alla dina enheter när du är inloggad.\n\n'
+                                  'Synlighet: Privata rutter är bara synliga för dig. Offentliga rutter kan ses av alla. När du öppnar en offentlig rutt kan du spara en egen kopia som privat.\n\n'
+                                  'Offline: Senast använda rutter kan visas från cache och synkas när du blir online igen.\n\n'
+                                  'Utan inloggning sparas rutter endast lokalt och kan försvinna om appdata rensas.\n\n'
+                                  'Använd Import/Export för säkerhetskopiering eller för att flytta rutter till andra tjänster (GeoJSON/GPX).',
                                 ),
                                 actions: [
                                   TextButton(
