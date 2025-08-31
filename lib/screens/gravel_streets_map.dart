@@ -157,12 +157,15 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     debugPrint(
       '🗺️ [${initTime.toIso8601String()}] Requesting initial gravel data for Stockholm area',
     );
-    final stockholmBounds = LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1));
+    final stockholmBounds = LatLngBounds(
+      const LatLng(59.3, 18.0),
+      const LatLng(59.4, 18.1),
+    );
     _fetchGravelForBounds(
       stockholmBounds,
       isInitialFetch: true, // Mark as initial fetch to prevent duplicates
     );
-    
+
     // Also fetch initial NVDB data if overlay is enabled
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
@@ -433,7 +436,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     }
     // Remove the duplicate bounds check here since it's now handled in _fetchGravelForBounds
     _fetchGravelForBounds(bounds); // This is a non-initial fetch
-    
+
     // Fetch NVDB data if overlay is enabled
     final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
     if (nvdbOverlayEnabled) {
@@ -504,13 +507,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     debugPrint(
       '📍 NVDB Bounds: ${bounds.southWest.latitude.toStringAsFixed(4)},${bounds.southWest.longitude.toStringAsFixed(4)} to ${bounds.northEast.latitude.toStringAsFixed(4)},${bounds.northEast.longitude.toStringAsFixed(4)}',
     );
-    
+
     // Set loading state
     ref.read(isLoadingNvdbProvider.notifier).state = true;
-    
+
     try {
       final nvdbService = ref.read(nvdbServiceProvider);
-      
+
       // Convert flutter_map LatLngBounds to NVDB LatLngBounds
       final nvdbBounds = nvdb.LatLngBounds(
         south: bounds.southWest.latitude,
@@ -518,12 +521,12 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         north: bounds.northEast.latitude,
         east: bounds.northEast.longitude,
       );
-      
+
       final gravelRoads = await nvdbService.getGravelRoads(nvdbBounds);
-      
+
       // Update the provider with the fetched data
       ref.read(nvdbGravelRoadsProvider.notifier).state = gravelRoads;
-      
+
       debugPrint(
         '✨ [${DateTime.now().toIso8601String()}] NVDB data updated successfully (${gravelRoads.length} segments)',
       );

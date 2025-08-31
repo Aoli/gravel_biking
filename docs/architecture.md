@@ -340,9 +340,309 @@ Create measurement interface with comprehensive controls:
 - Show edit instructions and mode indicators during editing
 - Include cancel functionality for exiting edit mode
 
+#### 4.5.3 NVDB Gravel Layer Widget
+
+Create specialized gravel road visualization for Swedish government data:
+
+- Implement color-coded polylines for different surface types
+- Display loading indicators during NVDB data fetching
+- Provide info cards for surface type identification
+- Support toggle visibility control via provider integration
+- Handle real-time data updates from map viewport changes
+
 ---
 
 ## 5. System Architecture
+
+### 5.1 Logical Component Structure
+
+Design system with these architectural layers:
+
+#### 5.1.1 Presentation Layer
+
+- **Map UI**: flutter_map renders tiles, overlays gravel polylines and measurement routes
+- **Control Interfaces**: Distance panel, drawer navigation, route management pages
+- **State Management**: Riverpod providers for reactive UI updates (see state-management.md)
+
+#### 5.1.2 Business Logic Layer
+
+- **Measurement Manager**: Route points, editing selection, distance calculations with geodesic accuracy
+- **Undo System**: State history management with immutable snapshots and universal operation reversal
+- **Route Manager**: Hive database with 50-route capacity, search, filtering, and editing capabilities
+
+#### 5.1.3 Data Layer
+
+- **Local Storage**: Hive database for route persistence with automatic migration
+- **Cloud Storage**: Firestore database for route synchronization and public sharing
+- **Authentication**: Firebase Anonymous Authentication for seamless user experience
+- **Hybrid Storage**: Offline-first architecture with cloud synchronization for authenticated users
+- **File Operations**: Cross-platform GeoJSON/GPX import/export with iOS compatibility
+- **External APIs**: Overpass API for gravel road data with viewport-based fetching (see api.md)
+- **NVDB Integration**: Trafikverket's official Swedish road database for authoritative gravel road data
+
+#### 5.1.4 Platform Integration
+
+- **Location Services**: GPS positioning with proper permission handling
+- **File System**: path_provider for cross-platform file access
+- **Web Compatibility**: PWA features with offline capability
+
+---
+
+## 6. Gravel Data Integration
+
+### 6.1 Dual-Source Gravel Data Architecture
+
+The application implements a sophisticated dual-source approach for comprehensive gravel road coverage:
+
+#### 6.1.1 OpenStreetMap Data (Primary International)
+
+**Source**: Overpass API querying OpenStreetMap data  
+**Coverage**: Global gravel road data from community contributors  
+**Implementation**: Real-time API queries with viewport-based fetching  
+**Processing**: Surface type filtering for gravel, dirt, unpaved roads  
+
+**Surface Type Filters**:
+```overpass
+[surface~"^(gravel|compacted|fine_gravel|pebblestone|ground|earth|dirt|grass|sand|unpaved|cobblestone)$"]
+```
+
+#### 6.1.2 NVDB Data (Swedish Government Authority)
+
+**Source**: Trafikverket's Nationella Vägdatabasen (NVDB) API  
+**Coverage**: Official Swedish road network with authoritative surface data  
+**Implementation**: Real-time API integration with government infrastructure  
+**Processing**: Surface type filtering for Swedish gravel classifications  
+
+**NVDB Surface Types**:
+- `gravel` - Standard gravel surface
+- `makadam` - Crushed stone/macadam
+- `sten` - Stone surface
+- `sand` - Sand surface
+- `jord` - Earth/soil surface
+- `naturmaterial` - Natural material surface
+
+### 6.2 NVDB Service Architecture
+
+#### 6.2.1 Service Implementation
+
+```dart
+/// Service for accessing Trafikverket's NVDB API
+/// 
+/// NVDB contains official Swedish road network data including surface types
+/// that are perfect for identifying gravel roads and unpaved surfaces.
+/// 
+/// API Documentation: https://nvdb2012.trafikverket.se/
+/// No API key required for basic queries
+class NvdbService {
+  static const String _baseUrl = 'https://nvdb2012.trafikverket.se';
+  static const Duration _timeout = Duration(seconds: 30);
+  
+  /// Search for gravel and unpaved roads within a bounding box
+  Future<List<NvdbRoadSegment>> getGravelRoads(LatLngBounds bbox) async {
+    final queryResult = await _queryRoadSurfaces(bbox);
+    return _parseNvdbResponse(queryResult);
+  }
+  
+  /// Filter NVDB elements for gravel surfaces
+  List<NvdbRoadSegment> _filterGravelSurfaces(List<dynamic> elements) {
+    return elements
+        .where((element) => _isGravelSurface(element))
+        .map((element) => NvdbRoadSegment.fromNvdbElement(element))
+        .toList();
+  }
+}
+```
+
+#### 6.2.2 Data Models
+
+```dart
+/// Represents a road segment from NVDB with gravel surface
+class NvdbRoadSegment {
+  final String id;
+  final List<LatLng> geometry;
+  final String surfaceType;
+  final Map<String, dynamic> properties;
+  
+  /// Color mapping for different surface types
+  Color get displayColor {
+    switch (surfaceType.toLowerCase()) {
+      case 'gravel': return const Color(0xFFD2691E);      // SaddleBrown
+      case 'makadam': return const Color(0xFFA0522D);     // Sienna
+      case 'sten': return const Color(0xFF696969);        // DimGray
+      case 'sand': return const Color(0xFFF4A460);        // SandyBrown
+      case 'jord': return const Color(0xFF8B4513);        // SaddleBrown darker
+      case 'naturmaterial': return const Color(0xFF228B22); // ForestGreen
+      default: return const Color(0xFFD2691E);            // Default gravel
+    }
+  }
+}
+```
+
+### 6.3 Map Integration Architecture
+
+#### 6.3.1 Layered Visualization System
+
+The map implements a sophisticated layered approach for gravel data visualization:
+
+```dart
+// Map layer stack (bottom to top)
+FlutterMap(
+  children: [
+    // 1. Base tile layer
+    TileLayer(/* MapTiler or OSM tiles */),
+    
+    // 2. OpenStreetMap gravel roads (global coverage)
+    PolylineLayer(
+      polylines: osmGravelPolylines,
+    ),
+    
+    // 3. NVDB gravel roads (Swedish authority data)
+    NvdbGravelLayer(
+      segments: ref.watch(nvdbGravelRoadsProvider),
+      visible: ref.watch(nvdbOverlayProvider),
+    ),
+    
+    // 4. User measurement routes (highest priority)
+    PolylineLayer(
+      polylines: userRoutePolylines,
+    ),
+    
+    // 5. Route markers and UI elements
+    MarkerLayer(/* Route points and distance markers */),
+  ],
+)
+```
+
+#### 6.3.2 Real-time Data Loading
+
+**Viewport-Based Fetching**:
+```dart
+void _queueViewportFetch() {
+  final bounds = _lastEventBounds;
+  
+  // Fetch OpenStreetMap data
+  _fetchGravelForBounds(bounds);
+  
+  // Fetch NVDB data if overlay is enabled
+  final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
+  if (nvdbOverlayEnabled) {
+    _fetchNvdbDataForBounds(bounds);
+  }
+}
+```
+
+**Debounced Loading**:
+- 500ms debounce for OpenStreetMap queries
+- Coordinated debouncing for NVDB queries
+- Smart bounds comparison to prevent duplicate requests
+- Loading state management with provider integration
+
+### 6.4 User Interface Integration
+
+#### 6.4.1 Drawer Control System
+
+The app drawer provides user control over gravel data sources:
+
+**Map Settings Section**:
+```dart
+// Swedish localization
+_buildSwitchTile(
+  title: 'Visa NVDB-grusvägar',
+  subtitle: 'Officiella svenska vägdata från Trafikverket',
+  icon: Icons.map_outlined,
+  value: ref.watch(nvdbOverlayProvider),
+  onChanged: (enabled) {
+    ref.read(nvdbOverlayProvider.notifier).state = enabled;
+  },
+),
+```
+
+#### 6.4.2 Visual Design System
+
+**Color-Coded Surface Types**:
+- **Gravel**: SaddleBrown (#D2691E) - Standard gravel roads
+- **Makadam**: Sienna (#A0522D) - Crushed stone surfaces  
+- **Sten**: DimGray (#696969) - Stone/rock surfaces
+- **Sand**: SandyBrown (#F4A460) - Sand-based surfaces
+- **Jord**: Dark SaddleBrown (#8B4513) - Earth/soil surfaces
+- **Naturmaterial**: ForestGreen (#228B22) - Natural material surfaces
+
+**Loading Indicators**:
+- Spinner overlay during NVDB data fetching
+- Progressive loading with status messages
+- Error states with retry mechanisms
+
+### 6.5 Data Synchronization Strategy
+
+#### 6.5.1 Multi-Source Coordination
+
+**Data Source Priority**:
+1. **User Routes**: Highest priority, always visible on top
+2. **NVDB Data**: Swedish authority data when enabled
+3. **OpenStreetMap**: Global community data as base layer
+4. **Base Tiles**: MapTiler/OSM background tiles
+
+**Performance Optimization**:
+- Conditional loading based on user preferences
+- Efficient provider state management
+- Memory-conscious data caching
+- Smart viewport-based API calls
+
+#### 6.5.2 Error Handling and Fallbacks
+
+**NVDB Service Error Handling**:
+```dart
+try {
+  final gravelRoads = await nvdbService.getGravelRoads(nvdbBounds);
+  ref.read(nvdbGravelRoadsProvider.notifier).state = gravelRoads;
+} catch (e) {
+  debugPrint('NVDB fetch failed: $e');
+  // Clear data on error, graceful degradation
+  ref.read(nvdbGravelRoadsProvider.notifier).state = [];
+} finally {
+  ref.read(isLoadingNvdbProvider.notifier).state = false;
+}
+```
+
+**Graceful Degradation**:
+- Continue operation if NVDB service is unavailable
+- Clear visual feedback when data sources fail
+- Fallback to OpenStreetMap data for coverage
+- User notification of service status
+
+### 6.6 Government API Compliance
+
+#### 6.6.1 Trafikverket NVDB Usage
+
+**API Characteristics**:
+- **No API Key Required**: Public access for basic queries
+- **Rate Limiting**: Respectful usage with 30-second timeout
+- **Swedish Focus**: Optimized for Swedish road network
+- **Official Authority**: Government-maintained data accuracy
+
+**Compliance Implementation**:
+- Proper User-Agent identification
+- Reasonable request frequency
+- Error handling for service limitations
+- Respectful usage of public infrastructure
+
+#### 6.6.2 Integration Benefits
+
+**Data Quality Advantages**:
+- **Authoritative Source**: Official government road surface classifications
+- **Maintained Accuracy**: Regular updates from road maintenance activities
+- **Comprehensive Coverage**: Complete Swedish road network integration
+- **Professional Standards**: Government data quality and reliability
+
+**User Experience Benefits**:
+- **Dual Coverage**: Global OSM data + Swedish authority data
+- **Toggle Control**: User choice between data sources
+- **Visual Distinction**: Color-coded surface type identification
+- **Real-time Updates**: Dynamic loading based on map interaction
+
+---
+
+## 7. System Architecture
 
 ### 5.1 Logical Component Structure
 
@@ -698,6 +998,7 @@ This architecture document serves as the central hub for technical implementatio
 
 - Overpass API integration patterns
 - MapTiler service configuration
+- **NVDB Integration**: Comprehensive documentation for Swedish government road data integration
 - Tile server compliance and usage policies
 - API security and validation
 - Error handling and fallback strategies
@@ -826,6 +1127,7 @@ void exampleMethod(Type param1, Type param2) {
 
 ### 9.2 Change History
 
+- **2025-08-31**: NVDB Integration Complete - Swedish government road data integration with dual-source gravel mapping
 - **2025-08-28**: GravelStreetsMap Modular Refactoring - Achieved exactly 1000 lines through mixin extraction and overlay widgets
 - **2025-01-27**: Comprehensive Point Editing System - Complete editing overhaul with safety-first gestures
 - **2025-08-26**: General Undo System - Universal undo with 50-state history management
@@ -837,6 +1139,6 @@ void exampleMethod(Type param1, Type param2) {
 
 ---
 
-Last updated: 2025-08-29
+Last updated: 2025-08-31
 
 This document serves as the central technical hub. Refer to spoke documents for domain-specific implementation details.

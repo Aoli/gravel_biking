@@ -61,10 +61,7 @@ class NvdbGravelLayer extends StatelessWidget {
 class NvdbLoadingIndicator extends StatelessWidget {
   final bool isLoading;
 
-  const NvdbLoadingIndicator({
-    super.key,
-    required this.isLoading,
-  });
+  const NvdbLoadingIndicator({super.key, required this.isLoading});
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +127,7 @@ class NvdbInfoCard extends StatelessWidget {
     // Calculate statistics
     final surfaceTypes = <String, int>{};
     for (final segment in gravelRoads) {
-      surfaceTypes[segment.surfaceType] = 
+      surfaceTypes[segment.surfaceType] =
           (surfaceTypes[segment.surfaceType] ?? 0) + 1;
     }
 
@@ -157,11 +154,7 @@ class NvdbInfoCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.traffic,
-                  size: 16,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.traffic, size: 16, color: colorScheme.primary),
                 const SizedBox(width: 6),
                 Text(
                   'NVDB Grusvägar',
@@ -180,30 +173,37 @@ class NvdbInfoCard extends StatelessWidget {
             ),
             if (surfaceTypes.isNotEmpty) ...[
               const SizedBox(height: 4),
-              ...surfaceTypes.entries.take(3).map((entry) => Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: _getColorForSurfaceType(entry.key, colorScheme),
-                        shape: BoxShape.circle,
+              ...surfaceTypes.entries
+                  .take(3)
+                  .map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: _getColorForSurfaceType(
+                                entry.key,
+                                colorScheme,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${entry.key}: ${entry.value}',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '${entry.key}: ${entry.value}',
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+                  ),
             ],
           ],
         ),

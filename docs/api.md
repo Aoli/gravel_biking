@@ -4,10 +4,11 @@
 
 1. [API Overview](#1-api-overview)
 2. [Overpass API Integration](#2-overpass-api-integration)
-3. [Tile Server Configuration](#3-tile-server-configuration)
-4. [API Security and Validation](#4-api-security-and-validation)
-5. [Error Handling](#5-error-handling)
-6. [Performance and Compliance](#6-performance-and-compliance)
+3. [NVDB Integration (Swedish Government Data)](#3-nvdb-integration-swedish-government-data)
+4. [Tile Server Configuration](#4-tile-server-configuration)
+5. [API Security and Validation](#5-api-security-and-validation)
+6. [Error Handling](#6-error-handling)
+7. [Performance and Compliance](#7-performance-and-compliance)
 
 ---
 
@@ -19,6 +20,7 @@ The Gravel First application integrates with these external APIs:
 
 **Primary APIs:**
 - **Overpass API**: OpenStreetMap data querying for gravel road geometry
+- **NVDB API**: Trafikverket's Swedish government road database for authoritative gravel road data
 - **MapTiler API**: Commercial tile server for map rendering (primary provider)
 - **OpenStreetMap Tiles**: Fallback tile server for development and emergency scenarios
 
@@ -164,7 +166,369 @@ class ViewportManager {
 
 ---
 
-## 3. Tile Server Configuration
+## 3. NVDB Integration (Swedish Government Data)
+
+### 3.1 NVDB Service Overview
+
+The Nationella Vägdatabasen (NVDB) is Sweden's official road database maintained by Trafikverket (Swedish Transport Administration). It provides authoritative road surface information that complements OpenStreetMap data for Swedish gravel biking routes.
+
+**Key Benefits:**
+- **Official Authority**: Government-maintained road surface classifications
+- **High Accuracy**: Professional surveying and maintenance data
+- **Complete Coverage**: Comprehensive Swedish road network
+- **Real-time Access**: Direct API integration with government infrastructure
+
+### 3.2 NVDB Service Configuration
+
+Configure NVDB API integration for Swedish gravel road data:
+
+```dart
+/// Service for accessing Trafikverket's NVDB API
+/// 
+/// NVDB contains official Swedish road network data including surface types
+/// that are perfect for identifying gravel roads and unpaved surfaces.
+/// 
+/// API Documentation: https://nvdb2012.trafikverket.se/
+/// No API key required for basic queries
+class NvdbService {
+  static const String _baseUrl = 'https://nvdb2012.trafikverket.se';
+  static const Duration _timeout = Duration(seconds: 30);
+  
+  final http.Client _client;
+  
+  NvdbService({http.Client? client}) : _client = client ?? http.Client();
+
+  /// Search for gravel and unpaved roads within a bounding box
+  Future<List<NvdbRoadSegment>> getGravelRoads(LatLngBounds bbox) async {
+    try {
+      final queryResult = await _queryRoadSurfaces(bbox);
+      return _parseNvdbResponse(queryResult);
+    } catch (e) {
+      throw NvdbException('Failed to fetch NVDB data: $e');
+    }
+  }
+  
+  /// Dispose of HTTP client resources
+  void dispose() {
+    _client.close();
+  }
+}
+```
+
+### 3.3 Surface Type Classification
+
+NVDB uses Swedish road surface classifications that map to gravel biking suitability:
+
+**Gravel Surface Types:**
+- `gravel` - Standard gravel surface (grus)
+- `makadam` - Crushed stone/macadam surface
+- `sten` - Stone/rock surface
+- `sand` - Sand-based surface
+- `jord` - Earth/soil surface (jord)
+- `naturmaterial` - Natural material surface
+
+**Surface Filtering Implementation:**
+```dart
+/// Check if a surface type qualifies as gravel/unpaved for biking
+bool _isGravelSurface(Map<String, dynamic> element) {
+  final tags = element['tags'] as Map<String, dynamic>?;
+  if (tags == null) return false;
+  
+  final surface = tags['surface']?.toString().toLowerCase();
+  if (surface == null) return false;
+  
+  // NVDB gravel surface classifications
+  const gravelSurfaces = {
+    'gravel', 'makadam', 'sten', 'sand', 'jord', 'naturmaterial',
+    'grus', 'singel', 'natursten', 'packad_jord'
+  };
+  
+  return gravelSurfaces.contains(surface);
+}
+```
+
+### 3.4 Data Model Implementation
+
+NVDB road segments with rich metadata and visual styling:
+
+```dart
+/// Represents a road segment from NVDB with gravel surface information
+class NvdbRoadSegment {
+  final String id;
+  final List<LatLng> geometry;
+  final String surfaceType;
+  final Map<String, dynamic> properties;
+  final DateTime? lastUpdated;
+  
+  const NvdbRoadSegment({
+    required this.id,
+    required this.geometry,
+    required this.surfaceType,
+    required this.properties,
+    this.lastUpdated,
+  });
+  
+  /// Get display color for the surface type
+  Color get displayColor {
+    switch (surfaceType.toLowerCase()) {
+      case 'gravel':
+      case 'grus':
+        return const Color(0xFFD2691E); // SaddleBrown
+      case 'makadam':
+        return const Color(0xFFA0522D); // Sienna
+      case 'sten':
+      case 'natursten':
+        return const Color(0xFF696969); // DimGray
+      case 'sand':
+        return const Color(0xFFF4A460); // SandyBrown
+      case 'jord':
+      case 'packad_jord':
+        return const Color(0xFF8B4513); // SaddleBrown darker
+      case 'naturmaterial':
+        return const Color(0xFF228B22); // ForestGreen
+      default:
+        return const Color(0xFFD2691E); // Default gravel color
+    }
+  }
+  
+  /// Create road segment from NVDB API response element
+  factory NvdbRoadSegment.fromNvdbElement(Map<String, dynamic> element) {
+    final geometry = (element['geometry'] as List<dynamic>)
+        .map((point) => LatLng(point['lat'], point['lon']))
+        .toList();
+    
+    final tags = element['tags'] as Map<String, dynamic>? ?? {};
+    
+    return NvdbRoadSegment(
+      id: element['id'].toString(),
+      geometry: geometry,
+      surfaceType: tags['surface']?.toString() ?? 'unknown',
+      properties: tags,
+      lastUpdated: DateTime.now(),
+    );
+  }
+}
+```
+
+### 3.5 Integration Architecture
+
+#### 3.5.1 Provider Architecture
+
+State management for NVDB data with Riverpod:
+
+```dart
+/// Provider for NVDB service instance
+final nvdbServiceProvider = Provider<NvdbService>((ref) {
+  final service = NvdbService();
+  
+  // Clean up when provider is disposed
+  ref.onDispose(() {
+    service.dispose();
+  });
+  
+  return service;
+});
+
+/// Provider for NVDB gravel roads data
+final nvdbGravelRoadsProvider = StateProvider<List<NvdbRoadSegment>>((ref) {
+  return [];
+});
+
+/// Provider for NVDB data loading state
+final isLoadingNvdbProvider = StateProvider<bool>((ref) => false);
+
+/// Provider for NVDB overlay visibility toggle
+final nvdbOverlayProvider = StateProvider<bool>((ref) => false);
+```
+
+#### 3.5.2 Map Integration
+
+Real-time NVDB data loading coordinated with map interactions:
+
+```dart
+/// Fetch NVDB data for current map viewport
+Future<void> _fetchNvdbDataForBounds(LatLngBounds bounds) async {
+  // Set loading state
+  ref.read(isLoadingNvdbProvider.notifier).state = true;
+  
+  try {
+    final nvdbService = ref.read(nvdbServiceProvider);
+    
+    // Convert flutter_map LatLngBounds to NVDB LatLngBounds
+    final nvdbBounds = nvdb.LatLngBounds(
+      south: bounds.southWest.latitude,
+      west: bounds.southWest.longitude,
+      north: bounds.northEast.latitude,
+      east: bounds.northEast.longitude,
+    );
+    
+    final gravelRoads = await nvdbService.getGravelRoads(nvdbBounds);
+    
+    // Update provider with fetched data
+    ref.read(nvdbGravelRoadsProvider.notifier).state = gravelRoads;
+    
+    debugPrint('✨ NVDB data updated: ${gravelRoads.length} segments');
+  } catch (e) {
+    debugPrint('❌ NVDB fetch failed: $e');
+    // Clear data on error for graceful degradation
+    ref.read(nvdbGravelRoadsProvider.notifier).state = [];
+  } finally {
+    if (mounted) {
+      ref.read(isLoadingNvdbProvider.notifier).state = false;
+    }
+  }
+}
+```
+
+### 3.6 Visual Layer Implementation
+
+#### 3.6.1 NVDB Gravel Layer Widget
+
+Dedicated widget for rendering NVDB gravel road data:
+
+```dart
+/// Widget for displaying NVDB gravel roads on the map
+class NvdbGravelLayer extends ConsumerWidget {
+  const NvdbGravelLayer({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nvdbSegments = ref.watch(nvdbGravelRoadsProvider);
+    final nvdbVisible = ref.watch(nvdbOverlayProvider);
+    final isLoading = ref.watch(isLoadingNvdbProvider);
+
+    if (!nvdbVisible) return const SizedBox.shrink();
+
+    return Stack(
+      children: [
+        // NVDB polyline layer
+        PolylineLayer(
+          polylines: nvdbSegments
+              .map((segment) => Polyline(
+                    polylineId: PolylineId('nvdb_${segment.id}'),
+                    points: segment.geometry,
+                    color: segment.displayColor,
+                    width: 3.0,
+                    patterns: [], // Solid line for authority data
+                  ))
+              .toList(),
+        ),
+        
+        // Loading indicator overlay
+        if (isLoading) const NvdbLoadingIndicator(),
+        
+        // Info card for surface types
+        if (nvdbSegments.isNotEmpty) const NvdbInfoCard(),
+      ],
+    );
+  }
+}
+```
+
+#### 3.6.2 User Interface Integration
+
+Drawer control for NVDB data toggle:
+
+```dart
+// In GravelAppDrawer - Map Settings section
+_buildSwitchTile(
+  title: 'Visa NVDB-grusvägar',
+  subtitle: 'Officiella svenska vägdata från Trafikverket',
+  icon: Icons.map_outlined,
+  value: ref.watch(nvdbOverlayProvider),
+  onChanged: (enabled) {
+    ref.read(nvdbOverlayProvider.notifier).state = enabled;
+    // Trigger data fetch if enabling and map is loaded
+    if (enabled && _mapController.mapEventStream != null) {
+      _fetchNvdbDataForCurrentViewport();
+    }
+  },
+),
+```
+
+### 3.7 Performance Optimization
+
+#### 3.7.1 Coordinated Data Loading
+
+NVDB data loading coordinated with OpenStreetMap fetching:
+
+```dart
+void _queueViewportFetch() {
+  final bounds = _lastEventBounds;
+  if (bounds == null) return;
+  
+  // Primary: OpenStreetMap gravel data
+  _fetchGravelForBounds(bounds);
+  
+  // Secondary: NVDB data if enabled
+  final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
+  if (nvdbOverlayEnabled) {
+    _fetchNvdbDataForBounds(bounds);
+  }
+}
+```
+
+#### 3.7.2 Caching and State Management
+
+- **Provider State**: Automatic state management via Riverpod
+- **Error Recovery**: Graceful degradation on API failures
+- **Memory Management**: Automatic cleanup on provider disposal
+- **Loading States**: Visual feedback during data operations
+
+### 3.8 Government API Compliance
+
+#### 3.8.1 Usage Guidelines
+
+**NVDB API Characteristics:**
+- **Public Access**: No API key required for basic road surface queries
+- **Rate Limiting**: Respectful usage with 30-second timeout per request
+- **Swedish Focus**: Optimized for Swedish road network coverage
+- **Government Infrastructure**: Professional-grade reliability and accuracy
+
+**Compliance Implementation:**
+```dart
+static const Map<String, String> _defaultHeaders = {
+  'User-Agent': 'GravelFirst/1.0 (Gravel biking route planner)',
+  'Accept': 'application/json',
+  'Content-Type': 'application/json; charset=utf-8',
+};
+
+// Respectful request timeout
+static const Duration _timeout = Duration(seconds: 30);
+```
+
+#### 3.8.2 Data Usage Ethics
+
+**Responsible Implementation:**
+- **Appropriate Use Case**: Gravel biking route planning aligns with public road data purposes
+- **No Commercial Redistribution**: Data used within app context only
+- **Attribution**: Proper credit to Trafikverket in app documentation
+- **Error Handling**: Graceful degradation when service is unavailable
+
+### 3.9 Dual-Source Benefits
+
+#### 3.9.1 Complementary Coverage
+
+**OpenStreetMap**: Global community-driven gravel road mapping  
+**NVDB**: Swedish government authority road surface classifications  
+
+**Combined Advantages:**
+- **Comprehensive Coverage**: Global OSM data with Swedish authority validation
+- **Quality Assurance**: Cross-reference community data with official sources
+- **Real-time Updates**: Dynamic loading from both data sources
+- **User Choice**: Toggle between data sources based on preference
+
+#### 3.9.2 Error Resilience
+
+**Fallback Strategy:**
+1. **NVDB Primary**: Use official Swedish data when available
+2. **OSM Secondary**: Fall back to OpenStreetMap for coverage gaps
+3. **Graceful Degradation**: Continue operation if either source fails
+4. **User Notification**: Clear feedback when data sources are unavailable
+
+---
+
+## 4. Tile Server Configuration
 
 ### 3.1 Dual-Provider Strategy
 
@@ -741,6 +1105,6 @@ MAPTILER_API_KEY=your_api_key_here
 
 ---
 
-*This document provides comprehensive API integration guidance for the Gravel First application. All implementations follow industry best practices for security, performance, and compliance.*
+*This document provides comprehensive API integration guidance for the Gravel First application, including detailed NVDB implementation for Swedish government road data integration. All implementations follow industry best practices for security, performance, and compliance.*
 
-*Last updated: 2025-01-27*
+*Last updated: 2025-08-31*

@@ -82,12 +82,12 @@ final fileServiceProvider = Provider<FileService>((ref) {
 /// fetching gravel road data from Trafikverket's NVDB API.
 final nvdbServiceProvider = Provider<NvdbService>((ref) {
   final service = NvdbService();
-  
+
   // Clean up when provider is disposed
   ref.onDispose(() {
     service.dispose();
   });
-  
+
   return service;
 });
 

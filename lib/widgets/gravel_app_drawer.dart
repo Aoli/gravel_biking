@@ -208,7 +208,8 @@ class GravelAppDrawer extends ConsumerWidget {
                     title: 'NVDB grusvägar',
                     subtitle: 'Trafikverkets officiella vägnät',
                     value: ref.watch(nvdbOverlayProvider),
-                    onChanged: (v) => ref.read(nvdbOverlayProvider.notifier).state = v,
+                    onChanged: (v) =>
+                        ref.read(nvdbOverlayProvider.notifier).state = v,
                     isDisabled: false,
                   ),
 
