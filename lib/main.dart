@@ -23,6 +23,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:gravel_biking/screens/gravel_streets_map.dart';
 import 'package:gravel_biking/services/storage_service.dart';
+import 'package:gravel_biking/widgets/splash_screen.dart';
 import 'firebase_options.dart';
 
 /// Application entry point with centralized storage initialization
@@ -74,8 +75,21 @@ Future<void> main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _showSplash = true;
+
+  void _onSplashFinished() {
+    setState(() {
+      _showSplash = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +98,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
-      home: const GravelStreetsMap(),
+      home: _showSplash
+          ? SplashScreen(onSplashFinished: _onSplashFinished)
+          : const GravelStreetsMap(),
     );
   }
 
