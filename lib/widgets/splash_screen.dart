@@ -23,8 +23,16 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<Offset> _textSlide;
   late Animation<double> _fadeOut;
 
-  String version = '';
-  String buildNumber = '';
+  // CI/CD build number (provided via --dart-define=BUILD_NUMBER=123), empty locally
+  final String _buildNumber = const String.fromEnvironment(
+    'BUILD_NUMBER',
+    defaultValue: '',
+  );
+
+  // App version from pubspec.yaml
+  String _appVersion = '';
+
+  bool _isPaused = false;
 
   @override
   void initState() {
@@ -87,14 +95,12 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       setState(() {
-        version = packageInfo.version;
-        buildNumber = packageInfo.buildNumber;
+        _appVersion = packageInfo.version;
       });
     } catch (e) {
       // Fallback values if package info fails
       setState(() {
-        version = '0.1.0';
-        buildNumber = '1';
+        _appVersion = '0.1.0';
       });
     }
   }
@@ -112,6 +118,11 @@ class _SplashScreenState extends State<SplashScreen>
     // Wait for animations to complete, then hold for minimum splash time
     await Future.delayed(const Duration(milliseconds: 2000));
 
+    // Wait until not paused before finishing
+    while (_isPaused) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
     // Start fade out and finish
     if (mounted) {
       _fadeController.forward().then((_) {
@@ -120,6 +131,20 @@ class _SplashScreenState extends State<SplashScreen>
         }
       });
     }
+  }
+
+  void _toggleTimer() {
+    setState(() {
+      _isPaused = !_isPaused;
+    });
+  }
+
+  String _formatVersionString() {
+    final parts = <String>[];
+    if (_appVersion.isNotEmpty) parts.add('v$_appVersion');
+    if (_buildNumber.isNotEmpty) parts.add('#$_buildNumber');
+    final label = parts.join(' ');
+    return label.isNotEmpty ? 'Version $label' : 'Version';
   }
 
   @override
@@ -133,7 +158,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0175C2), // Match theme color
+      backgroundColor: Colors.grey[900], // Dark charcoal instead of blue
       body: AnimatedBuilder(
         animation: Listenable.merge([
           _logoController,
@@ -150,7 +175,10 @@ class _SplashScreenState extends State<SplashScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFF0175C2), Color(0xFF014A8A)],
+                  colors: [
+                    Color(0xFF2C2C2C),
+                    Color(0xFF1A1A1A),
+                  ], // Dark gradient
                 ),
               ),
               child: SafeArea(
@@ -158,7 +186,7 @@ class _SplashScreenState extends State<SplashScreen>
                   children: [
                     const Spacer(flex: 2),
 
-                    // App Name
+                    // App Name with modern styling
                     SlideTransition(
                       position: _textSlide,
                       child: FadeTransition(
@@ -182,11 +210,11 @@ class _SplashScreenState extends State<SplashScreen>
                       position: _textSlide,
                       child: FadeTransition(
                         opacity: _textOpacity,
-                        child: const Text(
+                        child: Text(
                           'Plan gravel bike routes with interactive maps',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.white70,
+                            color: Colors.grey[400],
                             fontWeight: FontWeight.w300,
                           ),
                           textAlign: TextAlign.center,
@@ -196,7 +224,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const Spacer(flex: 1),
 
-                    // Logo
+                    // Logo with modern hexagonal frame
                     ScaleTransition(
                       scale: _logoScale,
                       child: FadeTransition(
@@ -205,13 +233,31 @@ class _SplashScreenState extends State<SplashScreen>
                           width: 250,
                           height: 250,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(125),
+                            color: const Color(
+                              0xFF0175C2,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(
+                              40,
+                            ), // Rounded square
+                            border: Border.all(
+                              color: const Color(
+                                0xFF0175C2,
+                              ).withValues(alpha: 0.3),
+                              width: 2,
+                            ),
                             boxShadow: [
                               BoxShadow(
+                                color: const Color(
+                                  0xFF0175C2,
+                                ).withValues(alpha: 0.2),
+                                blurRadius: 40,
+                                offset: const Offset(0, 10),
+                                spreadRadius: 5,
+                              ),
+                              BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.3),
-                                blurRadius: 30,
-                                offset: const Offset(0, 20),
+                                blurRadius: 20,
+                                offset: const Offset(0, 5),
                               ),
                             ],
                           ),
@@ -235,26 +281,40 @@ class _SplashScreenState extends State<SplashScreen>
                       position: _textSlide,
                       child: FadeTransition(
                         opacity: _textOpacity,
-                        child: Column(
-                          children: [
-                            Text(
-                              'Version $version${buildNumber.isNotEmpty ? ' ($buildNumber)' : ''}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.white60,
-                                fontWeight: FontWeight.w300,
+                        child: GestureDetector(
+                          onTap: _toggleTimer,
+                          child: Column(
+                            children: [
+                              Text(
+                                _formatVersionString(),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: _isPaused
+                                      ? Colors.amber
+                                      : Colors.grey[500],
+                                  fontWeight: FontWeight.w300,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Copyright © AOLI 2025',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white60,
-                                fontWeight: FontWeight.w300,
+                              if (_isPaused)
+                                Text(
+                                  '⏸ PAUSED - Tap to resume',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.amber,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Copyright © AOLI 2025',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w300,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
