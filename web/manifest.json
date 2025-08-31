@@ -1,13 +1,20 @@
 {
     "name": "Gravel First",
     "short_name": "Gravel First",
-    "start_url": ".",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Plan gravel bike routes with interactive maps.",
-    "orientation": "portrait-primary",
+    "description": "Plan gravel bike routes with interactive maps",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "lang": "en-US",
+    "categories": [
+        "sports",
+        "travel",
+        "navigation"
+    ],
     "icons": [
         {
             "src": "web-app-manifest-192x192.png",
@@ -20,6 +27,12 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
+        },
+        {
+            "src": "favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
         }
     ]
 }
