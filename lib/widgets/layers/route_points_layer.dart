@@ -61,27 +61,38 @@ class RoutePointsLayer extends StatelessWidget {
     final baseSize = editModeEnabled ? 16.0 : 2.0;
     final markerSize = measureEnabled ? baseSize : baseSize * 0.8;
 
+    // Use larger tap area for edit mode to make it easier to tap with finger
+    final tapAreaSize = editModeEnabled ? 44.0 : markerSize;
+
     markers.add(
       Marker(
         point: points[i],
-        width: markerSize,
-        height: markerSize,
+        width: tapAreaSize, // Use larger tap area in edit mode
+        height: tapAreaSize, // Use larger tap area in edit mode
         alignment: Alignment.center,
         child: GestureDetector(
           onTap: () => onTapPoint(i),
           onLongPress: () => onLongPressPoint(i),
           child: editModeEnabled
-              ? PointMarker(
-                  key: ValueKey(
-                    'point_${i}_measure_${measureEnabled}_edit_${isEditingIndex}_loop_$isLoopClosed',
+              ? Container(
+                  width: tapAreaSize,
+                  height: tapAreaSize,
+                  color: Colors
+                      .transparent, // Transparent background to expand touch area
+                  child: Center(
+                    child: PointMarker(
+                      key: ValueKey(
+                        'point_${i}_measure_${measureEnabled}_edit_${isEditingIndex}_loop_$isLoopClosed',
+                      ),
+                      index: i,
+                      size: 16.0, // Visual size remains the same
+                      isStartPoint: isStartPoint,
+                      isEndPoint: isEndPoint,
+                      measureEnabled: measureEnabled,
+                      isEditing: isEditingIndex == i,
+                      isLoopClosed: isLoopClosed,
+                    ),
                   ),
-                  index: i,
-                  size: 16.0,
-                  isStartPoint: isStartPoint,
-                  isEndPoint: isEndPoint,
-                  measureEnabled: measureEnabled,
-                  isEditing: isEditingIndex == i,
-                  isLoopClosed: isLoopClosed,
                 )
               : (!measureEnabled && isStartOrEnd)
               ? PointMarker(

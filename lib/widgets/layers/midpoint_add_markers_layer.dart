@@ -30,28 +30,36 @@ class MidpointAddMarkersLayer extends StatelessWidget {
       markers.add(
         Marker(
           point: midpoint,
-          width: 16,
-          height: 16,
+          width: 44, // Increased from 16 to 44 for better finger tap area
+          height: 44, // Increased from 16 to 44 for better finger tap area
           alignment: Alignment.center,
           child: GestureDetector(
             onTap: () => onAddBetween(i, i + 1, midpoint),
             child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(
-                  context,
-                ).colorScheme.secondary.withValues(alpha: 0.8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.onSecondary,
-                  width: 2,
+              width: 44, // Large transparent touch area
+              height: 44, // Large transparent touch area
+              color: Colors
+                  .transparent, // Transparent background to expand touch area
+              child: Center(
+                child: Container(
+                  width: 16, // Visual size remains the same
+                  height: 16, // Visual size remains the same
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.secondary.withValues(alpha: 0.8),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.onSecondary,
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.add,
+                    size: 10,
+                    color: Theme.of(context).colorScheme.onSecondary,
+                  ),
                 ),
-              ),
-              child: Icon(
-                Icons.add,
-                size: 10,
-                color: Theme.of(context).colorScheme.onSecondary,
               ),
             ),
           ),
@@ -67,28 +75,36 @@ class MidpointAddMarkersLayer extends StatelessWidget {
       markers.add(
         Marker(
           point: midpoint,
-          width: 16,
-          height: 16,
+          width: 44, // Increased from 16 to 44 for better finger tap area
+          height: 44, // Increased from 16 to 44 for better finger tap area
           alignment: Alignment.center,
           child: GestureDetector(
             onTap: () => onAddBetween(routePoints.length - 1, 0, midpoint),
             child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(
-                  context,
-                ).colorScheme.secondary.withValues(alpha: 0.8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.onSecondary,
-                  width: 2,
+              width: 44, // Large transparent touch area
+              height: 44, // Large transparent touch area
+              color: Colors
+                  .transparent, // Transparent background to expand touch area
+              child: Center(
+                child: Container(
+                  width: 16, // Visual size remains the same
+                  height: 16, // Visual size remains the same
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.secondary.withValues(alpha: 0.8),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.onSecondary,
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.add,
+                    size: 10,
+                    color: Theme.of(context).colorScheme.onSecondary,
+                  ),
                 ),
-              ),
-              child: Icon(
-                Icons.add,
-                size: 10,
-                color: Theme.of(context).colorScheme.onSecondary,
               ),
             ),
           ),

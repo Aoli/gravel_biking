@@ -5,10 +5,11 @@
 2. [Technical Foundation](#2-technical-foundation)
 3. [Architecture Standards](#3-architecture-standards)
 4. [Implementation Requirements](#4-implementation-requirements)
-5. [System Architecture](#5-system-architecture)
-6. [Development Standards](#6-development-standards)
-7. [Platform Specifications](#7-platform-specifications)
-8. [Spoke Documentation](#8-spoke-documentation)
+5. [Gravel Data Integration](#5-gravel-data-integration)
+6. [System Architecture](#6-system-architecture)
+7. [Development Standards](#7-development-standards)
+8. [Platform Specifications](#8-platform-specifications)
+9. [Spoke Documentation](#9-spoke-documentation)
 
 ---
 
@@ -198,12 +199,236 @@ Create the primary map interface with these mandatory responsibilities:
 
 - Implement modular mixin-based architecture for separation of concerns
 - Maintain exactly 1000 lines of code through strategic component extraction
-- Integrate Overpass API for gravel road data fetching with 500ms debounce
+- Integrate multiple gravel data sources with 500ms debounced fetching
 - Handle all map interactions and comprehensive state management
 - Structure UI layout including AppBar actions and drawer navigation
 - Render map layers: PolylineLayer for roads/routes, MarkerLayer for points
 - Implement advanced editing features with safety-first gesture handling
 - Manage application state using Riverpod providers (see state-management.md)
+
+#### 4.2.2 SavedRoutesPage Screen
+
+Build comprehensive route management interface:
+
+- Support up to 50 routes with search and advanced filtering
+- Provide real-time text search by name and description
+- Include advanced filters: distance range, route type, date range, proximity
+- Enable route name editing with validation and error handling
+- Implement Material 3 design with Swedish localization
+- Support pull-to-refresh and proper state management
+
+---
+
+## 5. Gravel Data Integration
+
+### 5.1 Overview
+
+Implement comprehensive gravel road data visualization with multiple data sources for optimal coverage and accuracy. The system combines community-driven OpenStreetMap data with official Swedish government data from Trafikverket's NVDB (Nationella Vägdatabasen).
+
+### 5.2 Data Sources
+
+#### 5.2.1 OpenStreetMap via Overpass API
+
+**Primary gravel road data source with community contributions:**
+
+- Real-time querying based on map viewport
+- Surface type filtering: gravel, compacted, fine_gravel, pebblestone, ground, earth, dirt, grass, sand, unpaved, cobblestone
+- Highway type filtering: track, path, cycleway, footway, bridleway, unclassified, tertiary, secondary, primary, trunk, residential, service
+- 500ms debounced fetching to prevent API spam
+- Comprehensive error handling with graceful fallbacks
+
+#### 5.2.2 NVDB (Nationella Vägdatabasen) - Trafikverket
+
+**Official Swedish road surface data with government authorization:**
+
+- Government-authorized gravel road information for Sweden
+- Surface type filtering: gravel, makadam, sten, sand, jord, naturmaterial
+- Real-time API integration with bounding box queries
+- Color-coded visualization by surface type
+- Toggle visibility via drawer control
+
+### 5.3 Implementation Architecture
+
+#### 5.3.1 Dual Source Integration Pattern
+
+```dart
+// Gravel data fetching pattern with dual source integration
+Future<void> _queueViewportFetch() async {
+  final bounds = _lastEventBounds;
+  if (bounds == null) return;
+  
+  // Fetch OpenStreetMap gravel roads
+  _fetchGravelForBounds(bounds);
+  
+  // Fetch NVDB data if overlay is enabled
+  final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
+  if (nvdbOverlayEnabled) {
+    _fetchNvdbDataForBounds(bounds);
+  }
+}
+```
+
+#### 5.3.2 Map Layer Structure
+
+```dart
+FlutterMap(
+  children: [
+    TileLayer(...), // Base map tiles
+    
+    // Gravel road polylines from OpenStreetMap
+    if (gravelOverlayVisible)
+      PolylineLayer(
+        polylines: gravelPolylines,
+      ),
+      
+    // NVDB gravel roads (Swedish official data)
+    NvdbGravelLayer(),
+    
+    // User route polylines
+    if (routePoints.isNotEmpty)
+      PolylineLayer(
+        polylines: [routePolyline],
+      ),
+      
+    // Route point markers and controls
+    RoutePointsLayer(),
+    StartStopMarkersLayer(),
+    DistanceMarkersLayers(),
+  ],
+),
+```
+
+#### 5.3.3 Data Provider Architecture
+
+```dart
+// OpenStreetMap gravel data state
+final gravelPolylinesProvider = StateProvider<List<Polyline>>((ref) => []);
+final gravelOverlayProvider = StateProvider<bool>((ref) => true);
+
+// NVDB gravel data providers
+final nvdbServiceProvider = Provider<NvdbService>((ref) => NvdbService());
+final nvdbGravelRoadsProvider = StateProvider<List<NvdbRoadSegment>>((ref) => []);
+final nvdbOverlayProvider = StateProvider<bool>((ref) => false);
+final isLoadingNvdbProvider = StateProvider<bool>((ref) => false);
+```
+
+### 5.4 NVDB Service Implementation
+
+#### 5.4.1 Service Architecture
+
+```dart
+class NvdbService {
+  static const String _baseUrl = 'https://nvdb2012.trafikverket.se';
+  
+  /// Search for gravel and unpaved roads within a bounding box
+  Future<List<NvdbRoadSegment>> getGravelRoads(LatLngBounds bbox) async {
+    final response = await _queryRoadSurfaces(bbox);
+    return _parseGravelRoads(response);
+  }
+  
+  /// Filter road segments for gravel-suitable surfaces
+  bool _isGravelSurface(String surfaceType) {
+    const gravelSurfaces = {
+      'gravel', 'makadam', 'sten', 'sand', 'jord', 'naturmaterial'
+    };
+    return gravelSurfaces.contains(surfaceType.toLowerCase());
+  }
+}
+```
+
+#### 5.4.2 Data Models
+
+```dart
+class NvdbRoadSegment {
+  final List<LatLng> coordinates;
+  final String surfaceType;
+  final String roadClass;
+  final Map<String, dynamic> metadata;
+
+  const NvdbRoadSegment({
+    required this.coordinates,
+    required this.surfaceType,
+    required this.roadClass,
+    required this.metadata,
+  });
+}
+
+class LatLngBounds {
+  final double south;
+  final double west; 
+  final double north;
+  final double east;
+  
+  const LatLngBounds({
+    required this.south,
+    required this.west,
+    required this.north,
+    required this.east,
+  });
+}
+```
+
+### 5.5 Visual Design
+
+#### 5.5.1 Data Source Differentiation
+
+**OpenStreetMap Data:**
+- Standard purple polylines (#800080)
+- Community-contributed data overlay
+- Always visible when gravel overlay is enabled
+
+**NVDB Data:**
+- Color-coded by surface type:
+  - Gravel: Orange (#FF8C00)
+  - Stone/Makadam: Gray (#708090) 
+  - Sand: Yellow (#F0E68C)
+  - Earth/Natural: Brown (#8B4513)
+- Official Swedish government data
+- Toggle control in drawer
+
+#### 5.5.2 User Interface Controls
+
+**Drawer Integration:**
+- "Visa grusvägar" - OpenStreetMap gravel overlay toggle
+- "Visa NVDB-grusvägar" - Swedish official data toggle
+- Swedish localization with clear control labeling
+
+**Loading States:**
+- Visual indicators during data fetching operations
+- Separate loading states for each data source
+- Progress feedback for long-running API requests
+
+### 5.6 Performance Optimization
+
+#### 5.6.1 API Request Management
+
+- **Debounced Fetching**: 500ms delay prevents excessive API calls during map interaction
+- **Viewport-Based Loading**: Only fetch data for visible map area
+- **Conditional Loading**: NVDB data only fetches when overlay is enabled
+- **Request Deduplication**: Prevent duplicate requests for same geographical area
+
+#### 5.6.2 Data Processing
+
+- **Background Processing**: Use `compute` for heavy JSON parsing operations
+- **Memory Management**: Clear data when switching between overlays
+- **Caching Strategy**: Store fetched data to reduce redundant API calls
+- **Error Recovery**: Graceful degradation when services are unavailable
+
+### 5.7 Error Handling
+
+#### 5.7.1 Service Availability
+
+- **Overpass API**: Fallback to cached data when API is unavailable
+- **NVDB Service**: Graceful degradation with user notification
+- **Network Conditions**: Offline capability with stored data
+- **Rate Limiting**: Respect API usage limits with exponential backoff
+
+#### 5.7.2 User Experience
+
+- **Loading Indicators**: Clear feedback during data operations
+- **Error Messages**: User-friendly notifications for service issues
+- **Fallback States**: Maintain functionality when one data source fails
+- **Recovery Options**: Allow users to retry failed operations
 
 **Mixin-Based Architecture Pattern:**
 
@@ -340,327 +565,27 @@ Create measurement interface with comprehensive controls:
 - Show edit instructions and mode indicators during editing
 - Include cancel functionality for exiting edit mode
 
-#### 4.5.3 NVDB Gravel Layer Widget
-
-Create specialized gravel road visualization for Swedish government data:
-
-- Implement color-coded polylines for different surface types
-- Display loading indicators during NVDB data fetching
-- Provide info cards for surface type identification
-- Support toggle visibility control via provider integration
-- Handle real-time data updates from map viewport changes
-
 ---
 
-## 5. System Architecture
+## 6. System Architecture
 
-### 5.1 Logical Component Structure
+### 6.1 Logical Component Structure
 
 Design system with these architectural layers:
 
-#### 5.1.1 Presentation Layer
+#### 6.1.1 Presentation Layer
 
 - **Map UI**: flutter_map renders tiles, overlays gravel polylines and measurement routes
 - **Control Interfaces**: Distance panel, drawer navigation, route management pages
 - **State Management**: Riverpod providers for reactive UI updates (see state-management.md)
 
-#### 5.1.2 Business Logic Layer
+#### 6.1.2 Business Logic Layer
 
 - **Measurement Manager**: Route points, editing selection, distance calculations with geodesic accuracy
 - **Undo System**: State history management with immutable snapshots and universal operation reversal
 - **Route Manager**: Hive database with 50-route capacity, search, filtering, and editing capabilities
 
-#### 5.1.3 Data Layer
-
-- **Local Storage**: Hive database for route persistence with automatic migration
-- **Cloud Storage**: Firestore database for route synchronization and public sharing
-- **Authentication**: Firebase Anonymous Authentication for seamless user experience
-- **Hybrid Storage**: Offline-first architecture with cloud synchronization for authenticated users
-- **File Operations**: Cross-platform GeoJSON/GPX import/export with iOS compatibility
-- **External APIs**: Overpass API for gravel road data with viewport-based fetching (see api.md)
-- **NVDB Integration**: Trafikverket's official Swedish road database for authoritative gravel road data
-
-#### 5.1.4 Platform Integration
-
-- **Location Services**: GPS positioning with proper permission handling
-- **File System**: path_provider for cross-platform file access
-- **Web Compatibility**: PWA features with offline capability
-
----
-
-## 6. Gravel Data Integration
-
-### 6.1 Dual-Source Gravel Data Architecture
-
-The application implements a sophisticated dual-source approach for comprehensive gravel road coverage:
-
-#### 6.1.1 OpenStreetMap Data (Primary International)
-
-**Source**: Overpass API querying OpenStreetMap data  
-**Coverage**: Global gravel road data from community contributors  
-**Implementation**: Real-time API queries with viewport-based fetching  
-**Processing**: Surface type filtering for gravel, dirt, unpaved roads  
-
-**Surface Type Filters**:
-```overpass
-[surface~"^(gravel|compacted|fine_gravel|pebblestone|ground|earth|dirt|grass|sand|unpaved|cobblestone)$"]
-```
-
-#### 6.1.2 NVDB Data (Swedish Government Authority)
-
-**Source**: Trafikverket's Nationella Vägdatabasen (NVDB) API  
-**Coverage**: Official Swedish road network with authoritative surface data  
-**Implementation**: Real-time API integration with government infrastructure  
-**Processing**: Surface type filtering for Swedish gravel classifications  
-
-**NVDB Surface Types**:
-- `gravel` - Standard gravel surface
-- `makadam` - Crushed stone/macadam
-- `sten` - Stone surface
-- `sand` - Sand surface
-- `jord` - Earth/soil surface
-- `naturmaterial` - Natural material surface
-
-### 6.2 NVDB Service Architecture
-
-#### 6.2.1 Service Implementation
-
-```dart
-/// Service for accessing Trafikverket's NVDB API
-/// 
-/// NVDB contains official Swedish road network data including surface types
-/// that are perfect for identifying gravel roads and unpaved surfaces.
-/// 
-/// API Documentation: https://nvdb2012.trafikverket.se/
-/// No API key required for basic queries
-class NvdbService {
-  static const String _baseUrl = 'https://nvdb2012.trafikverket.se';
-  static const Duration _timeout = Duration(seconds: 30);
-  
-  /// Search for gravel and unpaved roads within a bounding box
-  Future<List<NvdbRoadSegment>> getGravelRoads(LatLngBounds bbox) async {
-    final queryResult = await _queryRoadSurfaces(bbox);
-    return _parseNvdbResponse(queryResult);
-  }
-  
-  /// Filter NVDB elements for gravel surfaces
-  List<NvdbRoadSegment> _filterGravelSurfaces(List<dynamic> elements) {
-    return elements
-        .where((element) => _isGravelSurface(element))
-        .map((element) => NvdbRoadSegment.fromNvdbElement(element))
-        .toList();
-  }
-}
-```
-
-#### 6.2.2 Data Models
-
-```dart
-/// Represents a road segment from NVDB with gravel surface
-class NvdbRoadSegment {
-  final String id;
-  final List<LatLng> geometry;
-  final String surfaceType;
-  final Map<String, dynamic> properties;
-  
-  /// Color mapping for different surface types
-  Color get displayColor {
-    switch (surfaceType.toLowerCase()) {
-      case 'gravel': return const Color(0xFFD2691E);      // SaddleBrown
-      case 'makadam': return const Color(0xFFA0522D);     // Sienna
-      case 'sten': return const Color(0xFF696969);        // DimGray
-      case 'sand': return const Color(0xFFF4A460);        // SandyBrown
-      case 'jord': return const Color(0xFF8B4513);        // SaddleBrown darker
-      case 'naturmaterial': return const Color(0xFF228B22); // ForestGreen
-      default: return const Color(0xFFD2691E);            // Default gravel
-    }
-  }
-}
-```
-
-### 6.3 Map Integration Architecture
-
-#### 6.3.1 Layered Visualization System
-
-The map implements a sophisticated layered approach for gravel data visualization:
-
-```dart
-// Map layer stack (bottom to top)
-FlutterMap(
-  children: [
-    // 1. Base tile layer
-    TileLayer(/* MapTiler or OSM tiles */),
-    
-    // 2. OpenStreetMap gravel roads (global coverage)
-    PolylineLayer(
-      polylines: osmGravelPolylines,
-    ),
-    
-    // 3. NVDB gravel roads (Swedish authority data)
-    NvdbGravelLayer(
-      segments: ref.watch(nvdbGravelRoadsProvider),
-      visible: ref.watch(nvdbOverlayProvider),
-    ),
-    
-    // 4. User measurement routes (highest priority)
-    PolylineLayer(
-      polylines: userRoutePolylines,
-    ),
-    
-    // 5. Route markers and UI elements
-    MarkerLayer(/* Route points and distance markers */),
-  ],
-)
-```
-
-#### 6.3.2 Real-time Data Loading
-
-**Viewport-Based Fetching**:
-```dart
-void _queueViewportFetch() {
-  final bounds = _lastEventBounds;
-  
-  // Fetch OpenStreetMap data
-  _fetchGravelForBounds(bounds);
-  
-  // Fetch NVDB data if overlay is enabled
-  final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
-  if (nvdbOverlayEnabled) {
-    _fetchNvdbDataForBounds(bounds);
-  }
-}
-```
-
-**Debounced Loading**:
-- 500ms debounce for OpenStreetMap queries
-- Coordinated debouncing for NVDB queries
-- Smart bounds comparison to prevent duplicate requests
-- Loading state management with provider integration
-
-### 6.4 User Interface Integration
-
-#### 6.4.1 Drawer Control System
-
-The app drawer provides user control over gravel data sources:
-
-**Map Settings Section**:
-```dart
-// Swedish localization
-_buildSwitchTile(
-  title: 'Visa NVDB-grusvägar',
-  subtitle: 'Officiella svenska vägdata från Trafikverket',
-  icon: Icons.map_outlined,
-  value: ref.watch(nvdbOverlayProvider),
-  onChanged: (enabled) {
-    ref.read(nvdbOverlayProvider.notifier).state = enabled;
-  },
-),
-```
-
-#### 6.4.2 Visual Design System
-
-**Color-Coded Surface Types**:
-- **Gravel**: SaddleBrown (#D2691E) - Standard gravel roads
-- **Makadam**: Sienna (#A0522D) - Crushed stone surfaces  
-- **Sten**: DimGray (#696969) - Stone/rock surfaces
-- **Sand**: SandyBrown (#F4A460) - Sand-based surfaces
-- **Jord**: Dark SaddleBrown (#8B4513) - Earth/soil surfaces
-- **Naturmaterial**: ForestGreen (#228B22) - Natural material surfaces
-
-**Loading Indicators**:
-- Spinner overlay during NVDB data fetching
-- Progressive loading with status messages
-- Error states with retry mechanisms
-
-### 6.5 Data Synchronization Strategy
-
-#### 6.5.1 Multi-Source Coordination
-
-**Data Source Priority**:
-1. **User Routes**: Highest priority, always visible on top
-2. **NVDB Data**: Swedish authority data when enabled
-3. **OpenStreetMap**: Global community data as base layer
-4. **Base Tiles**: MapTiler/OSM background tiles
-
-**Performance Optimization**:
-- Conditional loading based on user preferences
-- Efficient provider state management
-- Memory-conscious data caching
-- Smart viewport-based API calls
-
-#### 6.5.2 Error Handling and Fallbacks
-
-**NVDB Service Error Handling**:
-```dart
-try {
-  final gravelRoads = await nvdbService.getGravelRoads(nvdbBounds);
-  ref.read(nvdbGravelRoadsProvider.notifier).state = gravelRoads;
-} catch (e) {
-  debugPrint('NVDB fetch failed: $e');
-  // Clear data on error, graceful degradation
-  ref.read(nvdbGravelRoadsProvider.notifier).state = [];
-} finally {
-  ref.read(isLoadingNvdbProvider.notifier).state = false;
-}
-```
-
-**Graceful Degradation**:
-- Continue operation if NVDB service is unavailable
-- Clear visual feedback when data sources fail
-- Fallback to OpenStreetMap data for coverage
-- User notification of service status
-
-### 6.6 Government API Compliance
-
-#### 6.6.1 Trafikverket NVDB Usage
-
-**API Characteristics**:
-- **No API Key Required**: Public access for basic queries
-- **Rate Limiting**: Respectful usage with 30-second timeout
-- **Swedish Focus**: Optimized for Swedish road network
-- **Official Authority**: Government-maintained data accuracy
-
-**Compliance Implementation**:
-- Proper User-Agent identification
-- Reasonable request frequency
-- Error handling for service limitations
-- Respectful usage of public infrastructure
-
-#### 6.6.2 Integration Benefits
-
-**Data Quality Advantages**:
-- **Authoritative Source**: Official government road surface classifications
-- **Maintained Accuracy**: Regular updates from road maintenance activities
-- **Comprehensive Coverage**: Complete Swedish road network integration
-- **Professional Standards**: Government data quality and reliability
-
-**User Experience Benefits**:
-- **Dual Coverage**: Global OSM data + Swedish authority data
-- **Toggle Control**: User choice between data sources
-- **Visual Distinction**: Color-coded surface type identification
-- **Real-time Updates**: Dynamic loading based on map interaction
-
----
-
-## 7. System Architecture
-
-### 5.1 Logical Component Structure
-
-Design system with these architectural layers:
-
-#### 5.1.1 Presentation Layer
-
-- **Map UI**: flutter_map renders tiles, overlays gravel polylines and measurement routes
-- **Control Interfaces**: Distance panel, drawer navigation, route management pages
-- **State Management**: Riverpod providers for reactive UI updates (see state-management.md)
-
-#### 5.1.2 Business Logic Layer
-
-- **Measurement Manager**: Route points, editing selection, distance calculations with geodesic accuracy
-- **Undo System**: State history management with immutable snapshots and universal operation reversal
-- **Route Manager**: Hive database with 50-route capacity, search, filtering, and editing capabilities
-
-#### 5.1.3 Data Layer
+#### 6.1.3 Data Layer
 
 - **Local Storage**: Hive database for route persistence with automatic migration
 - **Cloud Storage**: Firestore database for route synchronization and public sharing
@@ -669,13 +594,13 @@ Design system with these architectural layers:
 - **File Operations**: Cross-platform GeoJSON/GPX import/export with iOS compatibility
 - **External APIs**: Overpass API for gravel road data with viewport-based fetching (see api.md)
 
-#### 5.1.4 Platform Integration
+#### 6.1.4 Platform Integration
 
 - **Location Services**: GPS positioning with proper permission handling
 - **File System**: path_provider for cross-platform file access
 - **Web Compatibility**: PWA features with offline capability
 
-### 5.2 Data Flow Architecture
+### 6.2 Data Flow Architecture
 
 Implement unidirectional data flow:
 
@@ -685,7 +610,7 @@ Implement unidirectional data flow:
 4. **Data Persistence** → Hive database stores route data
 5. **UI Updates** → Reactive UI rebuilds based on state changes
 
-### 5.3 Error Handling Strategy
+### 6.3 Error Handling Strategy
 
 Build comprehensive error handling:
 
@@ -696,11 +621,11 @@ Build comprehensive error handling:
 
 ---
 
-## 6. Development Standards
+## 7. Development Standards
 
-### 6.1 Feature Implementation Standards
+### 7.1 Feature Implementation Standards
 
-#### 6.1.1 Measurement System
+#### 7.1.1 Measurement System
 
 Build measurement interface with these features:
 
@@ -710,7 +635,7 @@ Build measurement interface with these features:
 - Support loop closure with additional segment calculation
 - Provide professional editing workflow with clear entry/exit modes
 
-#### 6.1.2 Hierarchical Control System
+#### 7.1.2 Hierarchical Control System
 
 Implement master-detail UI pattern for control panels:
 
@@ -764,7 +689,7 @@ onToggleMeasure: () {
 },
 ```
 
-#### 6.1.3 Undo System Implementation
+#### 7.1.3 Undo System Implementation
 
 Implement comprehensive undo functionality:
 
@@ -775,7 +700,7 @@ Implement comprehensive undo functionality:
 - **Memory Management**: FIFO history queue with configurable limits
 - **UI Integration**: Update panels with `canUndo` parameter for conditional button enabling
 
-#### 6.1.4 Cloud Storage and Authentication Implementation
+#### 7.1.4 Cloud Storage and Authentication Implementation
 
 Implement Firebase-based cloud storage behind an abstraction with an offline-first architecture. Use dependency injection to keep business logic testable without Firebase.
 
@@ -881,7 +806,7 @@ class SyncedRouteService {
 - Autosave progress every 1 minute as Private; if a route with the same name exists, overwrite in place
 - Preserve `name` and original `savedAt` on overwrite; update points/loop; cloud sync is best-effort when signed in
 
-#### 6.1.5 Distance Markers System
+#### 7.1.5 Distance Markers System
 
 Create configurable distance marker system:
 
@@ -892,7 +817,7 @@ Create configurable distance marker system:
 - **Toggle Visibility**: Show/hide markers independently of generation
 - **Route Integration**: Automatically clear when route is modified
 
-### 6.2 Performance Standards
+### 7.2 Performance Standards
 
 Achieve these performance requirements:
 
@@ -901,7 +826,7 @@ Achieve these performance requirements:
 - **Memory Management**: Optimize widget rebuilds with proper state management
 - **File Operations**: Implement distance-based decimation for large GPX files (>2000 points)
 
-### 6.3 User Experience Standards
+### 7.3 User Experience Standards
 
 Provide professional-grade user experience:
 
@@ -913,9 +838,9 @@ Provide professional-grade user experience:
 
 ---
 
-## 7. Platform Specifications
+## 8. Platform Specifications
 
-### 7.1 Web Platform Implementation
+### 8.1 Web Platform Implementation
 
 Configure web-specific features:
 
@@ -924,7 +849,7 @@ Configure web-specific features:
 - **Service Worker**: Offline capability implementation
 - **Responsive Design**: Mobile and desktop compatibility
 
-#### 7.1.1 WebAssembly (Wasm) vs JS build
+#### 8.1.1 WebAssembly (Wasm) vs JS build
 
 Observed in production (2025-08-28): Flutter Web builds targeting WebAssembly triggered `UnimplementedError` during Hive/IndexedDB box open in hosted environments, while identical code paths worked when built without Wasm (JS/dart2js). Local `flutter run -d chrome` rarely reproduced.
 
@@ -940,7 +865,7 @@ Rationale:
 Follow-up:
 - Track Flutter/Web and Hive release notes for Wasm/IndexedDB fixes and reassess enabling Wasm later.
 
-### 7.2 Mobile Platform Preparation
+### 8.2 Mobile Platform Preparation
 
 Prepare for future native development:
 
@@ -948,7 +873,7 @@ Prepare for future native development:
 - **iOS**: Configure Info.plist for location usage, ensure proper safe area handling
 - **File Operations**: Use path_provider for proper iOS file system integration
 
-### 7.3 Cross-Platform Compatibility
+### 8.3 Cross-Platform Compatibility
 
 Ensure consistent behavior across platforms:
 
@@ -958,11 +883,11 @@ Ensure consistent behavior across platforms:
 
 ---
 
-## 8. Spoke Documentation
+## 9. Spoke Documentation
 
 This architecture document serves as the central hub for technical implementation. Detailed information for specific domains is available in dedicated spoke documents:
 
-### 8.1 UI Patterns (`ui-patterns.md`)
+### 9.1 UI Patterns (`ui-patterns.md`)
 
 **Master-Detail Control Systems and Design Guidelines**
 
@@ -972,7 +897,7 @@ This architecture document serves as the central hub for technical implementatio
 - Material Design integration principles  
 - Interaction patterns and accessibility guidelines
 
-### 8.2 State Management (`state-management.md`)
+### 9.2 State Management (`state-management.md`)
 
 **Comprehensive Riverpod Implementation Guide**
 
@@ -982,7 +907,7 @@ This architecture document serves as the central hub for technical implementatio
 - Provider types and usage scenarios
 - Testing strategies for state management
 
-### 8.2 Testing (`testing.md`)
+### 9.3 Testing (`testing.md`)
 
 **Professional Testing Framework Documentation**
 
@@ -992,24 +917,23 @@ This architecture document serves as the central hub for technical implementatio
 - Testing tools and frameworks
 - Coverage requirements and reporting
 
-### 8.3 API Integration (`api.md`)
+### 9.4 API Integration (`api.md`)
 
 **External API Documentation and Compliance**
 
 - Overpass API integration patterns
 - MapTiler service configuration
-- **NVDB Integration**: Comprehensive documentation for Swedish government road data integration
 - Tile server compliance and usage policies
 - API security and validation
 - Error handling and fallback strategies
 
-### 8.4 Cloud & Firebase Integration (`firebase-integration.md`)
+### 9.5 Cloud & Firebase Integration (`firebase-integration.md`)
 
 Cloud storage architecture, RouteCloudService abstraction, Firestore implementation, authentication, real-time streams, and visibility semantics. Includes provider wiring, security rules, and guidance for building Firebase-free unit tests using an in-memory cloud fake.
 
 Cross-link: See [Routes Streaming](./firebase-integration.md#routes-streaming) for the merge, deduplication, and sorting contract used in the Private/Public tabs.
 
-### 8.5 Future Spoke Documents
+### 9.6 Future Spoke Documents
 
 Additional spoke documents will be created as needed:
 
@@ -1021,7 +945,7 @@ Additional spoke documents will be created as needed:
 
 ## Migration Benefits
 
-### 9.1 Achieved Improvements
+### 10.1 Achieved Improvements
 
 Through proper architecture implementation:
 
@@ -1125,9 +1049,8 @@ void exampleMethod(Type param1, Type param2) {
 
 3. **Documentation Testing**: Use `flutter doc` to verify all public APIs have documentation.
 
-### 9.2 Change History
+### 10.2 Change History
 
-- **2025-08-31**: NVDB Integration Complete - Swedish government road data integration with dual-source gravel mapping
 - **2025-08-28**: GravelStreetsMap Modular Refactoring - Achieved exactly 1000 lines through mixin extraction and overlay widgets
 - **2025-01-27**: Comprehensive Point Editing System - Complete editing overhaul with safety-first gestures
 - **2025-08-26**: General Undo System - Universal undo with 50-state history management
@@ -1139,6 +1062,6 @@ void exampleMethod(Type param1, Type param2) {
 
 ---
 
-Last updated: 2025-08-31
+Last updated: 2025-08-29
 
 This document serves as the central technical hub. Refer to spoke documents for domain-specific implementation details.
