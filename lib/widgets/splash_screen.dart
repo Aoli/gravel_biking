@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -263,8 +262,8 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(20),
-                            child: SvgPicture.asset(
-                              'assets/images/app_logo.svg',
+                            child: Image.asset(
+                              'assets/images/app_logo.png',
                               width: 210,
                               height: 210,
                               fit: BoxFit.contain,
