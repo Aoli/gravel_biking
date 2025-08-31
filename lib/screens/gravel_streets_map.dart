@@ -578,6 +578,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
             ? () {}
             : () => setState(() => _distanceMarkers.clear()),
         onSavedRoutesTap: () {
+          // Close the drawer before navigating to the Saved Routes page
+          Navigator.of(context).pop();
+          // Then open the Saved Routes page
           Navigator.push(
             context,
             MaterialPageRoute(
