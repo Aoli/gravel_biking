@@ -117,6 +117,35 @@ final routeServiceInitializedProvider = FutureProvider<bool>((ref) async {
 });
 ```
 
+#### 2.1.4 Cloud Abstraction Injection (RouteCloudService)
+
+Inject the cloud service via the RouteCloudService abstraction and compose the synced service. In production, provide the Firestore implementation; in tests, override with an in-memory fake.
+
+```dart
+// Cloud service abstraction bound to Firestore in production
+final cloudRouteServiceProvider = Provider<RouteCloudService>(
+  (ref) => FirestoreRouteService(),
+);
+
+// Synced service composes local + cloud + auth
+final syncedRouteServiceProvider = Provider<SyncedRouteService>((ref) {
+  final local = ref.read(routeServiceProvider);
+  final cloud = ref.read(cloudRouteServiceProvider);
+  final auth = ref.read(authServiceProvider);
+  return SyncedRouteService(local, cloud, auth);
+});
+
+// Example test override (in ProviderScope)
+/*
+ProviderScope(
+  overrides: [
+    cloudRouteServiceProvider.overrideWithValue(FakeInMemoryCloud()),
+  ],
+  child: MyApp(),
+);
+*/
+```
+
 ### 2.2 Complex State Management
 
 #### 2.2.1 Route State Provider (Future Implementation)
@@ -282,6 +311,7 @@ final savedRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
    - No breaking changes to existing functionality
 
 **Benefits Achieved:**
+
 - Removed one `setState` call
 - Cleaner state management architecture
 - Better performance through selective widget rebuilds
@@ -291,6 +321,7 @@ final savedRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
 ### 3.2 Current Status Summary
 
 **✅ Implemented:**
+
 - Basic provider infrastructure
 - Simple UI state management (measure mode toggle)
 - Loading state providers
@@ -298,10 +329,12 @@ final savedRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
 - Demo widget for testing
 
 **🔄 In Progress:**
+
 - Additional UI toggle migrations (gravel overlay, distance markers)
 - Complex state management (RouteState)
 
 **📋 Planned:**
+
 - Complete migration of all StatefulWidget state to Riverpod
 - Advanced state management patterns
 - Provider testing implementation
@@ -317,7 +350,8 @@ final savedRoutesProvider = FutureProvider<List<SavedRoute>>((ref) async {
 Convert remaining simple boolean state variables:
 
 1. **Gravel Overlay Toggle**:
-   ```dart
+
+  ```dart
    // Replace: bool _showGravelOverlay = true;
    // With: ref.watch(gravelOverlayProvider)
    
@@ -325,14 +359,16 @@ Convert remaining simple boolean state variables:
    onChanged: (value) => ref.read(gravelOverlayProvider.notifier).state = value
    ```
 
-2. **Distance Markers Toggle**:
-   ```dart
+1. **Distance Markers Toggle**:
+
+  ```dart
    // Replace: bool _showDistanceMarkers = false;
    // With: ref.watch(distanceMarkersProvider)
    ```
 
-3. **Distance Interval Slider**:
-   ```dart
+1. **Distance Interval Slider**:
+
+  ```dart
    // Replace: double _distanceInterval = 1.0;
    // With: ref.watch(distanceIntervalProvider)
    ```
@@ -730,4 +766,4 @@ final heavyComputationProvider = Provider.autoDispose<HeavyService>((ref) {
 
 *This document provides comprehensive guidance for Riverpod implementation in the Gravel First application. Refer to the main architecture document for overall system design patterns.*
 
-*Last updated: 2025-01-27*
+Last updated: 2025-08-31
