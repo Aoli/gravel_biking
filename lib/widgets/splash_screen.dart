@@ -218,7 +218,7 @@ class _SplashScreenState extends State<SplashScreen>
                           child: Padding(
                             padding: const EdgeInsets.all(20),
                             child: SvgPicture.asset(
-                              'assets/images/favicon.svg',
+                              'assets/images/app_logo.svg',
                               width: 210,
                               height: 210,
                               fit: BoxFit.contain,
