@@ -11,8 +11,14 @@ import 'package:latlong2/latlong.dart';
 ///
 /// API Documentation: https://nvdb2012.trafikverket.se/
 /// No API key required for basic queries
+///
+/// **Platform Limitation**: Due to CORS restrictions, NVDB API is only
+/// accessible from native mobile apps, not from web browsers.
 class NvdbService {
-  static const String _baseUrl = 'https://nvdb2012.trafikverket.se';
+  static const String _nvdbOrigin = 'https://nvdb2012.trafikverket.se';
+  // Compile-time env var for web proxy base, e.g. https://nvdb-proxy-xxxxx.a.run.app
+  // Set with:  --dart-define=NVDB_PROXY_BASE=https://<cloud-run-url>
+  static const String _proxyBase = String.fromEnvironment('NVDB_PROXY_BASE');
   static const Duration _timeout = Duration(seconds: 30);
 
   // Object types we're interested in for gravel biking
@@ -31,7 +37,17 @@ class NvdbService {
   ///
   /// [bbox] Geographic bounding box (south, west, north, east)
   /// Returns list of road segments with gravel/unpaved surfaces
+  ///
+  /// When running on web, use a proxy if NVDB_PROXY_BASE is defined; otherwise skip (CORS).
   Future<List<NvdbRoadSegment>> getGravelRoads(LatLngBounds bbox) async {
+    // Web: require proxy to avoid CORS. Native: call NVDB directly.
+    if (kIsWeb && _proxyBase.isEmpty) {
+      debugPrint(
+        'NVDB: Skipping call on Web - no NVDB_PROXY_BASE configured (set --dart-define=NVDB_PROXY_BASE=...)',
+      );
+      return [];
+    }
+
     try {
       // Query for road surface data (objekttyp 97)
       final surfaceData = await _queryRoadSurfaces(bbox);
@@ -58,8 +74,11 @@ class NvdbService {
       'inkludera': 'egenskaper,geometri',
     };
 
+    final String base = kIsWeb && _proxyBase.isNotEmpty
+        ? _proxyBase
+        : _nvdbOrigin;
     final uri = Uri.parse(
-      '$_baseUrl/api/v2/objekt/97',
+      '$base/api/v2/objekt/97',
     ).replace(queryParameters: query);
 
     debugPrint('NVDB Query: $uri');

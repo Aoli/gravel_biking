@@ -201,16 +201,20 @@ class GravelAppDrawer extends ConsumerWidget {
                         ref.read(gravelOverlayProvider.notifier).state = v,
                   ),
 
-                  // NVDB overlay - now enabled!
+                  // NVDB overlay - platform-aware
                   _buildSwitchTile(
                     context,
                     icon: Icons.traffic,
                     title: 'NVDB grusvägar',
-                    subtitle: 'Trafikverkets officiella vägnät',
+                    subtitle: kIsWeb
+                        ? 'Trafikverkets officiella vägnät (Endast mobila appar)'
+                        : 'Trafikverkets officiella vägnät',
                     value: ref.watch(nvdbOverlayProvider),
-                    onChanged: (v) =>
-                        ref.read(nvdbOverlayProvider.notifier).state = v,
-                    isDisabled: false,
+                    onChanged: kIsWeb
+                        ? null // Disable on web
+                        : (v) =>
+                              ref.read(nvdbOverlayProvider.notifier).state = v,
+                    isDisabled: kIsWeb, // Disable on web platform
                   ),
 
                   // Distance markers section
