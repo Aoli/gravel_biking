@@ -16,17 +16,32 @@ class SavedRouteAdapter extends TypeAdapter<SavedRoute> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
+    // Backward-compatible reads: provide safe defaults when legacy entries
+    // are missing fields or contain nulls, and normalize numeric types.
+    final name = fields[0] as String? ?? '';
+    final points = (fields[1] as List?)?.cast<LatLngData>() ?? <LatLngData>[];
+    final loopClosed = (fields[2] as bool?) ?? false;
+    final savedAt = (fields[3] as DateTime?) ?? DateTime.now();
+    final description = fields[4] as String?;
+    final distance = (fields[5] is num)
+        ? (fields[5] as num?)?.toDouble()
+        : fields[5] as double?;
+    final isPublic = (fields[6] as bool?) ?? false;
+    final userId = fields[7] as String?;
+    final firestoreId = fields[8] as String?;
+    final lastSynced = fields[9] as DateTime?;
+
     return SavedRoute(
-      name: fields[0] as String,
-      points: (fields[1] as List).cast<LatLngData>(),
-      loopClosed: fields[2] as bool,
-      savedAt: fields[3] as DateTime,
-      description: fields[4] as String?,
-      distance: fields[5] as double?,
-      isPublic: fields[6] as bool,
-      userId: fields[7] as String?,
-      firestoreId: fields[8] as String?,
-      lastSynced: fields[9] as DateTime?,
+      name: name,
+      points: points,
+      loopClosed: loopClosed,
+      savedAt: savedAt,
+      description: description,
+      distance: distance,
+      isPublic: isPublic,
+      userId: userId,
+      firestoreId: firestoreId,
+      lastSynced: lastSynced,
     );
   }
 
@@ -77,10 +92,7 @@ class LatLngDataAdapter extends TypeAdapter<LatLngData> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return LatLngData(
-      fields[0] as double,
-      fields[1] as double,
-    );
+    return LatLngData(fields[0] as double, fields[1] as double);
   }
 
   @override

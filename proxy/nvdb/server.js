@@ -65,11 +65,13 @@ app.get('/api/v2/objekt/97', async (req, res) => {
       redirect: 'follow',
     });
 
-    // Forward status and body
-    res.setHeader('Cache-Control', 'public, max-age=600'); // 10 min cache
-    res.status(resp.status);
-    const text = await resp.text();
-    return res.send(text);
+  // Forward status, content-type and body
+  res.setHeader('Cache-Control', 'public, max-age=600'); // 10 min cache
+  const upstreamType = resp.headers.get('content-type') || 'application/json; charset=utf-8';
+  res.setHeader('Content-Type', upstreamType);
+  res.status(resp.status);
+  const text = await resp.text();
+  return res.send(text);
   } catch (err) {
     console.error('Proxy error:', err);
     return res.status(502).json({ error: 'Bad gateway' });
