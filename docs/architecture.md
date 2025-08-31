@@ -706,6 +706,8 @@ This architecture document serves as the central hub for technical implementatio
 
 Cloud storage architecture, RouteCloudService abstraction, Firestore implementation, authentication, real-time streams, and visibility semantics. Includes provider wiring, security rules, and guidance for building Firebase-free unit tests using an in-memory cloud fake.
 
+Cross-link: See [Routes Streaming](./firebase-integration.md#routes-streaming) for the merge, deduplication, and sorting contract used in the Private/Public tabs.
+
 ### 8.5 Future Spoke Documents
 
 Additional spoke documents will be created as needed:
@@ -736,6 +738,7 @@ Through proper architecture implementation:
 All Dart files must follow these documentation requirements:
 
 #### **File-Level Documentation**
+
 ```dart
 /// Brief description of the file's primary purpose
 /// 
@@ -744,6 +747,7 @@ All Dart files must follow these documentation requirements:
 ```
 
 #### **Class Documentation**
+
 ```dart
 /// Class purpose and responsibility
 /// 
@@ -759,6 +763,7 @@ class ExampleClass {
 ```
 
 #### **Method Documentation**
+
 ```dart
 /// Method purpose and behavior
 /// 
@@ -773,6 +778,7 @@ class ExampleClass {
 /// **Performance:** Complexity notes for expensive operations
 void exampleMethod(Type param1, Type param2) {
 ```
+
 
 ### 10.2 Documentation Completeness Status
 
