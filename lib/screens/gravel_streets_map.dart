@@ -1034,7 +1034,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         return AlertDialog(
           title: const Text('Rensa rutt'),
           content: const Text(
-            'Är du säker på att du vill rensa hela rutten? Detta går inte att ångra.',
+            'Är du säker på att du vill rensa hela rutten?\n\nDetta tar endast bort rutten från kartan (skärmen). Dina sparade rutter påverkas inte och inget raderas i databasen.\n\nDetta går inte att ångra.',
           ),
           actions: [
             TextButton(
