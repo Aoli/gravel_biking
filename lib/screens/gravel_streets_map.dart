@@ -493,11 +493,14 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         isLoading = false;
       });
       debugPrint(
-        '✨ [${DateTime.now().toIso8601String()}] Gravel data updated successfully',
+        '✨ [${DateTime.now().toIso8601String()}] Gravel data updated successfully - ${result.length} polylines loaded',
       );
     } else {
       if (!mounted) return;
       setState(() => isLoading = false);
+      debugPrint(
+        '⚠️ [${DateTime.now().toIso8601String()}] Gravel fetch returned null - no data loaded',
+      );
     }
   }
 
@@ -553,6 +556,30 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     final editModeEnabled = ref.watch(editModeProvider);
     final gravelOverlayVisible = ref.watch(gravelOverlayProvider);
     final distanceMarkersVisible = ref.watch(distanceMarkersProvider);
+
+    // Listen for gravel overlay changes to trigger data fetching
+    ref.listen<bool>(gravelOverlayProvider, (previous, current) {
+      if (current && (previous == null || !previous)) {
+        // Gravel overlay was just enabled - fetch data for current viewport
+        final bounds = _lastEventBounds ?? _mapController.camera.visibleBounds;
+        debugPrint(
+          '🔄 Gravel overlay enabled - fetching data for current viewport',
+        );
+        _fetchGravelForBounds(bounds);
+      }
+    });
+
+    // Listen for NVDB overlay changes to trigger data fetching
+    ref.listen<bool>(nvdbOverlayProvider, (previous, current) {
+      if (current && (previous == null || !previous)) {
+        // NVDB overlay was just enabled - fetch data for current viewport
+        final bounds = _lastEventBounds ?? _mapController.camera.visibleBounds;
+        debugPrint(
+          '🔄 NVDB overlay enabled - fetching data for current viewport',
+        );
+        _fetchNvdbDataForBounds(bounds);
+      }
+    });
 
     // Prefer MapTiler for production reliability and compliance
     final useMapTiler = _mapTilerKey.isNotEmpty;
@@ -745,8 +772,19 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                 maxZoom: 19,
                 userAgentPackageName: _userAgentPackageName,
               ),
-              if (gravelOverlayVisible)
+              if (gravelOverlayVisible) ...[
                 PolylineLayer(polylines: gravelPolylines),
+                // Debug: Add visual feedback when overlay is enabled but no data
+                if (gravelPolylines.isEmpty && mounted)
+                  Builder(
+                    builder: (context) {
+                      debugPrint(
+                        '🔍 Gravel overlay is visible but no polylines to display (gravelPolylines.length = ${gravelPolylines.length})',
+                      );
+                      return const SizedBox.shrink();
+                    },
+                  ),
+              ],
               // NVDB gravel roads layer
               NvdbGravelLayer(
                 gravelRoads: ref.watch(nvdbGravelRoadsProvider),
