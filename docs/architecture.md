@@ -477,7 +477,7 @@ Implement comprehensive undo functionality:
 
 #### 6.1.4 Cloud Storage and Authentication Implementation
 
-Implement Firebase-based cloud storage with offline-first architecture:
+Implement Firebase-based cloud storage behind an abstraction with an offline-first architecture. Use dependency injection to keep business logic testable without Firebase.
 
 **Authentication Service:**
 ```dart
@@ -497,62 +497,63 @@ class AuthService {
 }
 ```
 
-**Firestore Route Service:**
+**Cloud Abstraction and Firestore Implementation:**
 ```dart
-/// Cloud Firestore service for route storage with public/private visibility
-class FirestoreRouteService {
+/// Abstraction for cloud-backed route storage
+abstract class RouteCloudService {
+  Future<SavedRoute> saveRoute(SavedRoute route);
+  Future<List<SavedRoute>> getUserRoutes(String userId);
+  Future<List<SavedRoute>> getPublicRoutes({int limit = 50});
+  Future<List<SavedRoute>> getAllAccessibleRoutes(String userId);
+  Future<void> deleteRoute(String firestoreId);
+  Future<List<SavedRoute>> searchPublicRoutes(String query);
+  Future<void> updateRouteVisibility(String firestoreId, bool isPublic);
+  Stream<List<SavedRoute>> streamUserRoutes(String userId);
+  Stream<List<SavedRoute>> streamPublicRoutes({int limit = 50});
+}
+
+/// Production implementation using Cloud Firestore
+class FirestoreRouteService implements RouteCloudService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
-  /// Save route with public/private visibility control
-  Future<String> saveRoute(SavedRoute route, String userId) async {
-    final docRef = await _firestore.collection('routes').add({
-      ...route.toFirestore(),
-      'userId': userId,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    return docRef.id;
-  }
-  
-  /// Get all accessible routes (user's private + all public)
-  Future<List<SavedRoute>> getAllAccessibleRoutes(String userId) async {
-    final privateQuery = _firestore.collection('routes')
-        .where('userId', isEqualTo: userId)
-        .where('isPublic', isEqualTo: false);
-    
-    final publicQuery = _firestore.collection('routes')
-        .where('isPublic', isEqualTo: true);
-    
-    // Execute both queries and merge results
-  }
+  // ...implements RouteCloudService methods using the 'routes' collection...
 }
 ```
 
 **Hybrid Storage Service:**
 ```dart
-/// Offline-first service combining local Hive storage with Firestore sync
+/// Offline-first service combining local Hive storage with a pluggable cloud service
 class SyncedRouteService {
   final RouteService _localService;
-  final FirestoreRouteService _cloudService;
+  final RouteCloudService _cloudService; // abstraction enables testing without Firebase
   final AuthService _authService;
-  
-  /// Save route with automatic cloud sync for authenticated users
-  Future<void> saveCurrentRoute(String name, List<LatLng> points, {bool isPublic = false}) async {
-    // Always save locally first (offline-first)
-    final route = SavedRoute(name: name, points: points, isPublic: isPublic);
-    await _localService.saveRoute(route);
-    
+
+  Future<SavedRoute> saveCurrentRoute({
+    required String name,
+    required List<LatLng> routePoints,
+    required bool loopClosed,
+    required bool isPublic,
+  }) async {
+    final route = SavedRoute(
+      name: name,
+      points: routePoints,
+      loopClosed: loopClosed,
+      isPublic: isPublic,
+      userId: _authService.userId,
+      savedAt: DateTime.now(),
+    );
+
+    // Save locally first (offline-first)
+    final saved = await _localService.saveOrUpdateRoute(route);
+
     // Sync to cloud if authenticated
     if (_authService.isSignedIn) {
       try {
-        final firestoreId = await _cloudService.saveRoute(route, _authService.userId!);
-        // Update local route with cloud ID
-        final updatedRoute = route.copyWith(firestoreId: firestoreId);
-        await _localService.updateRoute(name, updatedRoute);
+        await _cloudService.saveRoute(saved);
       } catch (e) {
-        // Cloud sync failed - route remains local-only
         debugPrint('Cloud sync failed: $e');
       }
     }
+    return saved;
   }
 }
 ```
@@ -569,6 +570,16 @@ class SyncedRouteService {
 - **Public Routes**: Visible to all authenticated users in the saved routes list
 - **Local-only Routes**: Saved locally for unauthenticated users with option to sync after login
 - **Automatic Sync**: Routes sync to cloud when user authenticates
+
+**Real-time Streams and Merged Lists:**
+- Stream user-private and global public routes separately from cloud and merge them client-side
+- Deduplicate by `firestoreId` and sort by `savedAt` (newest first)
+- Keep UI tabs for Private/Public and update instantly on stream events
+
+**Autosave (Private) Behavior:**
+- Prompt for a route name when the first point is added; prepopulate with a timestamp-based name if empty
+- Autosave progress every 1 minute as Private; if a route with the same name exists, overwrite in place
+- Preserve `name` and original `savedAt` on overwrite; update points/loop; cloud sync is best-effort when signed in
 
 #### 6.1.5 Distance Markers System
 
@@ -691,7 +702,11 @@ This architecture document serves as the central hub for technical implementatio
 - API security and validation
 - Error handling and fallback strategies
 
-### 8.4 Future Spoke Documents
+### 8.4 Cloud & Firebase Integration (`firebase-integration.md`)
+
+Cloud storage architecture, RouteCloudService abstraction, Firestore implementation, authentication, real-time streams, and visibility semantics. Includes provider wiring, security rules, and guidance for building Firebase-free unit tests using an in-memory cloud fake.
+
+### 8.5 Future Spoke Documents
 
 Additional spoke documents will be created as needed:
 
@@ -816,6 +831,6 @@ void exampleMethod(Type param1, Type param2) {
 
 ---
 
-Last updated: 2025-08-28
+Last updated: 2025-08-29
 
 This document serves as the central technical hub. Refer to spoke documents for domain-specific implementation details.

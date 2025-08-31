@@ -3,50 +3,57 @@
 ## Overview
 
 This document provides comprehensive guidance for the Firebase Cloud Storage and Authentication integration in Gravel First. The implementation provides automatic authentication with Firestore route storage supporting public/private visibility controls.
-
-## Table of Contents
+3. [Firestore Route Service](#firestore-route-service)
+4. [Hybrid Storage Service](#hybrid-storage-service)
 
 1. [Architecture Overview](#architecture-overview)
 2. [Authentication Service](#authentication-service)
 3. [Firestore Route Service](#firestore-route-service)
 4. [Hybrid Storage Service](#hybrid-storage-service)
+10. [Abstraction for Testability](#abstraction-for-testability)
 5. [Enhanced Data Models](#enhanced-data-models)
 6. [Provider Integration](#provider-integration)
 7. [User Interface Updates](#user-interface-updates)
 8. [Configuration](#configuration)
 9. [Testing Strategy](#testing-strategy)
-
+└── RouteCloudService (Cloud Abstraction)
+    ├── FirestoreRouteService (Production)
+    └── AuthService (Firebase Authentication)
 ## Architecture Overview
 
-### Design Principles
+class FirestoreRouteService implements RouteCloudService {
 
 - **Offline-First**: Routes always save locally first, then sync to cloud when possible
 - **Seamless Authentication**: Anonymous authentication happens automatically in background
-- **Progressive Enhancement**: App works fully offline, gains cloud features when authenticated
-- **Zero Blocking Operations**: UI never blocks waiting for cloud operations
-- **Graceful Degradation**: Cloud sync failures don't break core functionality
-
+class SyncedRouteService {
+  final RouteService _localService;
+  final RouteCloudService _cloudService; // abstraction enables Firebase-free tests
+  final AuthService _authService;
 ### Service Hierarchy
-
-```
-SyncedRouteService (Hybrid Layer)
-├── RouteService (Local Hive Storage)
-└── FirestoreRouteService (Cloud Storage)
-    └── AuthService (Firebase Authentication)
-```
-
-## Authentication Service
-
+        await _cloudService.saveRoute(route);
+        debugPrint('✅ Route synced to cloud');
 ### Implementation: `lib/services/auth_service.dart`
 
 The `AuthService` provides automatic Firebase Authentication with anonymous sign-in:
-
+final cloudRouteServiceProvider = Provider<RouteCloudService>((ref) => FirestoreRouteService());
 ```dart
-class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final cloudService = ref.read(cloudRouteServiceProvider);
+  return SyncedRouteService(routeService, cloudService, authService);
 
   /// Automatic initialization with network and Firebase checks
-  Future<UserCredential?> initialize() async {
+## Abstraction for Testability
+
+Introduce `RouteCloudService` to decouple business logic from Firebase and enable unit tests without initializing Firebase. In tests, inject an in-memory fake that implements the interface to validate autosave create/overwrite behavior deterministically.
+
+Benefits:
+- Run service-level tests without Firebase setup or network flakiness
+- Keep production wired to Firestore while tests use the fake via DI
+
+## Benefits
+
+The modular architecture makes it easy to extend functionality and add new cloud-based features in the future, while the comprehensive testing strategy ensures reliability across different usage scenarios.
+
+Last updated: 2025-08-29
     try {
       // Check network connectivity first
       if (!await _checkNetworkAndFirebase()) {

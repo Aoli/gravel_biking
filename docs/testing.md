@@ -760,3 +760,47 @@ void main() {
 *This document provides comprehensive testing standards for the Gravel First application. All testing implementations follow professional development practices with automated CI/CD integration.*
 
 *Last updated: 2025-01-27*
+
+### 6.5 Cloud Abstraction & Autosave Tests
+
+Document tests that run without Firebase by injecting a cloud abstraction:
+
+- Define `RouteCloudService` as a test seam for cloud operations
+- In unit tests, inject an in-memory fake to avoid Firebase initialization
+- Verify autosave create/overwrite behavior deterministically
+
+Example (see `test/unit/synced_route_autosave_test.dart`):
+
+```dart
+class _FakeCloud implements RouteCloudService {
+  final Map<String, SavedRoute> _byId = {};
+  int _id = 0;
+  @override
+  Future<SavedRoute> saveRoute(SavedRoute route) async {
+    final id = route.firestoreId ?? (++_id).toString();
+    final updated = route.copyWith(firestoreId: id, lastSynced: DateTime.now());
+    _byId[id] = updated;
+    return updated;
+  }
+  // ... other interface methods using in-memory storage ...
+}
+
+void main() {
+  late RouteService routeService;
+  late SyncedRouteService synced;
+  setUp(() async {
+    routeService = RouteService();
+    await routeService.initialize();
+    await routeService.resetStorage(); // ensure isolation per test
+    synced = SyncedRouteService(
+      localService: routeService,
+      cloudService: _FakeCloud(),
+      userId: null, // disable cloud sync
+    );
+  });
+}
+```
+
+Update CI to run these unit tests with the regular `flutter test` job; no Firebase setup is required.
+
+Last updated: 2025-08-29

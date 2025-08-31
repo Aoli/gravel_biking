@@ -83,4 +83,4 @@ This directory contains comprehensive technical documentation for the Gravel Fir
 
 *This hub-and-spoke documentation architecture supports both human developers and AI-assisted development workflows while maintaining professional technical standards.*
 
-*Last updated: 2025-01-27*
+*Last updated: 2025-08-29*
