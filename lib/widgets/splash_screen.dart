@@ -202,25 +202,25 @@ class _SplashScreenState extends State<SplashScreen>
                       child: FadeTransition(
                         opacity: _logoOpacity,
                         child: Container(
-                          width: 120,
-                          height: 120,
+                          width: 250,
+                          height: 250,
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(125),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 30,
+                                offset: const Offset(0, 20),
                               ),
                             ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(24),
+                            padding: const EdgeInsets.all(20),
                             child: SvgPicture.asset(
                               'assets/images/favicon.svg',
-                              width: 72,
-                              height: 72,
+                              width: 210,
+                              height: 210,
                               fit: BoxFit.contain,
                             ),
                           ),
