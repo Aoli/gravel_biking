@@ -57,10 +57,11 @@ app.get('/api/v2/objekt/97', async (req, res) => {
     url.searchParams.set('format', format);
     url.searchParams.set('inkludera', inkludera);
 
-    const resp = await fetch(url.toString(), {
+  const resp = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        'User-Agent': 'GravelFirst NVDB Proxy/1.0 (+https://example.com)'
+    'User-Agent': 'GravelFirst NVDB Proxy/1.0 (+https://example.com)',
+    'Accept': 'application/json, text/plain;q=0.5'
       },
       redirect: 'follow',
     });

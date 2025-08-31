@@ -83,10 +83,33 @@ class NvdbService {
 
     debugPrint('NVDB Query: $uri');
 
-    final response = await _client.get(uri).timeout(_timeout);
+    final response = await _client
+        .get(
+          uri,
+          headers: const {
+            'Accept': 'application/json, text/plain;q=0.5',
+            'User-Agent': 'GravelFirst/1.0 (+https://gravel-first.app)'
+          },
+        )
+        .timeout(_timeout);
 
     if (response.statusCode == 200) {
-      return json.decode(response.body) as Map<String, dynamic>;
+      final contentType = response.headers['content-type'] ?? '';
+      // Basic guard: if server returns HTML, surface a clear error instead of crashing
+      if (contentType.contains('application/json') || contentType.contains('json')) {
+        try {
+          return json.decode(response.body) as Map<String, dynamic>;
+        } catch (e) {
+          throw NvdbException('Failed to parse NVDB JSON', response.body.substring(0, response.body.length.clamp(0, 500)));
+        }
+      } else {
+        // Heuristic: HTML page returned even though format=json was requested
+        final snippet = response.body.substring(0, response.body.length.clamp(0, 500));
+        throw NvdbException(
+          'NVDB returned a non-JSON response (content-type: $contentType).',
+          snippet,
+        );
+      }
     } else {
       throw NvdbException(
         'NVDB API error: ${response.statusCode}',
