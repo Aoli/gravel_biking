@@ -8,6 +8,7 @@ import 'package:gravel_biking/services/firestore_route_service.dart';
 import 'package:gravel_biking/services/route_cloud_service.dart';
 import 'package:gravel_biking/services/firestore_user_service.dart';
 import 'package:gravel_biking/services/synced_route_service.dart';
+import 'package:gravel_biking/services/nvdb_service.dart';
 import 'package:gravel_biking/models/saved_route.dart';
 import 'package:gravel_biking/models/user_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -73,6 +74,21 @@ final authServiceProvider = Provider<AuthService>((ref) {
 /// import/export operations for routes.
 final fileServiceProvider = Provider<FileService>((ref) {
   return FileService();
+});
+
+/// Provider for NvdbService instance
+///
+/// Creates and manages the NvdbService instance that handles
+/// fetching gravel road data from Trafikverket's NVDB API.
+final nvdbServiceProvider = Provider<NvdbService>((ref) {
+  final service = NvdbService();
+  
+  // Clean up when provider is disposed
+  ref.onDispose(() {
+    service.dispose();
+  });
+  
+  return service;
 });
 
 /// Provider for FirestoreRouteService instance
@@ -373,4 +389,11 @@ final ensureUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
     debugPrint('EnsureUserProfile: Failed to create/update user profile: $e');
     return null;
   }
+});
+
+/// Provider for NVDB gravel roads data
+///
+/// Caches NVDB gravel road data for the current map viewport.
+final nvdbGravelRoadsProvider = StateProvider<List<NvdbRoadSegment>>((ref) {
+  return [];
 });

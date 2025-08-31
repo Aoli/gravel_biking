@@ -21,7 +21,9 @@ import '../widgets/layers/user_location_layer.dart';
 import '../widgets/layers/distance_markers_layers.dart';
 import '../widgets/layers/route_points_layer.dart';
 import '../widgets/layers/midpoint_add_markers_layer.dart';
+import '../widgets/nvdb_gravel_layer.dart';
 import '../providers/service_providers.dart';
+import '../services/nvdb_service.dart' as nvdb;
 import '../screens/saved_routes_page.dart';
 import '../providers/ui_providers.dart';
 import '../providers/loading_providers.dart';
@@ -53,8 +55,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   List<Polyline> gravelPolylines = [];
   final GravelOverpassService _overpassService = GravelOverpassService();
   // Note: _showGravelOverlay is now managed by gravelOverlayProvider
-  final bool _showTrvNvdbOverlay =
-      false; // Disabled by default, prepared for future
+  // Note: _showTrvNvdbOverlay is now managed by nvdbOverlayProvider
   bool isLoading = true;
   LatLng? _myPosition;
   Timer? _moveDebounce;
@@ -156,10 +157,19 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     debugPrint(
       '🗺️ [${initTime.toIso8601String()}] Requesting initial gravel data for Stockholm area',
     );
+    final stockholmBounds = LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1));
     _fetchGravelForBounds(
-      LatLngBounds(const LatLng(59.3, 18.0), const LatLng(59.4, 18.1)),
+      stockholmBounds,
       isInitialFetch: true, // Mark as initial fetch to prevent duplicates
     );
+    
+    // Also fetch initial NVDB data if overlay is enabled
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
+      if (nvdbOverlayEnabled) {
+        _fetchNvdbDataForBounds(stockholmBounds);
+      }
+    });
   }
 
   // ---- Autosave helpers ----
@@ -423,6 +433,12 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     }
     // Remove the duplicate bounds check here since it's now handled in _fetchGravelForBounds
     _fetchGravelForBounds(bounds); // This is a non-initial fetch
+    
+    // Fetch NVDB data if overlay is enabled
+    final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
+    if (nvdbOverlayEnabled) {
+      _fetchNvdbDataForBounds(bounds);
+    }
   }
 
   bool _boundsAlmostEqual(
@@ -479,6 +495,48 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     } else {
       if (!mounted) return;
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _fetchNvdbDataForBounds(LatLngBounds bounds) async {
+    final timestamp = DateTime.now();
+    debugPrint('🛣️ [${timestamp.toIso8601String()}] NVDB fetch requested');
+    debugPrint(
+      '📍 NVDB Bounds: ${bounds.southWest.latitude.toStringAsFixed(4)},${bounds.southWest.longitude.toStringAsFixed(4)} to ${bounds.northEast.latitude.toStringAsFixed(4)},${bounds.northEast.longitude.toStringAsFixed(4)}',
+    );
+    
+    // Set loading state
+    ref.read(isLoadingNvdbProvider.notifier).state = true;
+    
+    try {
+      final nvdbService = ref.read(nvdbServiceProvider);
+      
+      // Convert flutter_map LatLngBounds to NVDB LatLngBounds
+      final nvdbBounds = nvdb.LatLngBounds(
+        south: bounds.southWest.latitude,
+        west: bounds.southWest.longitude,
+        north: bounds.northEast.latitude,
+        east: bounds.northEast.longitude,
+      );
+      
+      final gravelRoads = await nvdbService.getGravelRoads(nvdbBounds);
+      
+      // Update the provider with the fetched data
+      ref.read(nvdbGravelRoadsProvider.notifier).state = gravelRoads;
+      
+      debugPrint(
+        '✨ [${DateTime.now().toIso8601String()}] NVDB data updated successfully (${gravelRoads.length} segments)',
+      );
+    } catch (e) {
+      debugPrint(
+        '❌ [${DateTime.now().toIso8601String()}] NVDB fetch failed: $e',
+      );
+      // Clear data on error
+      ref.read(nvdbGravelRoadsProvider.notifier).state = [];
+    } finally {
+      if (mounted) {
+        ref.read(isLoadingNvdbProvider.notifier).state = false;
+      }
     }
   }
 
@@ -570,7 +628,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         savedRoutesCount: savedRoutes.length,
         maxSavedRoutes: maxSavedRoutes,
         distanceMarkers: _distanceMarkers,
-        showTrvNvdbOverlay: _showTrvNvdbOverlay,
+        showTrvNvdbOverlay: ref.watch(nvdbOverlayProvider),
         // Segment analysis toggle
         onToggleSegmentAnalysis: (v) =>
             setState(() => _showSegmentAnalysis = v),
@@ -686,6 +744,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               ),
               if (gravelOverlayVisible)
                 PolylineLayer(polylines: gravelPolylines),
+              // NVDB gravel roads layer
+              NvdbGravelLayer(
+                gravelRoads: ref.watch(nvdbGravelRoadsProvider),
+                visible: ref.watch(nvdbOverlayProvider),
+              ),
               PolylineLayer(
                 polylines: [
                   if (routePoints.length >= 2)

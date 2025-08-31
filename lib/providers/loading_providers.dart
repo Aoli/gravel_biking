@@ -19,3 +19,8 @@ final isExportingProvider = StateProvider<bool>((ref) => false);
 ///
 /// Used for map data loading, GPS operations, etc.
 final isLoadingProvider = StateProvider<bool>((ref) => false);
+
+/// Provider for NVDB data loading state
+///
+/// True when NVDB gravel road data is being fetched.
+final isLoadingNvdbProvider = StateProvider<bool>((ref) => false);
