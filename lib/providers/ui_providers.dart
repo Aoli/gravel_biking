@@ -30,6 +30,12 @@ final distanceIntervalProvider = StateProvider<double>((ref) => 1000.0);
 /// Null means no point is being edited.
 final editingIndexProvider = StateProvider<int?>((ref) => null);
 
+/// Provider for edit mode enabled state
+///
+/// Controls whether route points can be edited (moved/deleted).
+/// When false, points show distance on tap. When true, points can be edited.
+final editModeProvider = StateProvider<bool>((ref) => false);
+
 /// Route State Management
 ///
 /// Represents the complete state of a route including points, loop status,

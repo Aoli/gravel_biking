@@ -88,11 +88,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
   // Measurement
   final Distance _distance = const Distance();
-  final List<LatLng> _routePoints = [];
+  // Note: _routePoints is now managed by routeNotifierProvider
   final List<double> _segmentMeters = [];
   // Note: _measureEnabled is now managed by measureModeProvider
   // Note: _loopClosed is now managed by routeNotifierProvider
-  bool _editModeEnabled = false;
+  // Note: _editModeEnabled is now managed by editModeProvider
   // Distance markers state
   final List<LatLng> _distanceMarkers = [];
   LatLng? _routeMidpoint; // Single midpoint marker at half total distance
@@ -119,7 +119,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
   // DistanceMarkersMixin bindings
   @override
-  List<LatLng> get routePoints => _routePoints;
+  List<LatLng> get routePoints => ref.read(routePointsProvider);
   @override
   List<LatLng> get distanceMarkers => _distanceMarkers;
   @override
@@ -177,7 +177,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   void _startAutosaveTimerIfNeeded() {
     // Only start if not running, we have at least one point, and we have a name
     if (_autosaveTimer != null) return;
-    if (_routePoints.isEmpty) return;
+    final routePoints = ref.read(routePointsProvider);
+    if (routePoints.isEmpty) return;
     if (_currentRouteName == null || _currentRouteName!.isEmpty) return;
     _autosaveTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _autosaveTick();
@@ -188,7 +189,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   Future<void> _autosaveTick() async {
     if (!mounted) return;
     if (_isAutosaving) return; // Prevent re-entry
-    if (_routePoints.isEmpty) return; // Nothing to save
+    final routePoints = ref.read(routePointsProvider);
+    if (routePoints.isEmpty) return; // Nothing to save
     if (_currentRouteName == null || _currentRouteName!.isEmpty) return;
 
     // Ensure storage is initialized and available
@@ -200,12 +202,13 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     _isAutosaving = true;
     try {
       final syncedService = ref.read(syncedRouteServiceProvider);
+      final routePoints = ref.read(routePointsProvider);
 
       // Overwrite previously autosaved route if available; otherwise create/find by name
       if (_autosavedRouteRef != null) {
         _autosavedRouteRef = await syncedService.overwriteRoute(
           existingRoute: _autosavedRouteRef!,
-          routePoints: _routePoints,
+          routePoints: routePoints,
           loopClosed: ref.read(loopClosedProvider),
           isPublic: false, // always private for autosave
         );
@@ -218,7 +221,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         if (existing != null) {
           _autosavedRouteRef = await syncedService.overwriteRoute(
             existingRoute: existing,
-            routePoints: _routePoints,
+            routePoints: routePoints,
             loopClosed: ref.read(loopClosedProvider),
             isPublic: false,
           );
@@ -226,7 +229,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         } else {
           _autosavedRouteRef = await syncedService.saveCurrentRoute(
             name: _currentRouteName!,
-            routePoints: _routePoints,
+            routePoints: routePoints,
             loopClosed: ref.read(loopClosedProvider),
             description: null,
             isPublic: false,
@@ -361,36 +364,35 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   /// Load route from SavedRoutesPage - no navigation pops needed
   void _loadRouteFromSavedRoute(SavedRoute savedRoute) {
     setState(() {
-      _routePoints.clear();
       _distanceMarkers.clear(); // Clear distance markers when loading new route
-      _routePoints.addAll(savedRoute.latLngPoints);
       _segmentMeters.clear();
       _currentRouteName = savedRoute.name;
       ref.read(editingIndexProvider.notifier).state = null;
+
+      // Load route into RouteNotifier
       ref
           .read(routeNotifierProvider.notifier)
-          .setLoopClosed(
-            savedRoute.loopClosed,
-          ); // Properly restore the loop state
+          .loadRoute(savedRoute.latLngPoints, savedRoute.loopClosed);
 
-      // Recalculate segment distances
-      for (int i = 1; i < _routePoints.length; i++) {
+      // Recalculate segment distances using the loaded route
+      final routePoints = savedRoute.latLngPoints;
+      for (int i = 1; i < routePoints.length; i++) {
         _segmentMeters.add(
-          _distance.as(LengthUnit.Meter, _routePoints[i - 1], _routePoints[i]),
+          _distance.as(LengthUnit.Meter, routePoints[i - 1], routePoints[i]),
         );
       }
     });
 
     // Center map on the loaded route
-    if (_routePoints.isNotEmpty) {
+    final loadedPoints = ref.read(routePointsProvider);
+    if (loadedPoints.isNotEmpty) {
       _centerMapOnRoute();
       autoRecalcDistanceMarkers(); // Auto-generate distance markers for loaded route
     }
   }
 
-  // Legacy method removed; use _loadRouteFromSavedRoute for loading routes
-
-  void _centerMapOnRoute() => centerMapOnRoute(_mapController, _routePoints);
+  void _centerMapOnRoute() =>
+      centerMapOnRoute(_mapController, ref.read(routePointsProvider));
 
   // Old inline dialogs removed - use extracted widgets
 
@@ -482,6 +484,15 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
   @override
   Widget build(BuildContext context) {
+    // Watch providers for reactive UI
+    final routePoints = ref.watch(routePointsProvider);
+    final loopClosed = ref.watch(loopClosedProvider);
+    final measureEnabled = ref.watch(measureModeProvider);
+    final editingIndex = ref.watch(editingIndexProvider);
+    final editModeEnabled = ref.watch(editModeProvider);
+    final gravelOverlayVisible = ref.watch(gravelOverlayProvider);
+    final distanceMarkersVisible = ref.watch(distanceMarkersProvider);
+
     // Prefer MapTiler for production reliability and compliance
     final useMapTiler = _mapTilerKey.isNotEmpty;
     final tileUrl = useMapTiler
@@ -498,67 +509,64 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         onImportGeoJson: () async {
           await importGeoJsonRoute((points, loopClosed) {
             setState(() {
-              _routePoints
-                ..clear()
-                ..addAll(points);
-              _currentRouteName = null; // Unknown name after import
-              ref.read(editingIndexProvider.notifier).state = null;
+              // Use RouteNotifier to load the route
               ref
                   .read(routeNotifierProvider.notifier)
-                  .setLoopClosed(loopClosed && _routePoints.length >= 3);
+                  .loadRoute(points, loopClosed && points.length >= 3);
+              _currentRouteName = null; // Unknown name after import
+              ref.read(editingIndexProvider.notifier).state = null;
               _recomputeSegments();
             });
 
-            if (_routePoints.isNotEmpty) {
+            if (routePoints.isNotEmpty) {
               _centerMapOnRoute();
               autoRecalcDistanceMarkers();
             }
           });
         },
         onExportGeoJson: () async {
-          await exportGeoJsonRoute(_routePoints);
+          await exportGeoJsonRoute(routePoints);
         },
         onImportGpx: () async {
           await importGpxRoute((points, loopClosed) {
             setState(() {
-              _routePoints
-                ..clear()
-                ..addAll(points);
-              _currentRouteName = null; // Unknown name after import
-              ref.read(editingIndexProvider.notifier).state = null;
+              // Use RouteNotifier to load the route
               ref
                   .read(routeNotifierProvider.notifier)
-                  .setLoopClosed(loopClosed);
-              if (_routePoints.length > 1000) {
+                  .loadRoute(points, loopClosed);
+              _currentRouteName = null; // Unknown name after import
+              ref.read(editingIndexProvider.notifier).state = null;
+              if (points.length > 1000) {
                 _segmentMeters.clear();
               } else {
                 _recomputeSegments();
               }
             });
 
-            if (_routePoints.length > 1000) {
+            final newRoutePoints = ref.read(routePointsProvider);
+            if (newRoutePoints.length > 1000) {
               Future.delayed(
                 const Duration(milliseconds: 100),
                 _recomputeSegmentsAsync,
               );
             }
 
-            if (_routePoints.isNotEmpty) {
+            if (newRoutePoints.isNotEmpty) {
               _centerMapOnRoute();
               autoRecalcDistanceMarkers();
             }
           });
         },
         onExportGpx: () async {
-          await exportGpxRoute(_routePoints);
+          await exportGpxRoute(routePoints);
         },
         onSaveRoute: (name, isPublic) =>
-            saveCurrentRoute(name, _routePoints, isPublic: isPublic).then((_) {
+            saveCurrentRoute(name, routePoints, isPublic: isPublic).then((_) {
               if (mounted) {
                 setState(() => _currentRouteName = name);
               }
             }),
-        hasRoute: _routePoints.isNotEmpty,
+        hasRoute: routePoints.isNotEmpty,
         savedRoutesCount: savedRoutes.length,
         maxSavedRoutes: maxSavedRoutes,
         distanceMarkers: _distanceMarkers,
@@ -569,7 +577,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         showSegmentAnalysis: _showSegmentAnalysis,
         onToggleDistanceMarkers: (v) =>
             ref.read(distanceMarkersProvider.notifier).state = v,
-        onGenerateDistanceMarkers: _routePoints.length < 2
+        onGenerateDistanceMarkers: routePoints.length < 2
             ? () {}
             : () {
                 recalcDistanceMarkers();
@@ -605,31 +613,32 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               initialZoom: 12,
               onMapEvent: _onMapEvent,
               onTap: (tap, latLng) {
-                if (!ref.read(measureModeProvider)) return;
+                if (!measureEnabled) return;
                 setState(() {
-                  final editingIndex = ref.read(editingIndexProvider);
                   if (editingIndex != null) {
                     // Save state before moving point
                     _saveStateForUndo();
                     // Move selected point to this location
-                    _routePoints[editingIndex] = latLng;
+                    ref
+                        .read(routeNotifierProvider.notifier)
+                        .updatePoint(editingIndex, latLng);
                     ref.read(editingIndexProvider.notifier).state = null;
                     _recomputeSegments();
                     // Always regenerate distance markers when moving a waypoint
                     // to ensure they stay positioned correctly along the updated polyline
                     autoRecalcDistanceMarkers();
-                  } else if (!_editModeEnabled) {
+                  } else if (!editModeEnabled) {
                     // Save state before adding new point
                     _saveStateForUndo();
                     // Only allow adding new points when edit mode is disabled
                     // This prevents accidentally adding points while trying to edit existing ones
-                    if (ref.watch(loopClosedProvider)) {
+                    if (loopClosed) {
                       ref
                           .read(routeNotifierProvider.notifier)
                           .setLoopClosed(false); // re-open when adding
                     }
-                    final wasEmpty = _routePoints.isEmpty;
-                    _routePoints.add(latLng);
+                    final wasEmpty = routePoints.isEmpty;
+                    ref.read(routeNotifierProvider.notifier).addPoint(latLng);
                     _recomputeSegments();
                     autoRecalcDistanceMarkers(); // Always generate distance markers
 
@@ -675,17 +684,15 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                 maxZoom: 19,
                 userAgentPackageName: _userAgentPackageName,
               ),
-              if (ref.watch(gravelOverlayProvider))
+              if (gravelOverlayVisible)
                 PolylineLayer(polylines: gravelPolylines),
               PolylineLayer(
                 polylines: [
-                  if (_routePoints.length >= 2)
+                  if (routePoints.length >= 2)
                     Polyline(
-                      points:
-                          ref.watch(loopClosedProvider) &&
-                              _routePoints.length >= 3
-                          ? [..._routePoints, _routePoints.first]
-                          : _routePoints,
+                      points: loopClosed && routePoints.length >= 3
+                          ? [...routePoints, routePoints.first]
+                          : routePoints,
                       color: Theme.of(context).colorScheme.primary,
                       strokeWidth: 3,
                     ),
@@ -693,36 +700,36 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               ),
               UserLocationLayer(position: _myPosition),
               // Start/stop markers - shown in both view mode and when creating routes
-              if (_routePoints.length >= 2)
+              if (routePoints.length >= 2)
                 StartStopMarkersLayer(
-                  routePoints: _routePoints,
-                  isLoopClosed: ref.watch(loopClosedProvider),
+                  routePoints: routePoints,
+                  isLoopClosed: loopClosed,
                 ),
               RoutePointsLayer(
-                points: _routePoints,
-                measureEnabled: ref.watch(measureModeProvider),
-                editModeEnabled: _editModeEnabled,
+                points: routePoints,
+                measureEnabled: measureEnabled,
+                editModeEnabled: editModeEnabled,
                 lastZoom: _lastZoom,
-                isLoopClosed: ref.watch(loopClosedProvider),
-                isEditingIndex: ref.watch(editingIndexProvider),
+                isLoopClosed: loopClosed,
+                isEditingIndex: editingIndex,
                 onTapPoint: (i) {
-                  if (_editModeEnabled) {
+                  if (editModeEnabled) {
                     ref.read(editingIndexProvider.notifier).state = i;
                   } else {
                     _showDistanceToPoint(i);
                   }
                 },
                 onLongPressPoint: (i) {
-                  if (_editModeEnabled) {
+                  if (editModeEnabled) {
                     _showDeletePointConfirmation(i);
                   }
                 },
               ),
               // Midpoint markers for adding points between existing points
-              if (_editModeEnabled && _routePoints.length >= 2)
+              if (editModeEnabled && routePoints.length >= 2)
                 MidpointAddMarkersLayer(
-                  routePoints: _routePoints,
-                  loopClosed: ref.watch(loopClosedProvider),
+                  routePoints: routePoints,
+                  loopClosed: loopClosed,
                   onAddBetween: _addPointBetween,
                 ),
               // Distance markers layer - shown only when toggle is enabled
@@ -809,7 +816,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               ),
             ),
           // Total distance display in top right corner
-          if (_routePoints.length >= 2 && _segmentMeters.isNotEmpty)
+          if (routePoints.length >= 2 && _segmentMeters.isNotEmpty)
             Positioned(
               top: MediaQuery.of(context).padding.top + 16,
               right: 16,
@@ -895,7 +902,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
             segmentMeters: _segmentMeters,
             onUndo: _undoLastEdit,
             onSave: () async {
-              if (_routePoints.isEmpty) {
+              if (routePoints.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Ingen rutt att spara')),
                 );
@@ -905,11 +912,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               SaveRouteDialog.show(
                 context,
                 onSave: (name, isPublic) async {
-                  await saveCurrentRoute(
-                    name,
-                    _routePoints,
-                    isPublic: isPublic,
-                  );
+                  await saveCurrentRoute(name, routePoints, isPublic: isPublic);
                   if (mounted) {
                     setState(() => _currentRouteName = name);
                   }
@@ -921,22 +924,24 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               );
             },
             onClear: _showClearRouteConfirmation,
-            onEditModeChanged: (enabled) => setState(() {
-              _editModeEnabled = enabled;
+            onEditModeChanged: (enabled) {
+              ref.read(editModeProvider.notifier).state = enabled;
               if (!enabled) {
                 ref.read(editingIndexProvider.notifier).state = null;
               }
-            }),
-            measureEnabled: ref.watch(measureModeProvider),
-            loopClosed: ref.watch(loopClosedProvider),
-            canToggleLoop: _routePoints.length >= 3,
-            onToggleLoop: _toggleLoop,
-            editModeEnabled: _editModeEnabled,
-            showDistanceMarkers: ref.watch(distanceMarkersProvider),
+            },
+            measureEnabled: measureEnabled,
+            loopClosed: loopClosed,
+            canToggleLoop: routePoints.length >= 3,
+            onToggleLoop: () {
+              ref.read(routeNotifierProvider.notifier).toggleLoop();
+            },
+            editModeEnabled: editModeEnabled,
+            showDistanceMarkers: distanceMarkersVisible,
             onDistanceMarkersToggled: (enabled) {
               ref.read(distanceMarkersProvider.notifier).state = enabled;
               if (enabled &&
-                  _routePoints.length >= 2 &&
+                  routePoints.length >= 2 &&
                   _distanceMarkers.isEmpty) {
                 recalcDistanceMarkers();
               }
@@ -950,10 +955,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
               // If switching to View mode (measure disabled), turn off edit mode
               if (currentMode) {
                 // currentMode was true, now becoming false
-                setState(() {
-                  _editModeEnabled = false;
-                  ref.read(editingIndexProvider.notifier).state = null;
-                });
+                ref.read(editModeProvider.notifier).state = false;
+                ref.read(editingIndexProvider.notifier).state = null;
               }
             },
           ),
@@ -974,8 +977,9 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   }
 
   void _saveStateForUndo() {
+    final routePoints = ref.read(routePointsProvider);
     final currentState = RouteStateSnapshot.fromCurrent(
-      routePoints: _routePoints,
+      routePoints: routePoints,
       loopClosed: ref.read(loopClosedProvider),
       showDistanceMarkers: ref.read(distanceMarkersProvider),
       distanceMarkers: _distanceMarkers,
@@ -994,39 +998,36 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
     final previousState = _undoHistory.removeLast();
 
-    setState(() {
-      _routePoints.clear();
-      _routePoints.addAll(previousState.routePoints);
-      ref
-          .read(routeNotifierProvider.notifier)
-          .setLoopClosed(previousState.loopClosed);
-      ref.read(distanceMarkersProvider.notifier).state =
-          previousState.showDistanceMarkers;
-      _distanceMarkers.clear();
-      _distanceMarkers.addAll(previousState.distanceMarkers);
-      ref.read(editingIndexProvider.notifier).state =
-          null; // Clear any active editing
-      _recomputeSegments();
-    });
+    // Use RouteNotifier to restore state instead of direct manipulation
+    ref
+        .read(routeNotifierProvider.notifier)
+        .loadRoute(previousState.routePoints, previousState.loopClosed);
+    ref.read(distanceMarkersProvider.notifier).state =
+        previousState.showDistanceMarkers;
+    _distanceMarkers.clear();
+    _distanceMarkers.addAll(previousState.distanceMarkers);
+    ref.read(editingIndexProvider.notifier).state =
+        null; // Clear any active editing
+    _recomputeSegments();
   }
 
   void _clearRoute() {
-    if (_routePoints.isEmpty && _segmentMeters.isEmpty) return;
-    setState(() {
-      _routePoints.clear();
-      _distanceMarkers.clear(); // Clear distance markers when clearing route
-      _segmentMeters.clear();
-      _currentRouteName =
-          null; // Clear current route name when route is cleared
-      ref.read(routeNotifierProvider.notifier).setLoopClosed(false);
-      ref.read(editingIndexProvider.notifier).state = null;
-      // Keep distance markers toggle state (default OFF for subtle orange dots)
-    });
+    final routePoints = ref.read(routePointsProvider);
+    if (routePoints.isEmpty && _segmentMeters.isEmpty) return;
+
+    // Clear route using RouteNotifier
+    ref.read(routeNotifierProvider.notifier).clearRoute();
+    _distanceMarkers.clear(); // Clear distance markers when clearing route
+    _segmentMeters.clear();
+    _currentRouteName = null; // Clear current route name when route is cleared
+    ref.read(editingIndexProvider.notifier).state = null;
+    // Keep distance markers toggle state (default OFF for subtle orange dots)
     _stopAutosaveTimer();
   }
 
   void _showClearRouteConfirmation() {
-    if (_routePoints.isEmpty && _segmentMeters.isEmpty) return;
+    final routePoints = ref.read(routePointsProvider);
+    if (routePoints.isEmpty && _segmentMeters.isEmpty) return;
 
     showDialog(
       context: context,
@@ -1059,43 +1060,35 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
   void _addPointBetween(int beforeIndex, int afterIndex, LatLng midpoint) {
     _saveStateForUndo(); // Save state before adding midpoint
-    setState(() {
-      if (afterIndex == 0 && beforeIndex == _routePoints.length - 1) {
-        // Adding between last and first point (loop closure)
-        _routePoints.add(midpoint);
-      } else {
-        // Adding between consecutive points
-        _routePoints.insert(afterIndex, midpoint);
-      }
-      _recomputeSegments();
-      autoRecalcDistanceMarkers(); // Always regenerate distance markers
-      // Keep edit mode active and select the new point
-      if (afterIndex == 0 && beforeIndex == _routePoints.length - 2) {
-        ref.read(editingIndexProvider.notifier).state =
-            _routePoints.length - 1; // New point at end
-      } else {
-        ref.read(editingIndexProvider.notifier).state =
-            afterIndex; // New point at insertion position
-      }
-    });
-  }
+    final routePoints = ref.read(routePointsProvider);
 
-  void _toggleLoop() {
-    if (_routePoints.length < 3) return;
-    _saveStateForUndo(); // Save state before toggling loop
-    setState(() {
-      ref.read(routeNotifierProvider.notifier).toggleLoop();
-      _recomputeSegments();
-      // Always regenerate distance markers when toggling loop state
-      // This ensures markers are generated for the closing segment
-      autoRecalcDistanceMarkers();
-    });
+    if (afterIndex == 0 && beforeIndex == routePoints.length - 1) {
+      // Adding between last and first point (loop closure)
+      ref.read(routeNotifierProvider.notifier).addPoint(midpoint);
+    } else {
+      // Adding between consecutive points - use insertPoint instead
+      ref
+          .read(routeNotifierProvider.notifier)
+          .insertPoint(afterIndex, midpoint);
+    }
+    _recomputeSegments();
+    autoRecalcDistanceMarkers(); // Always regenerate distance markers
+    // Keep edit mode active and select the new point
+    final updatedRoutePoints = ref.read(routePointsProvider);
+    if (afterIndex == 0 && beforeIndex == updatedRoutePoints.length - 2) {
+      ref.read(editingIndexProvider.notifier).state =
+          updatedRoutePoints.length - 1; // New point at end
+    } else {
+      ref.read(editingIndexProvider.notifier).state =
+          afterIndex; // New point at insertion position
+    }
   }
 
   void _recomputeSegments() {
+    final routePoints = ref.read(routePointsProvider);
     _segmentMeters
       ..clear()
-      ..addAll(_computeSegments(_routePoints, ref.read(loopClosedProvider)));
+      ..addAll(_computeSegments(routePoints, ref.read(loopClosedProvider)));
     // Point size calculation is handled in build method via _calculateDynamicPointSize()
   }
 
@@ -1104,7 +1097,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     if (!mounted) return;
 
     final segments = <double>[];
-    final points = _routePoints;
+    final routePoints = ref.read(routePointsProvider);
+    final points = routePoints;
     final closed = ref.read(loopClosedProvider);
 
     if (points.length < 2) return;
@@ -1155,7 +1149,8 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   /// Distance markers are recalculated by DistanceMarkersMixin
 
   void _showDeletePointConfirmation(int index) {
-    if (index < 0 || index >= _routePoints.length) return;
+    final routePoints = ref.read(routePointsProvider);
+    if (index < 0 || index >= routePoints.length) return;
 
     showDialog(
       context: context,
@@ -1184,15 +1179,16 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   }
 
   void _showDistanceToPoint(int index) {
-    if (index < 0 || index >= _routePoints.length) return;
+    final routePoints = ref.read(routePointsProvider);
+    if (index < 0 || index >= routePoints.length) return;
 
     // Calculate distance from start (point 0) to the selected point
     double distanceFromStart = 0.0;
     for (int i = 0; i < index; i++) {
       distanceFromStart += _distance.as(
         LengthUnit.Meter,
-        _routePoints[i],
-        _routePoints[i + 1],
+        routePoints[i],
+        routePoints[i + 1],
       );
     }
     String formattedDistance;
@@ -1228,28 +1224,30 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   }
 
   void _deletePoint(int index) {
-    if (index < 0 || index >= _routePoints.length) return;
+    final routePoints = ref.read(routePointsProvider);
+    if (index < 0 || index >= routePoints.length) return;
     _saveStateForUndo(); // Save state before deleting point
-    setState(() {
-      _routePoints.removeAt(index);
-      _distanceMarkers.clear(); // Clear distance markers when modifying route
-      if (_routePoints.length < 3) {
-        ref.read(routeNotifierProvider.notifier).setLoopClosed(false);
+
+    // Use RouteNotifier to remove point
+    ref.read(routeNotifierProvider.notifier).removePoint(index);
+    _distanceMarkers.clear(); // Clear distance markers when modifying route
+
+    final updatedRoutePoints = ref.read(routePointsProvider);
+    if (updatedRoutePoints.length < 3) {
+      ref.read(routeNotifierProvider.notifier).setLoopClosed(false);
+    }
+    final currentEditingIndex = ref.read(editingIndexProvider);
+    if (currentEditingIndex != null) {
+      if (updatedRoutePoints.isEmpty) {
+        ref.read(editingIndexProvider.notifier).state = null;
+      } else if (index == currentEditingIndex) {
+        ref.read(editingIndexProvider.notifier).state = null;
+      } else if (index < currentEditingIndex) {
+        ref.read(editingIndexProvider.notifier).state = currentEditingIndex - 1;
       }
-      final currentEditingIndex = ref.read(editingIndexProvider);
-      if (currentEditingIndex != null) {
-        if (_routePoints.isEmpty) {
-          ref.read(editingIndexProvider.notifier).state = null;
-        } else if (index == currentEditingIndex) {
-          ref.read(editingIndexProvider.notifier).state = null;
-        } else if (index < currentEditingIndex) {
-          ref.read(editingIndexProvider.notifier).state =
-              currentEditingIndex - 1;
-        }
-      }
-      _recomputeSegments();
-      autoRecalcDistanceMarkers(); // Always regenerate distance markers
-    });
+    }
+    _recomputeSegments();
+    autoRecalcDistanceMarkers(); // Always regenerate distance markers
   }
 
   Future<void> _locateMe() async {
@@ -1324,9 +1322,10 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   /// Override to generate distance markers and route midpoint
   @override
   void recalcDistanceMarkers() {
-    if (_routePoints.length < 2) return;
+    final routePoints = ref.read(routePointsProvider);
+    if (routePoints.length < 2) return;
 
-    saveStateForUndo();
+    _saveStateForUndo();
     _distanceMarkers.clear();
     _routeMidpoint = null;
 
@@ -1334,20 +1333,20 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
 
     // Calculate total route distance first to find midpoint
     double totalRouteDistance = 0.0;
-    for (int i = 1; i < _routePoints.length; i++) {
+    for (int i = 1; i < routePoints.length; i++) {
       totalRouteDistance += _distance.as(
         LengthUnit.Meter,
-        _routePoints[i - 1],
-        _routePoints[i],
+        routePoints[i - 1],
+        routePoints[i],
       );
     }
 
     // Add closing segment distance if loop is closed
-    if (ref.read(loopClosedProvider) && _routePoints.length >= 3) {
+    if (ref.read(loopClosedProvider) && routePoints.length >= 3) {
       totalRouteDistance += _distance.as(
         LengthUnit.Meter,
-        _routePoints.last,
-        _routePoints.first,
+        routePoints.last,
+        routePoints.first,
       );
     }
 
@@ -1357,11 +1356,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     double nextMainMarkerDistance = intervalMeters;
     bool midpointFound = false;
 
-    for (int i = 1; i < _routePoints.length; i++) {
+    for (int i = 1; i < routePoints.length; i++) {
       final segmentDistance = _distance.as(
         LengthUnit.Meter,
-        _routePoints[i - 1],
-        _routePoints[i],
+        routePoints[i - 1],
+        routePoints[i],
       );
       final segmentStart = currentDistance;
       final segmentEnd = currentDistance + segmentDistance;
@@ -1372,12 +1371,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         final ratio = distanceIntoSegment / segmentDistance;
 
         final lat =
-            _routePoints[i - 1].latitude +
-            ((_routePoints[i].latitude - _routePoints[i - 1].latitude) * ratio);
+            routePoints[i - 1].latitude +
+            ((routePoints[i].latitude - routePoints[i - 1].latitude) * ratio);
         final lon =
-            _routePoints[i - 1].longitude +
-            ((_routePoints[i].longitude - _routePoints[i - 1].longitude) *
-                ratio);
+            routePoints[i - 1].longitude +
+            ((routePoints[i].longitude - routePoints[i - 1].longitude) * ratio);
 
         _distanceMarkers.add(LatLng(lat, lon));
         nextMainMarkerDistance += intervalMeters;
@@ -1391,12 +1389,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         final ratio = distanceIntoSegment / segmentDistance;
 
         final lat =
-            _routePoints[i - 1].latitude +
-            ((_routePoints[i].latitude - _routePoints[i - 1].latitude) * ratio);
+            routePoints[i - 1].latitude +
+            ((routePoints[i].latitude - routePoints[i - 1].latitude) * ratio);
         final lon =
-            _routePoints[i - 1].longitude +
-            ((_routePoints[i].longitude - _routePoints[i - 1].longitude) *
-                ratio);
+            routePoints[i - 1].longitude +
+            ((routePoints[i].longitude - routePoints[i - 1].longitude) * ratio);
 
         _routeMidpoint = LatLng(lat, lon);
         midpointFound = true;
@@ -1406,11 +1403,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     }
 
     // Handle closed loop - check closing segment for both main and half markers
-    if (ref.read(loopClosedProvider) && _routePoints.length >= 3) {
+    if (ref.read(loopClosedProvider) && routePoints.length >= 3) {
       final closingDistance = _distance.as(
         LengthUnit.Meter,
-        _routePoints.last,
-        _routePoints.first,
+        routePoints.last,
+        routePoints.first,
       );
       final segmentStart = currentDistance;
       final segmentEnd = currentDistance + closingDistance;
@@ -1421,12 +1418,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         final ratio = distanceIntoSegment / closingDistance;
 
         final lat =
-            _routePoints.last.latitude +
-            ((_routePoints.first.latitude - _routePoints.last.latitude) *
-                ratio);
+            routePoints.last.latitude +
+            ((routePoints.first.latitude - routePoints.last.latitude) * ratio);
         final lon =
-            _routePoints.last.longitude +
-            ((_routePoints.first.longitude - _routePoints.last.longitude) *
+            routePoints.last.longitude +
+            ((routePoints.first.longitude - routePoints.last.longitude) *
                 ratio);
 
         _distanceMarkers.add(LatLng(lat, lon));
@@ -1441,12 +1437,11 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
         final ratio = distanceIntoSegment / closingDistance;
 
         final lat =
-            _routePoints.last.latitude +
-            ((_routePoints.first.latitude - _routePoints.last.latitude) *
-                ratio);
+            routePoints.last.latitude +
+            ((routePoints.first.latitude - routePoints.last.latitude) * ratio);
         final lon =
-            _routePoints.last.longitude +
-            ((_routePoints.first.longitude - _routePoints.last.longitude) *
+            routePoints.last.longitude +
+            ((routePoints.first.longitude - routePoints.last.longitude) *
                 ratio);
 
         _routeMidpoint = LatLng(lat, lon);
