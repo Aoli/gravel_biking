@@ -74,9 +74,17 @@ class NvdbService {
       'inkludera': 'egenskaper,geometri',
     };
 
-    final String base = kIsWeb && _proxyBase.isNotEmpty
-        ? _proxyBase
-        : _nvdbOrigin;
+    // Base selection:
+    // - Web: use NVDB_PROXY_BASE if provided; otherwise fall back to same-origin
+    //   to support Firebase Hosting rewrites to a hosted proxy.
+    // - Native: call NVDB origin directly.
+    final String base;
+    if (kIsWeb) {
+      base = _proxyBase.isNotEmpty ? _proxyBase : Uri.base.origin;
+    } else {
+      base = _nvdbOrigin;
+    }
+
     final uri = Uri.parse(
       '$base/api/v2/objekt/97',
     ).replace(queryParameters: query);
@@ -88,7 +96,7 @@ class NvdbService {
           uri,
           headers: const {
             'Accept': 'application/json, text/plain;q=0.5',
-            'User-Agent': 'GravelFirst/1.0 (+https://gravel-first.app)'
+            'User-Agent': 'GravelFirst/1.0 (+https://gravel-first.app)',
           },
         )
         .timeout(_timeout);
@@ -96,15 +104,22 @@ class NvdbService {
     if (response.statusCode == 200) {
       final contentType = response.headers['content-type'] ?? '';
       // Basic guard: if server returns HTML, surface a clear error instead of crashing
-      if (contentType.contains('application/json') || contentType.contains('json')) {
+      if (contentType.contains('application/json') ||
+          contentType.contains('json')) {
         try {
           return json.decode(response.body) as Map<String, dynamic>;
         } catch (e) {
-          throw NvdbException('Failed to parse NVDB JSON', response.body.substring(0, response.body.length.clamp(0, 500)));
+          throw NvdbException(
+            'Failed to parse NVDB JSON',
+            response.body.substring(0, response.body.length.clamp(0, 500)),
+          );
         }
       } else {
         // Heuristic: HTML page returned even though format=json was requested
-        final snippet = response.body.substring(0, response.body.length.clamp(0, 500));
+        final snippet = response.body.substring(
+          0,
+          response.body.length.clamp(0, 500),
+        );
         throw NvdbException(
           'NVDB returned a non-JSON response (content-type: $contentType).',
           snippet,

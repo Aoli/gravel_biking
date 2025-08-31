@@ -53,9 +53,8 @@ class GravelAppDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Enable NVDB toggle on web only if a proxy base is provided at build time
-    const String nvdbProxyBase = String.fromEnvironment('NVDB_PROXY_BASE');
-    final bool isWebBlocked = kIsWeb && nvdbProxyBase.isEmpty;
+    // NVDB is available on all platforms; on web it uses NVDB_PROXY_BASE if provided
+    // and falls back to same-origin (Firebase Hosting rewrite) otherwise.
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -204,20 +203,16 @@ class GravelAppDrawer extends ConsumerWidget {
                         ref.read(gravelOverlayProvider.notifier).state = v,
                   ),
 
-                  // NVDB overlay - platform-aware (web requires proxy)
+                  // NVDB overlay - now web-aware with proxy or same-origin fallback
                   _buildSwitchTile(
                     context,
                     icon: Icons.traffic,
                     title: 'NVDB grusvägar',
-                    subtitle: isWebBlocked
-                        ? 'Trafikverkets officiella vägnät (kräver web-proxy)'
-                        : 'Trafikverkets officiella vägnät',
+                    subtitle: 'Trafikverkets officiella vägnät',
                     value: ref.watch(nvdbOverlayProvider),
-                    onChanged: isWebBlocked
-                        ? null // Disabled if web without proxy
-                        : (v) =>
-                              ref.read(nvdbOverlayProvider.notifier).state = v,
-                    isDisabled: isWebBlocked,
+                    onChanged: (v) =>
+                        ref.read(nvdbOverlayProvider.notifier).state = v,
+                    isDisabled: false,
                   ),
 
                   // Distance markers section
