@@ -26,4 +26,4 @@ jobs:
         run: flutter analyze
 
       - name: Test
-        run: flutter test -r expanded
+        run: flutter test -r expanded --dart-define=DISABLE_SPLASH_TIMERS=true

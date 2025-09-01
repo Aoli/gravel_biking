@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+// Disable SplashScreen timers/animations when set (used by CI/tests)
+const bool kDisableSplashTimers = bool.fromEnvironment(
+  'DISABLE_SPLASH_TIMERS',
+  defaultValue: false,
+);
+
 class SplashScreen extends StatefulWidget {
   final VoidCallback onSplashFinished;
 
@@ -105,6 +111,10 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _startAnimationSequence() async {
+    if (kDisableSplashTimers) {
+      // Skip animations/timers during tests/CI to avoid pending timers.
+      return;
+    }
     // Start logo animation immediately
     _logoController.forward();
 
