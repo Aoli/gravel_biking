@@ -1,0 +1,7 @@
+[codespell]
+# Ignore vector graphics and common generated/build folders
+skip = *.svg,*.png,*.jpg,*.jpeg,*.webp,*.ico,build,coverage,.git,.github,.dart_tool,**/node_modules/**,**/.gradle/**
+# Treat CamelCase and IDs as OK
+ignore-regex = ([A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*|[A-F0-9]{6,})
+# Add project-specific allowed words if needed
+# ignore-words-list = OSM,NVDB,LatLng,GeoJSON,GPX,Overpass,MapTiler,Gravel

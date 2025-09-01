@@ -1,4 +1,7 @@
 {
+    "cSpell.ignorePaths": [
+        "**/*.svg"
+    ],
     "cSpell.words": [
         "geolocator",
         "latlong",
