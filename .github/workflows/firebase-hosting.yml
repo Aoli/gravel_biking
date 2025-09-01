@@ -13,6 +13,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -28,10 +33,25 @@ jobs:
             --dart-define=BUILD_NUMBER=${{ github.run_number }} \
             --dart-define=MAPTILER_KEY=${{ secrets.MAPTILER_KEY }}
 
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
-          channelId: develop
-          projectId: gravel-biking
+      - name: Install Functions deps
+        run: |
+          cd functions
+          npm ci
+
+      - name: Prepare Firebase auth (Service Account)
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $RUNNER_TEMP/gcp-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/gcp-key.json" >> $GITHUB_ENV
+
+      - name: Install Firebase CLI
+        run: npm i -g firebase-tools
+
+      - name: Deploy Functions (nvdbProxy)
+        run: |
+          firebase deploy --only functions:nvdbProxy --project gravel-biking --non-interactive
+
+      - name: Deploy to Firebase Hosting (channel: develop)
+        run: |
+          firebase hosting:channel:deploy develop --project gravel-biking --non-interactive
+
+  # Hosting deployed via Firebase CLI above to the "develop" preview channel
