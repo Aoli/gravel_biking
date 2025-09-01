@@ -47,11 +47,9 @@ jobs:
         run: npm i -g firebase-tools
 
       - name: Deploy Functions (nvdbProxy)
-        run: |
-          firebase deploy --only functions:nvdbProxy --project gravel-biking --non-interactive
+        run: firebase deploy --only functions:nvdbProxy --project gravel-biking --non-interactive
 
-      - name: Deploy to Firebase Hosting (channel: develop)
-        run: |
-          firebase hosting:channel:deploy develop --project gravel-biking --non-interactive
+      - name: Deploy to Firebase Hosting - develop channel
+        run: firebase hosting:channel:deploy develop --project gravel-biking --non-interactive
 
   # Hosting deployed via Firebase CLI above to the "develop" preview channel
