@@ -20,6 +20,7 @@ library;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:gravel_biking/screens/gravel_streets_map.dart';
 import 'package:gravel_biking/services/storage_service.dart';
@@ -98,6 +99,17 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
+      // Provide a symbol/emoji fallback family for missing glyphs on some devices
+      builder: (context, child) {
+        // This call ensures the Google Fonts loader injects the family on web
+        final symbolsFamily = GoogleFonts.notoSansSymbols2().fontFamily;
+        return DefaultTextStyle.merge(
+          style: TextStyle(
+            fontFamilyFallback: symbolsFamily != null ? [symbolsFamily] : null,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: _showSplash
           ? SplashScreen(onSplashFinished: _onSplashFinished)
           : const GravelStreetsMap(),
@@ -105,17 +117,9 @@ class _MyAppState extends State<MyApp> {
   }
 
   ThemeData _buildLightTheme() {
-    return ThemeData(
+    final base = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-      textTheme: const TextTheme(
-        headlineSmall: TextStyle(fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(fontWeight: FontWeight.w600),
-        titleSmall: TextStyle(fontWeight: FontWeight.w500),
-        bodyLarge: TextStyle(fontWeight: FontWeight.w400),
-        bodyMedium: TextStyle(fontWeight: FontWeight.w400),
-        bodySmall: TextStyle(fontWeight: FontWeight.w400),
-      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 2,
@@ -134,22 +138,43 @@ class _MyAppState extends State<MyApp> {
         color: kIsWeb ? Colors.black87 : null,
       ),
     );
+
+    final text = GoogleFonts.notoSansTextTheme(base.textTheme).copyWith(
+      headlineSmall: GoogleFonts.notoSans(
+        textStyle: base.textTheme.headlineSmall,
+        fontWeight: FontWeight.w600,
+      ),
+      titleMedium: GoogleFonts.notoSans(
+        textStyle: base.textTheme.titleMedium,
+        fontWeight: FontWeight.w600,
+      ),
+      titleSmall: GoogleFonts.notoSans(
+        textStyle: base.textTheme.titleSmall,
+        fontWeight: FontWeight.w500,
+      ),
+      bodyLarge: GoogleFonts.notoSans(
+        textStyle: base.textTheme.bodyLarge,
+        fontWeight: FontWeight.w400,
+      ),
+      bodyMedium: GoogleFonts.notoSans(
+        textStyle: base.textTheme.bodyMedium,
+        fontWeight: FontWeight.w400,
+      ),
+      bodySmall: GoogleFonts.notoSans(
+        textStyle: base.textTheme.bodySmall,
+        fontWeight: FontWeight.w400,
+      ),
+    );
+
+    return base.copyWith(textTheme: text);
   }
 
   ThemeData _buildDarkTheme() {
-    return ThemeData(
+    final base = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
         seedColor: Colors.blue,
         brightness: Brightness.dark,
-      ),
-      textTheme: const TextTheme(
-        headlineSmall: TextStyle(fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(fontWeight: FontWeight.w600),
-        titleSmall: TextStyle(fontWeight: FontWeight.w500),
-        bodyLarge: TextStyle(fontWeight: FontWeight.w400),
-        bodyMedium: TextStyle(fontWeight: FontWeight.w400),
-        bodySmall: TextStyle(fontWeight: FontWeight.w400),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -166,5 +191,34 @@ class _MyAppState extends State<MyApp> {
         color: kIsWeb ? Colors.white : null,
       ),
     );
+
+    final text = GoogleFonts.notoSansTextTheme(base.textTheme).copyWith(
+      headlineSmall: GoogleFonts.notoSans(
+        textStyle: base.textTheme.headlineSmall,
+        fontWeight: FontWeight.w600,
+      ),
+      titleMedium: GoogleFonts.notoSans(
+        textStyle: base.textTheme.titleMedium,
+        fontWeight: FontWeight.w600,
+      ),
+      titleSmall: GoogleFonts.notoSans(
+        textStyle: base.textTheme.titleSmall,
+        fontWeight: FontWeight.w500,
+      ),
+      bodyLarge: GoogleFonts.notoSans(
+        textStyle: base.textTheme.bodyLarge,
+        fontWeight: FontWeight.w400,
+      ),
+      bodyMedium: GoogleFonts.notoSans(
+        textStyle: base.textTheme.bodyMedium,
+        fontWeight: FontWeight.w400,
+      ),
+      bodySmall: GoogleFonts.notoSans(
+        textStyle: base.textTheme.bodySmall,
+        fontWeight: FontWeight.w400,
+      ),
+    );
+
+    return base.copyWith(textTheme: text);
   }
 }
