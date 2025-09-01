@@ -36,7 +36,11 @@ jobs:
       - name: Install Functions deps
         run: |
           cd functions
-          npm ci
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Prepare Firebase auth (Service Account)
         run: |
