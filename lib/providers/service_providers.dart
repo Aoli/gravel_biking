@@ -75,6 +75,8 @@ final fileServiceProvider = Provider<FileService>((ref) {
   return FileService();
 });
 
+// NVDB removed: nvdbServiceProvider deleted
+
 /// Provider for FirestoreRouteService instance
 ///
 /// Creates and manages the FirestoreRouteService instance that handles
@@ -375,4 +377,4 @@ final ensureUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
   }
 });
 
-// NVDB providers removed
+// NVDB removed: nvdbGravelRoadsProvider deleted

@@ -20,4 +20,4 @@ final isExportingProvider = StateProvider<bool>((ref) => false);
 /// Used for map data loading, GPS operations, etc.
 final isLoadingProvider = StateProvider<bool>((ref) => false);
 
-// NVDB loading state removed
+// NVDB removed: isLoadingNvdbProvider deleted

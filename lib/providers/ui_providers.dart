@@ -18,7 +18,7 @@ final gravelOverlayProvider = StateProvider<bool>((ref) => false);
 /// Controls whether distance markers are shown along the route.
 final distanceMarkersProvider = StateProvider<bool>((ref) => true);
 
-// NVDB overlay removed
+// NVDB removed: nvdbOverlayProvider deleted
 
 /// Provider for distance marker interval
 ///

@@ -33,15 +33,7 @@ jobs:
             --dart-define=BUILD_NUMBER=${{ github.run_number }} \
             --dart-define=MAPTILER_KEY=${{ secrets.MAPTILER_KEY }}
 
-      # Functions disabled (NVDB proxy removed)
-      # - name: Install Functions deps
-      #   run: |
-      #     cd functions
-      #     if [ -f package-lock.json ]; then
-      #       npm ci
-      #     else
-      #       npm install
-      #     fi
+      # NVDB functions removed; skip installing Functions deps
 
       - name: Prepare Firebase auth (Service Account)
         run: |
@@ -50,9 +42,6 @@ jobs:
 
       - name: Install Firebase CLI
         run: npm i -g firebase-tools
-
-      # - name: Deploy Functions (nvdbProxy)
-      #   run: firebase deploy --only functions:nvdbProxy --project gravel-biking --non-interactive
 
       - name: Deploy to Firebase Hosting - develop channel
         run: firebase hosting:channel:deploy develop --project gravel-biking --non-interactive

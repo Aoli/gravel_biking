@@ -223,7 +223,7 @@ Build comprehensive route management interface:
 
 ### 5.1 Overview
 
-Implement comprehensive gravel road data visualization using OpenStreetMap (Overpass) as the primary and only data source. The previously planned Trafikverket NVDB overlay is decommissioned.
+Implement comprehensive gravel road data visualization using OpenStreetMap data (Overpass API) as the single source.
 
 ### 5.2 Data Sources
 
@@ -237,8 +237,7 @@ Implement comprehensive gravel road data visualization using OpenStreetMap (Over
 - 500ms debounced fetching to prevent API spam
 - Comprehensive error handling with graceful fallbacks
 
-#### 5.2.2 NVDB (Nationella Vägdatabasen) - Trafikverket
-Removed. The app no longer integrates with NVDB; all related UI, providers, and backend functions are disabled.
+<!-- NVDB removed: section intentionally omitted -->
 
 **Official Swedish road surface data with government authorization:**
 
@@ -253,15 +252,11 @@ Removed. The app no longer integrates with NVDB; all related UI, providers, and 
 #### 5.3.1 Dual Source Integration Pattern
 
 ```dart
-// Gravel data fetching pattern with dual source integration
+// Gravel data fetching pattern (single source - Overpass)
 Future<void> _queueViewportFetch() async {
   final bounds = _lastEventBounds;
   if (bounds == null) return;
-  
-  // Fetch OpenStreetMap gravel roads
   _fetchGravelForBounds(bounds);
-  
-  // NVDB overlay removed
 }
 ```
 
@@ -277,8 +272,7 @@ FlutterMap(
       PolylineLayer(
         polylines: gravelPolylines,
       ),
-      
-  // NVDB layer removed
+  // NVDB removed
     
     // User route polylines
     if (routePoints.isNotEmpty)
@@ -301,64 +295,21 @@ FlutterMap(
 final gravelPolylinesProvider = StateProvider<List<Polyline>>((ref) => []);
 final gravelOverlayProvider = StateProvider<bool>((ref) => true);
 
-// NVDB providers removed
+// NVDB removed: providers deleted
 ```
 
-### 5.4 NVDB Service Implementation
-Removed. See commit notes for decommission details.
+<!-- NVDB removed: Service Implementation -->
 
 #### 5.4.1 Service Architecture
 
-```dart
-class NvdbService {
-  static const String _baseUrl = 'https://nvdb2012.trafikverket.se';
-  
-  /// Search for gravel and unpaved roads within a bounding box
-  Future<List<NvdbRoadSegment>> getGravelRoads(LatLngBounds bbox) async {
-    final response = await _queryRoadSurfaces(bbox);
-    return _parseGravelRoads(response);
-  }
-  
-  /// Filter road segments for gravel-suitable surfaces
-  bool _isGravelSurface(String surfaceType) {
-    const gravelSurfaces = {
-      'gravel', 'makadam', 'sten', 'sand', 'jord', 'naturmaterial'
-    };
-    return gravelSurfaces.contains(surfaceType.toLowerCase());
-  }
-}
+```
+// NVDB removed
 ```
 
 #### 5.4.2 Data Models
 
-```dart
-class NvdbRoadSegment {
-  final List<LatLng> coordinates;
-  final String surfaceType;
-  final String roadClass;
-  final Map<String, dynamic> metadata;
-
-  const NvdbRoadSegment({
-    required this.coordinates,
-    required this.surfaceType,
-    required this.roadClass,
-    required this.metadata,
-  });
-}
-
-class LatLngBounds {
-  final double south;
-  final double west; 
-  final double north;
-  final double east;
-  
-  const LatLngBounds({
-    required this.south,
-    required this.west,
-    required this.north,
-    required this.east,
-  });
-}
+```
+// NVDB removed
 ```
 
 ### 5.5 Visual Design
@@ -370,8 +321,7 @@ class LatLngBounds {
 - Community-contributed data overlay
 - Always visible when gravel overlay is enabled
 
-**NVDB Data:**
-Removed.
+<!-- NVDB removed -->
 - Color-coded by surface type:
   - Gravel: Orange (#FF8C00)
   - Stone/Makadam: Gray (#708090) 
@@ -384,7 +334,7 @@ Removed.
 
 **Drawer Integration:**
 - "Visa grusvägar" - OpenStreetMap gravel overlay toggle
-- NVDB toggle removed
+<!-- NVDB toggle removed from UI -->
 - Swedish localization with clear control labeling
 
 **Loading States:**
@@ -398,7 +348,7 @@ Removed.
 
 - **Debounced Fetching**: 500ms delay prevents excessive API calls during map interaction
 - **Viewport-Based Loading**: Only fetch data for visible map area
-- NVDB conditional loading removed
+<!-- NVDB conditional loading removed -->
 - **Request Deduplication**: Prevent duplicate requests for same geographical area
 
 #### 5.6.2 Data Processing
@@ -413,7 +363,7 @@ Removed.
 #### 5.7.1 Service Availability
 
 - **Overpass API**: Fallback to cached data when API is unavailable
-- NVDB service removed
+<!-- NVDB service removed -->
 - **Network Conditions**: Offline capability with stored data
 - **Rate Limiting**: Respect API usage limits with exponential backoff
 

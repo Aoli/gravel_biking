@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:gravel_biking/models/saved_route.dart';
+import 'package:gravel_biking/context/test_flags.dart';
 
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // Initialize Hive for testing environment
@@ -20,6 +21,9 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   if (!Hive.isAdapterRegistered(1)) {
     Hive.registerAdapter(LatLngDataAdapter());
   }
+
+  // Disable splash timers/animations globally in tests
+  RuntimeTestFlags.disableSplash = true;
 
   // Run the tests
   await testMain();

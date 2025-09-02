@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:gravel_biking/context/test_flags.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 // Disable SplashScreen timers/animations when set (used by CI/tests)
@@ -110,42 +112,63 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-  void _startAnimationSequence() async {
-    if (kDisableSplashTimers) {
-      // Skip animations/timers during tests/CI to avoid pending timers.
-      return;
-    }
-    // Start logo animation immediately
-    _logoController.forward();
+  // Timers for staged animations; cancelled in dispose to prevent test leaks
+  final List<Timer> _timers = [];
+  bool _minHoldElapsed = false;
+  bool _completed = false;
 
-    // Wait a bit, then start text animation
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (mounted) {
-      _textController.forward();
-    }
-
-    // Wait for animations to complete, then hold for minimum splash time
-    await Future.delayed(const Duration(milliseconds: 2000));
-
-    // Wait until not paused before finishing
-    while (_isPaused) {
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
-
-    // Start fade out and finish
-    if (mounted) {
-      _fadeController.forward().then((_) {
-        if (mounted) {
+  void _startAnimationSequence() {
+    if (kDisableSplashTimers || RuntimeTestFlags.disableSplash) {
+      // In tests/CI: immediately complete splash on next frame to reach main UI
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_completed) {
+          _completed = true;
           widget.onSplashFinished();
         }
       });
+      return;
     }
+
+    // Start logo animation immediately
+    _logoController.forward();
+
+    // Schedule start of text animation
+    _timers.add(
+      Timer(const Duration(milliseconds: 600), () {
+        if (!mounted || _completed) return;
+        _textController.forward();
+      }),
+    );
+
+    // Enforce minimum splash display time before finishing
+    _timers.add(
+      Timer(const Duration(milliseconds: 2000), () {
+        if (!mounted || _completed) return;
+        _minHoldElapsed = true;
+        _maybeFinish();
+      }),
+    );
+  }
+
+  void _maybeFinish() {
+    if (!mounted || _completed) return;
+    if (_isPaused || !_minHoldElapsed) return;
+    _fadeController.forward().then((_) {
+      if (mounted && !_completed) {
+        _completed = true;
+        widget.onSplashFinished();
+      }
+    });
   }
 
   void _toggleTimer() {
     setState(() {
       _isPaused = !_isPaused;
     });
+    // If resumed and minimum hold elapsed, try to finish splash
+    if (!_isPaused) {
+      _maybeFinish();
+    }
   }
 
   String _formatVersionString() {
@@ -158,6 +181,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    // Cancel any pending timers to avoid leaks in tests
+    for (final t in _timers) {
+      if (t.isActive) t.cancel();
+    }
     _logoController.dispose();
     _textController.dispose();
     _fadeController.dispose();

@@ -93,16 +93,6 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    // In debug/tests, disable splash to avoid pending timers in widget tests
-    assert(() {
-      _showSplash = false;
-      return true;
-    }());
-  }
-
-  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Gravel First',

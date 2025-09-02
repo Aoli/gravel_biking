@@ -53,7 +53,6 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
   List<Polyline> gravelPolylines = [];
   final GravelOverpassService _overpassService = GravelOverpassService();
   // Note: _showGravelOverlay is now managed by gravelOverlayProvider
-  // NVDB overlay removed
   bool isLoading = true;
   LatLng? _myPosition;
   Timer? _moveDebounce;
@@ -164,7 +163,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       isInitialFetch: true, // Mark as initial fetch to prevent duplicates
     );
 
-    // NVDB initial fetch removed
+    // NVDB removed: no initial NVDB fetch
   }
 
   // ---- Autosave helpers ----
@@ -429,7 +428,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     // Remove the duplicate bounds check here since it's now handled in _fetchGravelForBounds
     _fetchGravelForBounds(bounds); // This is a non-initial fetch
 
-    // NVDB viewport fetch removed
+    // NVDB removed: no NVDB viewport fetch
   }
 
   bool _boundsAlmostEqual(
@@ -492,7 +491,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
     }
   }
 
-  // NVDB fetch function removed
+  // NVDB removed: _fetchNvdbDataForBounds deleted
 
   @override
   Widget build(BuildContext context) {
@@ -517,7 +516,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
       }
     });
 
-    // NVDB overlay listener removed
+    // NVDB removed: listener deleted
 
     // Prefer MapTiler for production reliability and compliance
     final useMapTiler = _mapTilerKey.isNotEmpty;
@@ -722,7 +721,7 @@ class _GravelStreetsMapState extends ConsumerState<GravelStreetsMap>
                     },
                   ),
               ],
-              // NVDB layer removed
+              // NVDB removed: gravel roads layer
               PolylineLayer(
                 polylines: [
                   if (routePoints.length >= 2)
