@@ -358,4 +358,4 @@ This document tracks feature work one by one with clear status and brief notes.
   - Approach: Consider flutter_map_tile_caching for tiles (note GPLv3/commercial licensing considerations), or a simple custom cache. Persist Overpass results locally (e.g., sqflite/hive) keyed by bbox/zoom.
 
 ---
-Last updated: 2025‑08‑28
+Last updated: 2025‑08‑29
