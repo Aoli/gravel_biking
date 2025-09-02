@@ -91,7 +91,6 @@ void main() {
 
         // Verify drawer content
         expect(find.text('Gravel overlay'), findsOneWidget);
-        expect(find.text('TRV NVDB gravel'), findsOneWidget);
         expect(find.text('Sparade rutter'), findsOneWidget);
 
         // Test drawer interactions

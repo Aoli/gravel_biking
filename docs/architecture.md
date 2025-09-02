@@ -223,7 +223,7 @@ Build comprehensive route management interface:
 
 ### 5.1 Overview
 
-Implement comprehensive gravel road data visualization with multiple data sources for optimal coverage and accuracy. The system combines community-driven OpenStreetMap data with official Swedish government data from Trafikverket's NVDB (Nationella Vägdatabasen).
+Implement comprehensive gravel road data visualization using OpenStreetMap (Overpass) as the primary and only data source. The previously planned Trafikverket NVDB overlay is decommissioned.
 
 ### 5.2 Data Sources
 
@@ -238,6 +238,7 @@ Implement comprehensive gravel road data visualization with multiple data source
 - Comprehensive error handling with graceful fallbacks
 
 #### 5.2.2 NVDB (Nationella Vägdatabasen) - Trafikverket
+Removed. The app no longer integrates with NVDB; all related UI, providers, and backend functions are disabled.
 
 **Official Swedish road surface data with government authorization:**
 
@@ -260,11 +261,7 @@ Future<void> _queueViewportFetch() async {
   // Fetch OpenStreetMap gravel roads
   _fetchGravelForBounds(bounds);
   
-  // Fetch NVDB data if overlay is enabled
-  final nvdbOverlayEnabled = ref.read(nvdbOverlayProvider);
-  if (nvdbOverlayEnabled) {
-    _fetchNvdbDataForBounds(bounds);
-  }
+  // NVDB overlay removed
 }
 ```
 
@@ -281,8 +278,7 @@ FlutterMap(
         polylines: gravelPolylines,
       ),
       
-    // NVDB gravel roads (Swedish official data)
-    NvdbGravelLayer(),
+  // NVDB layer removed
     
     // User route polylines
     if (routePoints.isNotEmpty)
@@ -305,14 +301,11 @@ FlutterMap(
 final gravelPolylinesProvider = StateProvider<List<Polyline>>((ref) => []);
 final gravelOverlayProvider = StateProvider<bool>((ref) => true);
 
-// NVDB gravel data providers
-final nvdbServiceProvider = Provider<NvdbService>((ref) => NvdbService());
-final nvdbGravelRoadsProvider = StateProvider<List<NvdbRoadSegment>>((ref) => []);
-final nvdbOverlayProvider = StateProvider<bool>((ref) => false);
-final isLoadingNvdbProvider = StateProvider<bool>((ref) => false);
+// NVDB providers removed
 ```
 
 ### 5.4 NVDB Service Implementation
+Removed. See commit notes for decommission details.
 
 #### 5.4.1 Service Architecture
 
@@ -378,6 +371,7 @@ class LatLngBounds {
 - Always visible when gravel overlay is enabled
 
 **NVDB Data:**
+Removed.
 - Color-coded by surface type:
   - Gravel: Orange (#FF8C00)
   - Stone/Makadam: Gray (#708090) 
@@ -390,7 +384,7 @@ class LatLngBounds {
 
 **Drawer Integration:**
 - "Visa grusvägar" - OpenStreetMap gravel overlay toggle
-- "Visa NVDB-grusvägar" - Swedish official data toggle
+- NVDB toggle removed
 - Swedish localization with clear control labeling
 
 **Loading States:**
@@ -404,7 +398,7 @@ class LatLngBounds {
 
 - **Debounced Fetching**: 500ms delay prevents excessive API calls during map interaction
 - **Viewport-Based Loading**: Only fetch data for visible map area
-- **Conditional Loading**: NVDB data only fetches when overlay is enabled
+- NVDB conditional loading removed
 - **Request Deduplication**: Prevent duplicate requests for same geographical area
 
 #### 5.6.2 Data Processing
@@ -419,7 +413,7 @@ class LatLngBounds {
 #### 5.7.1 Service Availability
 
 - **Overpass API**: Fallback to cached data when API is unavailable
-- **NVDB Service**: Graceful degradation with user notification
+- NVDB service removed
 - **Network Conditions**: Offline capability with stored data
 - **Rate Limiting**: Respect API usage limits with exponential backoff
 

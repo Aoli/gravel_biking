@@ -20,7 +20,6 @@ class GravelAppDrawer extends ConsumerWidget {
     required this.savedRoutesCount,
     required this.maxSavedRoutes,
     required this.distanceMarkers,
-    required this.showTrvNvdbOverlay,
     required this.onToggleDistanceMarkers,
     required this.onGenerateDistanceMarkers,
     required this.onClearDistanceMarkers,
@@ -41,7 +40,6 @@ class GravelAppDrawer extends ConsumerWidget {
   final int maxSavedRoutes;
 
   final List<LatLng> distanceMarkers;
-  final bool showTrvNvdbOverlay;
   final void Function(bool value) onToggleDistanceMarkers;
   final VoidCallback onGenerateDistanceMarkers;
   final VoidCallback onClearDistanceMarkers;
@@ -201,18 +199,6 @@ class GravelAppDrawer extends ConsumerWidget {
                     value: ref.watch(gravelOverlayProvider),
                     onChanged: (v) =>
                         ref.read(gravelOverlayProvider.notifier).state = v,
-                  ),
-
-                  // NVDB overlay - now web-aware with proxy or same-origin fallback
-                  _buildSwitchTile(
-                    context,
-                    icon: Icons.traffic,
-                    title: 'NVDB grusvägar',
-                    subtitle: 'Trafikverkets officiella vägnät',
-                    value: ref.watch(nvdbOverlayProvider),
-                    onChanged: (v) =>
-                        ref.read(nvdbOverlayProvider.notifier).state = v,
-                    isDisabled: false,
                   ),
 
                   // Distance markers section

@@ -18,10 +18,7 @@ final gravelOverlayProvider = StateProvider<bool>((ref) => false);
 /// Controls whether distance markers are shown along the route.
 final distanceMarkersProvider = StateProvider<bool>((ref) => true);
 
-/// Provider for NVDB overlay visibility
-///
-/// Controls whether the NVDB (Trafikverket) gravel roads overlay is displayed on the map.
-final nvdbOverlayProvider = StateProvider<bool>((ref) => false);
+// NVDB overlay removed
 
 /// Provider for distance marker interval
 ///
